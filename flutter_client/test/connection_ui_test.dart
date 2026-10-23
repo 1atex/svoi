@@ -40,6 +40,32 @@ class ConnectionBackend extends DemoBackend {
 }
 
 void main() {
+  testWidgets('backend shutdown remains visible and prevents reconnect', (
+    tester,
+  ) async {
+    final c = SvoiController(ConnectionBackend());
+    await c.initialize();
+    c.connection.value = {'available': true, 'state': 'stopping'};
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: svoiTheme(),
+        home: Scaffold(
+          body: SingleChildScrollView(child: ConnectionCard(c: c)),
+        ),
+      ),
+    );
+    await tester.pump();
+    expect(find.text('Отключаемся…'), findsOneWidget);
+    expect(find.text('Завершается…'), findsOneWidget);
+    expect(find.text('VPN выключен'), findsNothing);
+    final button = tester.widget<TextButton>(
+      find.byKey(const ValueKey('connection-power')),
+    );
+    expect(button.onPressed, isNull);
+    await tester.pumpWidget(const SizedBox.shrink());
+    await c.close();
+  });
+
   testWidgets(
     'failed internet check keeps VPN status and explicit disconnect, hides admin hint when elevated',
     (tester) async {

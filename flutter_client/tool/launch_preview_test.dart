@@ -236,7 +236,7 @@ Widget connectionFrame(SvoiController c) => stage(
             title('В центре —\nодно действие.', size: 88),
             const SizedBox(height: 34),
             const Text(
-              'Выберите сервер.\nНажмите на кнопку питания.',
+              'Выберите сервер.\nНажмите на кнопку включения.',
               style: TextStyle(fontSize: 27, height: 1.5, color: muted),
             ),
           ],

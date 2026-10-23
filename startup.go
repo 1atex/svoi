@@ -44,10 +44,10 @@ func (a *App) startupAPI(w http.ResponseWriter, r *http.Request) error {
 		}
 		previous, err := queryStartup(desktopExecutable)
 		if err != nil {
-			return err
+			return startupAPIError("Не удалось проверить автозапуск", err)
 		}
 		if err := changeStartup(desktopExecutable, in.Enabled); err != nil {
-			return err
+			return startupAPIError("Не удалось изменить автозапуск", err)
 		}
 		a.settingsMu.Lock()
 		defer a.settingsMu.Unlock()
@@ -55,9 +55,9 @@ func (a *App) startupAPI(w http.ResponseWriter, r *http.Request) error {
 		next.StartupZapret = in.Zapret
 		if err := a.saveSettingsLocked(next); err != nil {
 			if rollback := changeStartup(desktopExecutable, previous); rollback != nil {
-				return fmt.Errorf("не удалось сохранить настройки: %v; проверьте автозапуск: %v", err, rollback)
+				return startupAPIError("Не удалось сохранить настройки; проверьте автозапуск", rollback)
 			}
-			return err
+			return fail(500, "Не удалось записать настройки SVOI на диск. Изменение автозапуска отменено")
 		}
 		writeJSON(w, 200, map[string]any{"enabled": in.Enabled, "zapret": in.Zapret, "strategy": next.ZapretStrategy, "elevated": isElevated()})
 		return nil
@@ -67,11 +67,22 @@ func (a *App) startupAPI(w http.ResponseWriter, r *http.Request) error {
 	}
 	enabled, err := queryStartup(desktopExecutable)
 	if err != nil {
-		return err
+		return startupAPIError("Не удалось проверить автозапуск", err)
 	}
 	s := a.localSettings()
 	writeJSON(w, 200, map[string]any{"enabled": enabled, "zapret": s.StartupZapret, "strategy": s.ZapretStrategy, "elevated": isElevated()})
 	return nil
+}
+
+func startupAPIError(action string, err error) error {
+	if _, ok := err.(apiError); ok {
+		return err
+	}
+	message := []rune(err.Error())
+	if len(message) > 800 {
+		message = message[:800]
+	}
+	return fail(502, action+": "+string(message))
 }
 
 func (a *App) saveSettingsLocked(s LocalSettings) error {

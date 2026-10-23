@@ -51,7 +51,14 @@ func startupTaskNamed(executable, action, testName string) (bool, error) {
 	hideCommand(cmd)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		return false, fmt.Errorf("Планировщик Windows: %s", strings.TrimSpace(string(output)))
+		if ctx.Err() != nil {
+			return false, fmt.Errorf("Планировщик Windows не ответил за 15 секунд")
+		}
+		detail := strings.TrimSpace(string(output))
+		if detail == "" {
+			detail = err.Error()
+		}
+		return false, fmt.Errorf("Планировщик Windows: %s", detail)
 	}
 	var result struct {
 		Enabled bool `json:"enabled"`

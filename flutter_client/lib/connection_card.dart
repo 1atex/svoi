@@ -67,7 +67,7 @@ class ConnectionCard extends StatelessWidget {
           state['serverName']?.toString() ??
           'Активный сервер';
       final ready = state['available'] == true;
-      final hint = c.busy.value
+      final hint = c.busy.value || view.phase.isNotEmpty
           ? 'Подождите, выполняется операция'
           : view.running
           ? 'Отключить VPN'
@@ -197,7 +197,7 @@ class ConnectionCard extends StatelessWidget {
                 running: view.running,
                 verified: view.verified,
                 busy: view.phase.isNotEmpty,
-                onPressed: c.busy.value
+                onPressed: c.busy.value || view.phase.isNotEmpty
                     ? null
                     : view.running
                     ? c.stop

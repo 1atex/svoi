@@ -28,7 +28,13 @@ class ConnectionView {
   final SvoiController c;
   Map<String, dynamic> get state => c.connection.value;
   bool get running => state['state'] == 'running';
-  String get phase => c.connectionPhase.value;
+  String get phase => c.connectionPhase.value.isNotEmpty
+      ? c.connectionPhase.value
+      : switch (state['state']) {
+          'starting' => 'starting',
+          'stopping' => 'stopping',
+          _ => '',
+        };
   String get error => c.connectionIssue.value.isNotEmpty
       ? c.connectionIssue.value
       : state['error']?.toString() ?? '';
@@ -61,10 +67,10 @@ class ConnectionView {
           : running
           ? error.isEmpty
                 ? 'Ядро работает. Доступ в интернет ещё не проверен.'
-                : 'Интернет не подтверждён: контрольный адрес не ответил. VPN остаётся включён — кнопка питания отключит его.'
+                : 'Интернет не подтверждён: контрольный адрес не ответил. VPN остаётся включён. Нажмите «Отключить VPN», чтобы завершить соединение.'
           : error.isNotEmpty
           ? 'Откройте диагностику, чтобы посмотреть причину.'
-          : 'Нажмите на кнопку питания, чтобы подключиться.',
+          : 'Нажмите на кнопку включения, чтобы подключиться.',
   };
 }
 
@@ -87,7 +93,11 @@ class ConnectionPath extends StatelessWidget {
             _step(
               LucideIcons.shield,
               'VPN',
-              view.running ? 'Xray запущен' : 'Не запущен',
+              view.phase == 'stopping'
+                  ? 'Завершается…'
+                  : view.running
+                  ? 'Xray запущен'
+                  : 'Не запущен',
               view.running ? accent : muted,
             ),
             _line(view.verified),

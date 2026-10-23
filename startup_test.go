@@ -66,8 +66,8 @@ func TestStartupAuthorizationPersistenceAndFailure(t *testing.T) {
 		t.Fatal("startup preferences lost", err)
 	}
 	deny = true
-	if w := request(owner, "127.0.0.1:12", `{"enabled":false,"zapret":false}`); w.Code == 200 {
-		t.Fatal("task failure hidden")
+	if w := request(owner, "127.0.0.1:12", `{"enabled":false,"zapret":false}`); w.Code != 502 || !strings.Contains(w.Body.String(), "permission denied") {
+		t.Fatal("task failure hidden", w.Code, w.Body.String())
 	}
 	if !a.localSettings().StartupZapret || !enabled {
 		t.Fatal("failed change altered preferences")

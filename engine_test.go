@@ -48,6 +48,22 @@ func TestMissingCoreExplainsUnavailableConnection(t *testing.T) {
 		t.Fatalf("missing actionable diagnostic: %+v", status)
 	}
 }
+
+func TestCoreReadinessRequiresFullStartupMessage(t *testing.T) {
+	e := &Engine{}
+	_, _ = e.Write([]byte("listening on 127.0.0.1\n[Warning] core: Xr"))
+	if e.coreStarted {
+		t.Fatal("socket log marked core ready")
+	}
+	_, _ = e.Write([]byte("ay 26.10.21 star"))
+	if e.coreStarted {
+		t.Fatal("partial startup message marked core ready")
+	}
+	_, _ = e.Write([]byte("ted\r\n"))
+	if !e.coreStarted {
+		t.Fatal("split startup message was lost")
+	}
+}
 func TestParserTransportsWithRealXray(t *testing.T) {
 	binary := testCore(t)
 	key, err := ecdh.X25519().GenerateKey(rand.Reader)
@@ -179,8 +195,13 @@ func TestXrayVLESSRoundTrip(t *testing.T) {
 	if err != nil || !bytes.Contains(body, []byte("svoi-xray-roundtrip")) {
 		t.Fatalf("SOCKS5 did not deliver target response: %v", err)
 	}
+	conn.Close()
+	process := engine.cmd
 	if err = engine.Stop(); err != nil {
 		t.Fatal(err)
+	}
+	if process.ProcessState == nil || process.ProcessState.ExitCode() != 0 {
+		t.Fatalf("Xray was killed instead of exiting cleanly: %v; logs: %v", process.ProcessState, engine.Status().Logs)
 	}
 	if engine.Status().State != "stopped" {
 		t.Fatal("engine did not stop")
@@ -199,6 +220,53 @@ func TestXrayVLESSRoundTrip(t *testing.T) {
 	}
 	if _, err = engine.Check(context.Background()); err != nil {
 		t.Fatalf("loopback/balancer roundtrip: %v; logs: %v", err, engine.Status().Logs)
+	}
+	for i := 0; i < 3; i++ {
+		process = engine.cmd
+		if err := engine.Stop(); err != nil {
+			t.Fatal(err)
+		}
+		if process.ProcessState.ExitCode() != 0 {
+			t.Fatalf("cycle %d did not shut down cleanly: %v", i, engine.Status().Logs)
+		}
+		if err := engine.Start(server, "local"); err != nil {
+			t.Fatal(err)
+		}
+		if s := engine.Status(); s.Checked || s.CheckedAt != nil || s.Error != "" {
+			t.Fatal("reconnect inherited previous check", s)
+		}
+		if _, err := engine.Check(context.Background()); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+func TestStopCancelsCheckWithoutLeavingStaleFailure(t *testing.T) {
+	entered := make(chan struct{})
+	target := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		close(entered)
+		<-r.Context().Done()
+	}))
+	defer target.Close()
+	e := &Engine{status: EngineStatus{State: "running", Mode: "tun"}, checkURL: target.URL}
+	checked := make(chan error, 1)
+	go func() { _, err := e.Check(context.Background()); checked <- err }()
+	<-entered
+	stopped := make(chan error, 1)
+	go func() { stopped <- e.Stop() }()
+	select {
+	case err := <-stopped:
+		if err != nil {
+			t.Fatal(err)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("stop waits for internet check")
+	}
+	if err := <-checked; err == nil {
+		t.Fatal("cancelled check succeeded")
+	}
+	if s := e.Status(); s.State != "stopped" || s.Error != "" || s.CheckedAt != nil {
+		t.Fatal("cancelled check overwrote stopped status", s)
 	}
 }
 

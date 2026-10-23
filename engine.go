@@ -38,18 +38,22 @@ type EngineStatus struct {
 	Logs       []string   `json:"logs"`
 }
 type Engine struct {
-	op           sync.Mutex
-	mu           sync.Mutex
-	binary       string
-	dir          string
-	status       EngineStatus
-	cmd          *exec.Cmd
-	done         chan struct{}
-	configPath   string
-	releaseJob   func()
-	restoreProxy func() error
-	redactions   []string
-	checkURL     string
+	op            sync.Mutex
+	mu            sync.Mutex
+	binary        string
+	dir           string
+	status        EngineStatus
+	cmd           *exec.Cmd
+	done          chan struct{}
+	configPath    string
+	releaseJob    func()
+	restoreProxy  func() error
+	redactions    []string
+	checkURL      string
+	checkCancel   context.CancelFunc
+	checkID       uint64
+	coreStarted   bool
+	startupOutput string
 }
 
 func newEngine(binary, dir string) (*Engine, error) {
@@ -98,6 +102,17 @@ func (e *Engine) snapshot(includeLogs bool) EngineStatus {
 func (e *Engine) Write(p []byte) (int, error) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
+	if !e.coreStarted {
+		e.startupOutput += string(p)
+		for _, line := range strings.Split(e.startupOutput, "\n") {
+			if strings.Contains(line, "[Warning] core: Xray ") && strings.HasSuffix(strings.TrimSpace(line), " started") {
+				e.coreStarted = true
+			}
+		}
+		if len(e.startupOutput) > 1024 {
+			e.startupOutput = e.startupOutput[len(e.startupOutput)-1024:]
+		}
+	}
 	for _, line := range strings.Split(strings.TrimSpace(string(p)), "\n") {
 		if line == "" {
 			continue
@@ -211,6 +226,8 @@ func (e *Engine) startContext(parent context.Context, server ServerConfig, mode 
 	e.status.CheckedAt = nil
 	e.status.Latency = 0
 	e.status.Logs = []string{}
+	e.coreStarted = false
+	e.startupOutput = ""
 	e.redactions = credentialStrings(outbound)
 	e.mu.Unlock()
 	ctx, cancel := context.WithTimeout(parent, 10*time.Second)
@@ -226,7 +243,7 @@ func (e *Engine) startContext(parent context.Context, server ServerConfig, mode 
 		return err
 	}
 	cmd := exec.Command(e.binary, "run", "-c", path)
-	hideCommand(cmd)
+	prepareXrayCommand(cmd)
 	cmd.Dir = filepath.Dir(e.binary)
 	cmd.Stdout = e
 	cmd.Stderr = e
@@ -243,7 +260,9 @@ func (e *Engine) startContext(parent context.Context, server ServerConfig, mode 
 		e.setError(err)
 		return err
 	}
+	e.mu.Lock()
 	e.cmd = cmd
+	e.mu.Unlock()
 	e.done = make(chan struct{})
 	e.configPath = path
 	e.releaseJob = release
@@ -263,7 +282,11 @@ func (e *Engine) startContext(parent context.Context, server ServerConfig, mode 
 		close(done)
 	}()
 	ready := false
-	deadline := time.Now().Add(8 * time.Second)
+	startupTimeout := 8 * time.Second
+	if mode == "tun" {
+		startupTimeout = 20 * time.Second
+	}
+	deadline := time.Now().Add(startupTimeout)
 	for time.Now().Before(deadline) {
 		select {
 		case <-parent.Done():
@@ -276,6 +299,13 @@ func (e *Engine) startContext(parent context.Context, server ServerConfig, mode 
 			return err
 		default:
 		}
+		e.mu.Lock()
+		coreStarted := e.coreStarted
+		e.mu.Unlock()
+		if !coreStarted {
+			time.Sleep(30 * time.Millisecond)
+			continue
+		}
 		c, dialErr := net.DialTimeout("tcp", net.JoinHostPort("127.0.0.1", strconv.Itoa(hp)), 150*time.Millisecond)
 		if dialErr == nil {
 			c.Close()
@@ -285,7 +315,7 @@ func (e *Engine) startContext(parent context.Context, server ServerConfig, mode 
 		time.Sleep(60 * time.Millisecond)
 	}
 	if !ready {
-		err = fail(504, "Xray не открыл локальный порт за 8 секунд")
+		err = fail(504, fmt.Sprintf("Xray не завершил настройку подключения за %d секунд", int(startupTimeout.Seconds())))
 		e.stopLocked()
 		e.setError(err)
 		return err
@@ -330,6 +360,16 @@ func (e *Engine) startContext(parent context.Context, server ServerConfig, mode 
 }
 func (e *Engine) Stop() error { e.op.Lock(); defer e.op.Unlock(); return e.stopLocked() }
 func (e *Engine) stopLocked() error {
+	e.mu.Lock()
+	if e.checkCancel != nil {
+		e.checkCancel()
+		e.checkCancel = nil
+	}
+	e.checkID++
+	if e.cmd != nil || e.restoreProxy != nil {
+		e.status.State = "stopping"
+	}
+	e.mu.Unlock()
 	var restoreErr error
 	if e.restoreProxy != nil {
 		restoreErr = e.restoreProxy()
@@ -338,11 +378,24 @@ func (e *Engine) stopLocked() error {
 		}
 	}
 	if e.cmd != nil {
-		e.mu.Lock()
-		e.status.State = "stopping"
-		e.mu.Unlock()
-		_ = e.cmd.Process.Kill()
-		<-e.done
+		select {
+		case <-e.done:
+		default:
+			if err := interruptXray(e.cmd); err != nil {
+				_, _ = e.Write([]byte("Не удалось отправить Xray сигнал завершения: " + err.Error()))
+			}
+			timer := time.NewTimer(5 * time.Second)
+			select {
+			case <-e.done:
+				timer.Stop()
+			case <-timer.C:
+				_, _ = e.Write([]byte("Xray не завершился за 5 секунд; принудительная остановка"))
+				if err := e.cmd.Process.Kill(); err != nil && !errors.Is(err, os.ErrProcessDone) {
+					return fmt.Errorf("не удалось остановить Xray: %w", err)
+				}
+				<-e.done
+			}
+		}
 		if e.releaseJob != nil {
 			e.releaseJob()
 			e.releaseJob = nil
@@ -373,11 +426,22 @@ func (e *Engine) stopLocked() error {
 }
 func (e *Engine) Check(ctx context.Context) (int64, error) {
 	e.op.Lock()
-	defer e.op.Unlock()
 	s := e.Status()
 	if s.State != "running" {
+		e.op.Unlock()
 		return 0, fail(409, "Сначала подключитесь к серверу")
 	}
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	e.mu.Lock()
+	if e.checkCancel != nil {
+		e.checkCancel()
+	}
+	e.checkID++
+	checkID := e.checkID
+	e.checkCancel = cancel
+	e.mu.Unlock()
+	e.op.Unlock()
 	proxyURL, _ := url.Parse("http://127.0.0.1:" + strconv.Itoa(s.HTTPPort))
 	transport := &http.Transport{Proxy: http.ProxyURL(proxyURL), TLSHandshakeTimeout: 8 * time.Second}
 	if s.Mode == "tun" {
@@ -398,6 +462,10 @@ func (e *Engine) Check(ctx context.Context) (int64, error) {
 	}
 	e.mu.Lock()
 	defer e.mu.Unlock()
+	if e.checkID != checkID || e.status.State != "running" || ctx.Err() != nil {
+		return 0, fail(409, "Проверка отменена: состояние подключения изменилось")
+	}
+	e.checkCancel = nil
 	checkedAt := time.Now().UTC()
 	e.status.CheckedAt = &checkedAt
 	if err != nil {
