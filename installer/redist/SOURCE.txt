@@ -1,9 +1,0 @@
-Microsoft Edge WebView2 Evergreen Bootstrapper
-Official download: https://go.microsoft.com/fwlink/p/?LinkId=2124703
-Documentation: https://learn.microsoft.com/en-us/microsoft-edge/webview2/concepts/distribution
-
-The Windows installer bundles the bootstrapper and invokes it only if the
-WebView2 Runtime is absent. The bootstrapper downloads the Runtime from Microsoft.
-prepare-redist.ps1 verifies a valid Microsoft Authenticode signature before packaging.
-The source archive excludes the executable; the build script downloads it again.
-WebView2 is a Microsoft component under Microsoft's terms, not SVOI source code.

@@ -113,8 +113,8 @@
 
 - [Flutter: сборка, тесты и архитектура](flutter_client/README.md)
 - [Примечания к релизу](flutter_client/RELEASE-NOTES.md)
-- [Прежний WebView-клиент](docs/WEBVIEW.md)
-- [Измерения производительности](PERFORMANCE.md)
+- [Структура исходников](docs/DEVELOPMENT.md)
+- [Измерения производительности](docs/PERFORMANCE.md)
 
 Нужны Go, Flutter 3.47.7, Visual Studio с C++ Desktop workload и Inno Setup 6:
 
