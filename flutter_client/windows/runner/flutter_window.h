@@ -7,6 +7,7 @@
 #include <flutter/encodable_value.h>
 
 #include <memory>
+#include <string>
 
 #include "win32_window.h"
 
@@ -32,6 +33,11 @@ class FlutterWindow : public Win32Window {
   bool dart_ready_ = false;
   bool closing_ = false;
   bool allow_close_ = false;
+  bool tray_added_ = false;
+  std::wstring tray_tooltip_ = L"SVOI";
+  flutter::EncodableList tray_items_;
+  bool UpdateTray();
+  void RestoreFromTray();
 };
 
 #endif

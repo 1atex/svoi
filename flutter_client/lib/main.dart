@@ -20,6 +20,7 @@ part 'connection_view.dart';
 part 'connection_card.dart';
 part 'servers.dart';
 part 'zapret_page.dart';
+part 'tray.dart';
 
 const windowChannel = MethodChannel('dev.svoi/window');
 const canvas = Color(0xff101013),
@@ -139,6 +140,7 @@ class _BootstrapState extends State<Bootstrap> with WidgetsBindingObserver {
   String? _error;
   bool _ready = false, _closing = false;
   late final Future<void> _launch;
+  final _shellKey = GlobalKey<_SvoiShellState>();
   @override
   void initState() {
     super.initState();
@@ -147,6 +149,9 @@ class _BootstrapState extends State<Bootstrap> with WidgetsBindingObserver {
       if (call.method == 'requestClose') await _close();
       if (call.method == 'visibility') {
         _controller?.visibility(call.arguments == true);
+      }
+      if (call.method == 'trayAction' && call.arguments is String) {
+        await _shellKey.currentState?._tray.handle(call.arguments as String);
       }
     });
     unawaited(windowChannel.invokeMethod('ready'));
@@ -203,7 +208,7 @@ class _BootstrapState extends State<Bootstrap> with WidgetsBindingObserver {
     home: _closing
         ? const Scaffold(body: Center(child: Text('Завершаем соединение…')))
         : _ready
-        ? SvoiShell(controller: _controller!, demo: widget.demo)
+        ? SvoiShell(key: _shellKey, controller: _controller!, demo: widget.demo)
         : Scaffold(
             body: Center(
               child: SizedBox(
@@ -260,6 +265,46 @@ class SvoiShell extends StatefulWidget {
 
 class _SvoiShellState extends State<SvoiShell> {
   int page = 0;
+  late final TrayBridge _tray;
+  bool _trayDialogOpen = false;
+  @override
+  void initState() {
+    super.initState();
+    _tray = TrayBridge(widget.controller, open: _openTrayAction)..attach();
+  }
+
+  Future<void> _openTrayAction(String action) async {
+    if (!mounted) return;
+    await windowChannel.invokeMethod('show');
+    if (!mounted) return;
+    if (action == 'servers' || action == 'settings' || action == 'connection') {
+      setState(
+        () => page = action == 'servers'
+            ? 1
+            : action == 'settings'
+            ? 5
+            : 0,
+      );
+      return;
+    }
+    if (_trayDialogOpen) return;
+    _trayDialogOpen = true;
+    try {
+      if (action == 'import') await importDialog(context, widget.controller);
+      if (action == 'logs' && mounted) {
+        await showLogs(context, widget.controller);
+      }
+    } finally {
+      _trayDialogOpen = false;
+    }
+  }
+
+  @override
+  void dispose() {
+    _tray.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     final c = widget.controller;

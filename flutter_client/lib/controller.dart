@@ -250,10 +250,16 @@ class SvoiController {
     _visible = visible;
     _timer?.cancel();
     if (visible) unawaited(poll());
+    if (!visible) _schedule();
   }
 
-  Future<void> poll() async {
-    if (_closed || !_visible || _polling || busy.value) return;
+  Future<void> poll({bool force = false}) async {
+    if (_closed ||
+        (!force && !_visible && connection.value['state'] != 'running') ||
+        _polling ||
+        busy.value) {
+      return;
+    }
     _polling = true;
     final revision = _connectionRevision;
     try {
@@ -274,9 +280,15 @@ class SvoiController {
 
   void _schedule() {
     _timer?.cancel();
-    if (!_closed && _visible) {
+    if (!_closed && (_visible || connection.value['state'] == 'running')) {
       _timer = Timer(
-        Duration(seconds: connection.value['state'] == 'running' ? 3 : 10),
+        Duration(
+          seconds: !_visible
+              ? 15
+              : connection.value['state'] == 'running'
+              ? 3
+              : 10,
+        ),
         poll,
       );
     }

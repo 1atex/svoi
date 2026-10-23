@@ -1,6 +1,7 @@
 #include "flutter_window.h"
 
 #include <optional>
+#include <map>
 #include <flutter/standard_method_codec.h>
 #include <commdlg.h>
 #include <shellapi.h>
@@ -25,12 +26,77 @@ NOTIFYICONDATAW TrayData(HWND hwnd) {
   wcscpy_s(data.szTip, L"SVOI — открыть приложение");
   return data;
 }
+
+std::wstring WideText(const std::string& text) {
+  const int length = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, text.data(),
+                                        static_cast<int>(text.size()), nullptr, 0);
+  if (length <= 0) return L"";
+  std::wstring result(length, L'\0');
+  MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, text.data(),
+                      static_cast<int>(text.size()), result.data(), length);
+  return result;
+}
+
+template <typename T>
+const T* MenuValue(const flutter::EncodableMap& map, const char* key) {
+  auto entry = map.find(flutter::EncodableValue(key));
+  return entry == map.end() ? nullptr : std::get_if<T>(&entry->second);
+}
+
+HMENU BuildTrayMenu(const flutter::EncodableList& items, UINT& next,
+                   std::map<UINT, std::string>& actions, int depth = 0) {
+  HMENU menu = CreatePopupMenu();
+  if (!menu || depth > 3) return menu;
+  for (const auto& value : items) {
+    if (next > 128) break;
+    const auto* item = std::get_if<flutter::EncodableMap>(&value);
+    if (!item) continue;
+    const auto* separator = MenuValue<bool>(*item, "separator");
+    if (separator && *separator) {
+      AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
+      continue;
+    }
+    const auto* label = MenuValue<std::string>(*item, "label");
+    if (!label) continue;
+    std::wstring text = WideText(*label);
+    if (text.size() > 90) text = text.substr(0, 87) + L"…";
+    UINT flags = MF_STRING;
+    const auto* enabled = MenuValue<bool>(*item, "enabled");
+    if (enabled && !*enabled) flags |= MF_GRAYED;
+    const auto* checked = MenuValue<bool>(*item, "checked");
+    if (checked && *checked) flags |= MF_CHECKED;
+    const auto* children = MenuValue<flutter::EncodableList>(*item, "children");
+    if (children) {
+      HMENU child = BuildTrayMenu(*children, next, actions, depth + 1);
+      if (child) AppendMenuW(menu, flags | MF_POPUP, reinterpret_cast<UINT_PTR>(child), text.c_str());
+    } else {
+      const UINT id = next++;
+      const auto* action = MenuValue<std::string>(*item, "id");
+      if (action && !action->empty()) actions[id] = *action;
+      AppendMenuW(menu, flags, id, text.c_str());
+    }
+  }
+  return menu;
+}
 }
 
 FlutterWindow::FlutterWindow(const flutter::DartProject& project)
     : project_(project) {}
 
 FlutterWindow::~FlutterWindow() {}
+
+bool FlutterWindow::UpdateTray() {
+  auto data = TrayData(GetHandle());
+  wcsncpy_s(data.szTip, tray_tooltip_.c_str(), _TRUNCATE);
+  tray_added_ = Shell_NotifyIconW(NIM_MODIFY, &data) || Shell_NotifyIconW(NIM_ADD, &data);
+  return tray_added_;
+}
+
+void FlutterWindow::RestoreFromTray() {
+  ShowWindow(GetHandle(), SW_RESTORE);
+  SetForegroundWindow(GetHandle());
+  if (channel_) channel_->InvokeMethod("visibility", std::make_unique<flutter::EncodableValue>(true));
+}
 
 bool FlutterWindow::OnCreate() {
   if (!Win32Window::OnCreate()) {
@@ -58,9 +124,21 @@ bool FlutterWindow::OnCreate() {
       KillTimer(GetHandle(), 1);
       result->Success();
       PostMessage(GetHandle(), WM_CLOSE, 0, 0);
+    } else if (call.method_name() == "show") {
+      RestoreFromTray();
+      result->Success();
+    } else if (call.method_name() == "updateTray") {
+      const auto* state = call.arguments() ? std::get_if<flutter::EncodableMap>(call.arguments()) : nullptr;
+      if (!state) {
+        result->Error("tray", "Неверное состояние меню трея");
+        return;
+      }
+      if (const auto* text = MenuValue<std::string>(*state, "tooltip")) tray_tooltip_ = WideText(*text);
+      if (const auto* items = MenuValue<flutter::EncodableList>(*state, "items")) tray_items_ = *items;
+      if (UpdateTray()) result->Success();
+      else result->Error("tray", "Не удалось обновить значок в трее");
     } else if (call.method_name() == "tray") {
-      auto data = TrayData(GetHandle());
-      if (!Shell_NotifyIconW(NIM_MODIFY, &data) && !Shell_NotifyIconW(NIM_ADD, &data)) {
+      if (!UpdateTray()) {
         result->Error("tray", "Не удалось создать значок в трее");
         return;
       }
@@ -123,29 +201,38 @@ FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
     auto data = TrayData(hwnd);
     Shell_NotifyIconW(NIM_DELETE, &data);
   }
-  if (message == kTaskbarCreated && !IsWindowVisible(hwnd)) {
-    auto data = TrayData(hwnd);
-    if (!Shell_NotifyIconW(NIM_ADD, &data)) ShowWindow(hwnd, SW_RESTORE);
+  if (message == kTaskbarCreated && tray_added_) {
+    if (!UpdateTray() && !IsWindowVisible(hwnd)) RestoreFromTray();
   }
   if (message == kTrayMessage) {
     if (lparam == WM_LBUTTONUP || lparam == WM_LBUTTONDBLCLK) {
-      ShowWindow(hwnd, SW_RESTORE);
-      SetForegroundWindow(hwnd);
-      channel_->InvokeMethod("visibility", std::make_unique<flutter::EncodableValue>(true));
+      RestoreFromTray();
     } else if (lparam == WM_RBUTTONUP) {
-      HMENU menu = CreatePopupMenu();
-      AppendMenuW(menu, MF_STRING, 1, L"Открыть SVOI");
-      AppendMenuW(menu, MF_STRING, 2, L"Отключить и выйти");
+      UINT next = 1;
+      std::map<UINT, std::string> actions;
+      HMENU menu = BuildTrayMenu(tray_items_, next, actions);
+      if (!menu) return 0;
+      if (tray_items_.empty()) {
+        AppendMenuW(menu, MF_STRING, next, L"Открыть SVOI");
+        actions[next++] = "open";
+        AppendMenuW(menu, MF_STRING, next, L"Отключить и выйти");
+        actions[next] = "quit";
+      }
+      SetMenuDefaultItem(menu, 0, TRUE);
       POINT point{};
       GetCursorPos(&point);
       SetForegroundWindow(hwnd);
       const int command = TrackPopupMenu(menu, TPM_RETURNCMD | TPM_RIGHTBUTTON, point.x, point.y, 0, hwnd, nullptr);
       DestroyMenu(menu);
-      if (command == 1) {
-        ShowWindow(hwnd, SW_RESTORE);
-        channel_->InvokeMethod("visibility", std::make_unique<flutter::EncodableValue>(true));
+      PostMessage(hwnd, WM_NULL, 0, 0);
+      auto found = actions.find(command);
+      if (found != actions.end()) {
+        if (found->second == "open") RestoreFromTray();
+        else if (found->second == "quit") PostMessage(hwnd, WM_CLOSE, 0, 0);
+        else if (channel_) {
+          channel_->InvokeMethod("trayAction", std::make_unique<flutter::EncodableValue>(found->second));
+        }
       }
-      if (command == 2) PostMessage(hwnd, WM_CLOSE, 0, 0);
     }
     return 0;
   }
