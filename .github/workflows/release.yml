@@ -1,0 +1,114 @@
+name: Windows release
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      client:
+        description: Client to build
+        type: choice
+        options: [flutter, webview]
+        default: flutter
+permissions:
+  contents: write
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Verify version
+        shell: pwsh
+        env:
+          REQUESTED_CLIENT: ${{ inputs.client }}
+        run: |
+          $version = [regex]::Match((Get-Content main.go -Raw), '(?:const|var) appVersion = "([^"]+)"').Groups[1].Value
+          $native = [regex]::Match((Get-Content main.go -Raw), 'var nativeVersion = "([^"]+)"').Groups[1].Value
+          $flutter = ($env:GITHUB_REF_TYPE -eq 'tag' -and $env:GITHUB_REF_NAME -eq "v$native") -or ($env:GITHUB_REF_TYPE -ne 'tag' -and $env:REQUESTED_CLIENT -ne 'webview')
+          if ($flutter) { $version = $native }
+          if ($env:GITHUB_REF_TYPE -eq 'tag' -and $env:GITHUB_REF_NAME -ne "v$version") { throw 'Tag and application version differ' }
+          "SVOI_VERSION=$version" >> $env:GITHUB_ENV
+          "SVOI_FLUTTER=$($flutter.ToString().ToLower())" >> $env:GITHUB_ENV
+          $dir = if ($flutter) { "releases/flutter-v$version" } else { "releases/v$version" }
+          "SVOI_RELEASE_DIR=$dir" >> $env:GITHUB_ENV
+      - name: Fetch pinned Xray
+        shell: pwsh
+        run: ./prepare-core.ps1
+      - uses: actions/setup-node@v4
+        if: env.SVOI_FLUTTER != 'true'
+        with:
+          node-version: '22'
+          cache: npm
+      - name: UI regression checks
+        if: env.SVOI_FLUTTER != 'true'
+        shell: pwsh
+        run: |
+          npm ci --ignore-scripts --no-audit --no-fund
+          if ($LASTEXITCODE -ne 0) { throw 'UI test dependencies failed' }
+          npm test
+          if ($LASTEXITCODE -ne 0) { throw 'UI tests failed' }
+      - name: Ensure Inno Setup
+        shell: pwsh
+        run: |
+          if (-not (Test-Path "${env:ProgramFiles(x86)}/Inno Setup 6/ISCC.exe")) {
+            choco install innosetup --yes --no-progress
+            if ($LASTEXITCODE -ne 0) { throw 'Inno Setup installation failed' }
+          }
+      - name: Build and test
+        if: env.SVOI_FLUTTER != 'true'
+        shell: pwsh
+        run: ./package.ps1
+      - name: Prepare pinned Flutter SDK
+        if: env.SVOI_FLUTTER == 'true'
+        shell: pwsh
+        run: |
+          $sdkVersion = '3.47.7'
+          $manifest = Invoke-RestMethod 'https://storage.googleapis.com/flutter_infra_release/releases/releases_windows.json'
+          $sdk = $manifest.releases | Where-Object { $_.version -eq $sdkVersion -and $_.channel -eq 'stable' } | Select-Object -First 1
+          if (!$sdk -or !$sdk.sha256) { throw 'Pinned Flutter SDK is unavailable' }
+          New-Item -ItemType Directory -Force .tools/sdk | Out-Null
+          Invoke-WebRequest "$($manifest.base_url)/$($sdk.archive)" -OutFile .tools/flutter.zip
+          if ((Get-FileHash .tools/flutter.zip -Algorithm SHA256).Hash.ToLower() -ne $sdk.sha256) { throw 'Flutter SDK checksum mismatch' }
+          tar -xf .tools/flutter.zip -C .tools/sdk
+          if ($LASTEXITCODE) { throw 'Flutter SDK extraction failed' }
+      - name: Build Flutter and installer
+        if: env.SVOI_FLUTTER == 'true'
+        shell: pwsh
+        env:
+          CI: 'true'
+        run: |
+          go test ./...
+          if ($LASTEXITCODE) { throw 'Go tests failed' }
+          go test -tags native_core ./...
+          if ($LASTEXITCODE) { throw 'Native backend tests failed' }
+          go vet ./...
+          if ($LASTEXITCODE) { throw 'Go vet failed' }
+          cmake -S flutter_client/windows/tests -B .ui-test/elevation-build -A x64
+          if ($LASTEXITCODE) { throw 'Native test configuration failed' }
+          cmake --build .ui-test/elevation-build --config Release
+          if ($LASTEXITCODE) { throw 'Native test build failed' }
+          ./.ui-test/elevation-build/Release/elevation_test.exe
+          if ($LASTEXITCODE) { throw 'Native launch tests failed' }
+          ./flutter_client/build-prototype.ps1 -Version $env:SVOI_VERSION
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SVOI-windows
+          path: |
+            ${{ env.SVOI_RELEASE_DIR }}/*.exe
+            ${{ env.SVOI_RELEASE_DIR }}/*.zip
+            ${{ env.SVOI_RELEASE_DIR }}/*.sha256
+      - name: Publish release
+        if: github.ref_type == 'tag'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $assets = Get-ChildItem $env:SVOI_RELEASE_DIR -File | ForEach-Object { $_.FullName }
+          $notes = if ($env:SVOI_FLUTTER -eq 'true') { 'flutter_client/RELEASE-NOTES.md' } else { 'RELEASE-NOTES.md' }
+          $options = @('release','create',$env:GITHUB_REF_NAME,'--title',"SVOI $env:SVOI_VERSION",'--notes-file',$notes,'--verify-tag')
+          if ($env:SVOI_VERSION -match '-(?:prebeta|rc)\.') { $options += '--prerelease' } else { $options += '--latest' }
+          & gh @options @assets
+          if ($LASTEXITCODE -ne 0) { throw 'Release publication failed' }

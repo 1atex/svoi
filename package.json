@@ -1,0 +1,6 @@
+{
+  "name": "svoi-ui-tests",
+  "private": true,
+  "scripts": { "test": "node --test tests/ui-performance.cjs" },
+  "devDependencies": { "jsdom": "29.1.1" }
+}

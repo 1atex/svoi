@@ -1,0 +1,20 @@
+name: svoi_flutter
+description: SVOI VPN client for Windows
+publish_to: none
+version: 0.5.0-beta.1+1
+environment:
+  sdk: ^3.13.5
+dependencies:
+  country_flags: ^4.1.2
+  flutter:
+    sdk: flutter
+  lucide_icons_flutter: ^3.0.0
+  shadcn_ui: ^0.57.3
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/svoi-mark.png

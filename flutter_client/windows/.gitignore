@@ -1,0 +1,17 @@
+flutter/ephemeral/
+
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+x64/
+x86/
+
+*.[Cc]ache
+
+!*.[Cc]ache/
+
+flutter/generated_plugin_registrant.cc
+flutter/generated_plugin_registrant.h
+flutter/generated_plugins.cmake

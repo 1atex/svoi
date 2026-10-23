@@ -1,0 +1,8 @@
+cmake_minimum_required(VERSION 3.14)
+project(svoi_launch_tests LANGUAGES CXX)
+enable_testing()
+add_executable(elevation_test elevation_test.cpp ../runner/elevation.cpp)
+target_compile_features(elevation_test PRIVATE cxx_std_17)
+target_compile_options(elevation_test PRIVATE /utf-8 /W4 /WX)
+target_link_libraries(elevation_test PRIVATE advapi32 shell32 user32)
+add_test(NAME elevation_preference COMMAND elevation_test)

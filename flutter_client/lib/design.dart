@@ -1,0 +1,272 @@
+part of 'main.dart';
+
+final _buttonTheme = ShadThemeData(
+  brightness: Brightness.dark,
+  textTheme: ShadTextTheme(family: 'Segoe UI'),
+  colorScheme: const ShadZincColorScheme.dark().copyWith(
+    primary: accent,
+    primaryForeground: canvas,
+    background: canvas,
+    foreground: ink,
+    border: edge,
+    secondary: raised,
+    secondaryForeground: ink,
+    muted: surface,
+    mutedForeground: muted,
+  ),
+  radius: BorderRadius.circular(10),
+);
+
+class AppButton extends StatelessWidget {
+  const AppButton({
+    super.key,
+    required this.label,
+    this.icon,
+    this.onPressed,
+    this.primary = false,
+    this.expand = false,
+  });
+  final String label;
+  final IconData? icon;
+  final VoidCallback? onPressed;
+  final bool primary, expand;
+  @override
+  Widget build(BuildContext context) {
+    final child = Text(
+      label,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      textAlign: TextAlign.center,
+    );
+    final leading = icon == null ? null : Icon(icon, size: 17);
+    return ShadTheme(
+      data: _buttonTheme,
+      child: primary
+          ? ShadButton(
+              onPressed: onPressed,
+              enabled: onPressed != null,
+              leading: leading,
+              width: expand ? double.infinity : null,
+              expands: expand,
+              height: 46,
+              child: child,
+            )
+          : ShadButton.outline(
+              onPressed: onPressed,
+              enabled: onPressed != null,
+              leading: leading,
+              width: expand ? double.infinity : null,
+              expands: expand,
+              height: 42,
+              child: child,
+            ),
+    );
+  }
+}
+
+class CountryMark extends StatelessWidget {
+  const CountryMark({super.key, required this.country, this.large = false});
+  final ServerCountry country;
+  final bool large;
+  @override
+  Widget build(BuildContext context) => Tooltip(
+    message: country.label,
+    child: Semantics(
+      label: country.label,
+      image: true,
+      child: Container(
+        width: large ? 56 : 44,
+        height: large ? 56 : 44,
+        decoration: BoxDecoration(
+          color: raised,
+          borderRadius: BorderRadius.circular(13),
+          border: Border.all(color: edge),
+        ),
+        alignment: Alignment.center,
+        child: country.code == null
+            ? Icon(LucideIcons.globe, size: large ? 24 : 20, color: muted)
+            : CountryFlag.fromCountryCode(
+                country.code!,
+                theme: ImageTheme(
+                  width: large ? 32 : 26,
+                  height: large ? 23 : 19,
+                  shape: const RoundedRectangle(3),
+                ),
+              ),
+      ),
+    ),
+  );
+}
+
+class Eyebrow extends StatelessWidget {
+  const Eyebrow(this.text, {super.key, this.color = muted});
+  final String text;
+  final Color color;
+  @override
+  Widget build(BuildContext context) => Text(
+    text,
+    style: TextStyle(
+      fontSize: 10,
+      letterSpacing: 1.5,
+      fontWeight: FontWeight.w600,
+      color: color,
+    ),
+  );
+}
+
+class StatusPill extends StatelessWidget {
+  const StatusPill(this.text, {super.key, this.active = false});
+  final String text;
+  final bool active;
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+    decoration: BoxDecoration(
+      color: active ? success.withValues(alpha: .09) : raised,
+      border: Border.all(color: active ? success.withValues(alpha: .22) : edge),
+      borderRadius: BorderRadius.circular(30),
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 6,
+          height: 6,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: active ? success : muted,
+          ),
+        ),
+        const SizedBox(width: 8),
+        Text(
+          text,
+          style: TextStyle(
+            color: active ? success : muted,
+            fontSize: 11,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+class BrandMark extends StatelessWidget {
+  const BrandMark({super.key});
+  @override
+  Widget build(BuildContext context) => FittedBox(
+    fit: BoxFit.scaleDown,
+    alignment: Alignment.centerLeft,
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(10),
+          child: Image.asset(
+            'assets/svoi-mark.png',
+            width: 42,
+            height: 42,
+            semanticLabel: 'SVOI',
+          ),
+        ),
+        const SizedBox(width: 10),
+        const Text(
+          'svoi',
+          style: TextStyle(
+            fontSize: 28,
+            fontWeight: FontWeight.w700,
+            letterSpacing: -1,
+          ),
+        ),
+        const Text('•', style: TextStyle(fontSize: 23, color: accent)),
+      ],
+    ),
+  );
+}
+
+class ModePicker extends StatelessWidget {
+  const ModePicker({super.key, required this.c});
+  final SvoiController c;
+  @override
+  Widget build(BuildContext context) {
+    final routing = Map<String, dynamic>.from(
+      c.preferences.value['routing'] ?? {},
+    );
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        DropdownButtonFormField<String>(
+          key: ValueKey('mode-${c.mode.value}-${routing['mode']}'),
+          initialValue: c.mode.value,
+          isExpanded: true,
+          decoration: const InputDecoration(labelText: 'Что подключать'),
+          items: [
+            DropdownMenuItem(
+              value: 'tun',
+              child: Text(
+                '${modeLabel('tun', routing)} · TUN',
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            const DropdownMenuItem(
+              value: 'system',
+              child: Text(
+                'Приложения с системным прокси',
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            const DropdownMenuItem(
+              value: 'local',
+              child: Text(
+                'Ручная настройка прокси',
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+          onChanged: c.busy.value
+              ? null
+              : (value) {
+                  if (value != null) c.setMode(value);
+                },
+        ),
+        const SizedBox(height: 10),
+        Text(switch (c.mode.value) {
+          'tun' => 'TUN требует прав администратора. Маршруты из конфигурации сохраняются.',
+          'system' =>
+            'Для браузеров и приложений, учитывающих настройки прокси Windows.',
+          _ => 'Укажите SOCKS5 или HTTP вручную в приложении. Адреса — в диагностике.',
+        }, style: const TextStyle(fontSize: 12, color: muted, height: 1.5)),
+        if (c.mode.value == 'tun')
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              onPressed: () => showDialog<void>(
+                context: context,
+                builder: (dialog) => Dialog(
+                  child: SizedBox(
+                    width: 750,
+                    height: MediaQuery.sizeOf(dialog).height * .8,
+                    child: Column(
+                      children: [
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: IconButton(
+                            tooltip: 'Закрыть',
+                            onPressed: () => Navigator.pop(dialog),
+                            icon: const Icon(LucideIcons.x),
+                          ),
+                        ),
+                        Expanded(child: RoutingPage(c: c)),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              icon: const Icon(LucideIcons.appWindow, size: 15),
+              label: const Text('Выбрать приложения и исключения'),
+            ),
+          ),
+      ],
+    );
+  }
+}
