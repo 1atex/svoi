@@ -32,7 +32,7 @@ jobs:
           if ($env:GITHUB_REF_TYPE -eq 'tag' -and $env:GITHUB_REF_NAME -ne "v$version") { throw 'Tag and application version differ' }
           "SVOI_VERSION=$version" >> $env:GITHUB_ENV
           "SVOI_FLUTTER=$($flutter.ToString().ToLower())" >> $env:GITHUB_ENV
-          $dir = if ($flutter) { "releases/flutter-v$version" } else { "releases/v$version" }
+          $dir = "releases/v$version"
           "SVOI_RELEASE_DIR=$dir" >> $env:GITHUB_ENV
       - name: Fetch pinned Xray
         shell: pwsh

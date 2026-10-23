@@ -1,6 +1,6 @@
 part of 'main.dart';
 
-const clientVersion = '0.5.0-beta.3';
+const clientVersion = '0.5.0-beta.4';
 
 class ConfigPane extends StatelessWidget {
   const ConfigPane({
@@ -573,7 +573,11 @@ class ProfilePage extends StatelessWidget {
                 ListTile(
                   contentPadding: EdgeInsets.zero,
                   leading: const Icon(Icons.computer),
-                  title: Text(device['name']),
+                  title: Text(
+                    device['name'] == 'Windows · Flutter'
+                        ? 'Windows'
+                        : device['name'],
+                  ),
                   subtitle: Text(device['platform']),
                   trailing: device['owner'] == true
                       ? const Text('Владелец')
@@ -862,6 +866,8 @@ class PreferencesPage extends StatelessWidget {
       Section(
         'Автоматизация',
         children: [
+          StartupPanel(c: c),
+          const Divider(height: 28),
           ListenableBuilder(
             listenable: Listenable.merge([c.preferences, c.busy]),
             builder: (context, _) => Column(
@@ -899,7 +905,7 @@ class PreferencesPage extends StatelessWidget {
       Section(
         'Обновления SVOI',
         subtitle:
-            'Flutter · $clientVersion. Проверка и загрузка выполняются в приложении.',
+            'Версия $clientVersion. Проверка и загрузка выполняются в приложении.',
         children: [
           RemotePanel(
             c: c,
@@ -987,7 +993,7 @@ class PreferencesPage extends StatelessWidget {
                     ),
                   const SizedBox(height: 12),
                   const Text(
-                    'Канал SVOI-Flutter. Установка начинается по вашей команде; скачанный файл проверяется по SHA-256.',
+                    'Установка начинается по вашей команде; скачанный файл проверяется по SHA-256.',
                     style: TextStyle(color: muted, fontSize: 12),
                   ),
                 ],
@@ -1000,10 +1006,7 @@ class PreferencesPage extends StatelessWidget {
         'SVOI',
         subtitle: 'На связи со своими.',
         children: [
-          const Text(
-            'Flutter / Dart · Go · Xray Core',
-            style: TextStyle(color: muted),
-          ),
+          const Text('SVOI · Xray Core', style: TextStyle(color: muted)),
           const SizedBox(height: 12),
           ValueListenableBuilder(
             valueListenable: c.connection,
@@ -1012,7 +1015,7 @@ class PreferencesPage extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           const Text(
-            'Данные Flutter-клиента находятся в %APPDATA%\\SVOI-Flutter. Перенесите профиль из прежнего SVOI кодом или файлом.',
+            'Данные приложения находятся в %APPDATA%\\SVOI. Подписки и настройки сохраняются при обновлении.',
             style: TextStyle(color: muted, height: 1.5),
           ),
         ],

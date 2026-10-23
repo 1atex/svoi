@@ -103,7 +103,7 @@ class SvoiController {
         method: 'POST',
         body: {
           'name': 'Моя сеть',
-          'deviceName': 'Windows · Flutter',
+          'deviceName': 'Windows',
           'platform': 'Windows',
         },
       );
@@ -358,7 +358,7 @@ class SvoiController {
         method: 'POST',
         body: {
           'code': text,
-          'deviceName': 'Windows · Flutter',
+          'deviceName': 'Windows',
           'platform': 'Windows',
           'replace': true,
         },

@@ -47,7 +47,10 @@ class NativeBackend extends Backend {
     ..connectionTimeout = const Duration(seconds: 5);
   bool _closed = false;
 
-  static Future<NativeBackend> launch(Directory data) async {
+  static Future<NativeBackend> launch(
+    Directory data, {
+    bool startup = false,
+  }) async {
     await data.create(recursive: true);
     final directory = File(Platform.resolvedExecutable).parent.path;
     final binary =
@@ -55,11 +58,14 @@ class NativeBackend extends Backend {
         '$directory/backend/svoi-backend.exe';
     if (!await File(binary).exists()) {
       throw ApiException(
-        'Не найден backend/svoi-backend.exe. Распакуйте весь архив прототипа.',
+        'Не найден локальный сервис SVOI. Переустановите приложение или распакуйте весь архив.',
       );
     }
     final process = await Process.start(binary, [
       '-native-backend',
+      '-desktop-exe',
+      Platform.resolvedExecutable,
+      if (startup) '-startup',
       '-listen',
       '127.0.0.1:0',
       '-data',

@@ -20,6 +20,8 @@ type LocalSettings struct {
 	Routing          AppRouting `json:"routing"`
 	ZapretFolder     string     `json:"zapretFolder"`
 	ZapretAutoUpdate bool       `json:"zapretAutoUpdate"`
+	StartupZapret    bool       `json:"startupZapret"`
+	ZapretStrategy   string     `json:"zapretStrategy"`
 }
 
 func (a *App) loadSettings() error {
@@ -96,6 +98,9 @@ func (a *App) desktopAPI(w http.ResponseWriter, r *http.Request) error {
 		}
 		return a.updates.API(w, r)
 	}
+	if r.URL.Path == "/api/startup" {
+		return a.startupAPI(w, r)
+	}
 	if strings.HasPrefix(r.URL.Path, "/api/zapret") {
 		if a.zapret == nil {
 			return fail(503, "zapret доступен в приложении Windows")
@@ -118,18 +123,11 @@ func (a *App) desktopAPI(w http.ResponseWriter, r *http.Request) error {
 		}
 		a.settingsMu.Lock()
 		defer a.settingsMu.Unlock()
-		b, _ := json.MarshalIndent(s, "", "  ")
-		path := a.path + ".settings.json"
-		if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
+		s.StartupZapret = a.settings.StartupZapret
+		s.ZapretStrategy = a.settings.ZapretStrategy
+		if err := a.saveSettingsLocked(s); err != nil {
 			return err
 		}
-		if err := os.WriteFile(path+".tmp", b, 0600); err != nil {
-			return err
-		}
-		if err := os.Rename(path+".tmp", path); err != nil {
-			return err
-		}
-		a.settings = s
 		writeJSON(w, 200, s)
 		return nil
 	}

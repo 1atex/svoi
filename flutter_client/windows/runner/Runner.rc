@@ -68,7 +68,7 @@ BEGIN
             VALUE "FileVersion", VERSION_AS_STRING "\0"
             VALUE "InternalName", "SVOI" "\0"
             VALUE "LegalCopyright", "Copyright (C) 2026 dev.svoi. All rights reserved." "\0"
-            VALUE "OriginalFilename", "svoi_flutter.exe" "\0"
+            VALUE "OriginalFilename", "svoi.exe" "\0"
             VALUE "ProductName", "SVOI" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END

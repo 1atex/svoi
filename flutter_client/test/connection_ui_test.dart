@@ -41,6 +41,55 @@ class ConnectionBackend extends DemoBackend {
 
 void main() {
   testWidgets(
+    'failed internet check keeps VPN status and explicit disconnect, hides admin hint when elevated',
+    (tester) async {
+      tester.view.physicalSize = const Size(1240, 1000);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final backend = ConnectionBackend();
+      final c = SvoiController(backend);
+      await c.initialize();
+      c.mode.value = 'tun';
+      backend.state = {
+        'available': true,
+        'state': 'running',
+        'elevated': true,
+        'checked': false,
+        'error': 'Timeout',
+        'mode': 'tun',
+        'serverId': c.selected.value,
+      };
+      c.connection.value = Map.from(backend.state);
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: svoiTheme(),
+          home: Scaffold(
+            body: SingleChildScrollView(child: ConnectionCard(c: c)),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('VPN включён'), findsOneWidget);
+      expect(find.text('Отключить VPN'), findsOneWidget);
+      expect(find.textContaining('Интернет не подтверждён'), findsOneWidget);
+      expect(
+        find.textContaining('TUN требует прав администратора'),
+        findsNothing,
+      );
+      await tester.tap(find.byKey(const ValueKey('connection-power')));
+      await tester.pumpAndSettle();
+      expect(backend.state['state'], 'stopped');
+      expect(
+        find.textContaining('TUN требует прав администратора'),
+        findsOneWidget,
+      );
+      await tester.pumpWidget(const SizedBox.shrink());
+      await c.close();
+    },
+  );
+
+  testWidgets(
     'new connection controls choose mode, start and stop the selected server',
     (tester) async {
       tester.view.physicalSize = const Size(1240, 900);

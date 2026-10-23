@@ -12,6 +12,7 @@ import 'countries.dart';
 import 'backend.dart';
 import 'controller.dart';
 import 'demo.dart';
+import 'data_directory.dart';
 part 'features.dart';
 part 'design.dart';
 part 'overview.dart';
@@ -21,6 +22,7 @@ part 'connection_card.dart';
 part 'servers.dart';
 part 'zapret_page.dart';
 part 'tray.dart';
+part 'startup_panel.dart';
 
 const windowChannel = MethodChannel('dev.svoi/window');
 const canvas = Color(0xff101013),
@@ -33,7 +35,12 @@ const canvas = Color(0xff101013),
     success = Color(0xff91d9b5);
 void main(List<String> args) {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(Bootstrap(demo: args.contains('--demo')));
+  runApp(
+    Bootstrap(
+      demo: args.contains('--demo'),
+      startup: args.contains('--startup'),
+    ),
+  );
 }
 
 ThemeData svoiTheme() => ThemeData(
@@ -129,8 +136,9 @@ ThemeData svoiTheme() => ThemeData(
 );
 
 class Bootstrap extends StatefulWidget {
-  const Bootstrap({super.key, this.demo = false});
+  const Bootstrap({super.key, this.demo = false, this.startup = false});
   final bool demo;
+  final bool startup;
   @override
   State<Bootstrap> createState() => _BootstrapState();
 }
@@ -160,22 +168,31 @@ class _BootstrapState extends State<Bootstrap> with WidgetsBindingObserver {
 
   Future<void> _start() async {
     try {
-      final data = Directory(
-        Platform.environment['SVOI_FLUTTER_DATA'] ??
-            '${Platform.environment['APPDATA'] ?? Directory.current.path}/SVOI-Flutter',
-      );
+      final data = widget.demo
+          ? Directory.systemTemp
+          : await prepareDataDirectory();
       final api = widget.demo
           ? DemoBackend()
-          : await NativeBackend.launch(data);
+          : await NativeBackend.launch(data, startup: widget.startup);
       _controller = SvoiController(
         api,
         sessionFile: widget.demo ? null : File('${data.path}/session.json'),
       );
       await _controller!.initialize();
       if (mounted) setState(() => _ready = true);
+      if (widget.startup && mounted) {
+        final zapret = await api.request('zapret');
+        if (zapret['error']?.toString().isNotEmpty == true) {
+          _controller!.message.value = zapret['error'].toString();
+          await windowChannel.invokeMethod('show');
+        } else {
+          await windowChannel.invokeMethod('tray');
+        }
+      }
     } catch (e) {
       await _controller?.close();
       if (mounted) setState(() => _error = e.toString());
+      if (widget.startup) await windowChannel.invokeMethod('show');
     }
   }
 
@@ -243,7 +260,7 @@ class _BootstrapState extends State<Bootstrap> with WidgetsBindingObserver {
                       Text(
                         _error == null
                             ? 'Запускаем локальный сервис…'
-                            : 'Закройте окно и запустите прототип повторно.',
+                            : 'Закройте окно и запустите SVOI повторно.',
                         style: const TextStyle(color: muted),
                       ),
                     ],

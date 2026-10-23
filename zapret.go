@@ -82,6 +82,9 @@ func (z *Zapret) snapshot(folder string, summary bool) map[string]any {
 	z.mu.Unlock()
 
 	status["strategies"] = zapretStrategies(folder)
+	if z.app != nil {
+		status["savedStrategy"] = z.app.localSettings().ZapretStrategy
+	}
 	status["elevated"] = isElevated()
 	return status
 }
@@ -271,6 +274,16 @@ func (z *Zapret) API(w http.ResponseWriter, r *http.Request, folder string) erro
 	z.mu.Unlock()
 	switch {
 	case r.Method == "GET" && r.URL.Path == "/api/zapret":
+	case r.Method == "POST" && r.URL.Path == "/api/zapret/select":
+		var in struct {
+			Strategy string `json:"strategy"`
+		}
+		if json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096)).Decode(&in) != nil {
+			return fail(400, "Некорректный запрос")
+		}
+		if err := z.app.rememberZapretStrategy(folder, in.Strategy); err != nil {
+			return err
+		}
 	case r.Method == "POST" && r.URL.Path == "/api/zapret/start":
 		var in struct {
 			Strategy string `json:"strategy"`
@@ -279,6 +292,9 @@ func (z *Zapret) API(w http.ResponseWriter, r *http.Request, folder string) erro
 			return fail(400, "Некорректный запрос")
 		}
 		if err := z.Start(folder, in.Strategy); err != nil {
+			return err
+		}
+		if err := z.app.rememberZapretStrategy(folder, in.Strategy); err != nil {
 			return err
 		}
 	case r.Method == "POST" && r.URL.Path == "/api/zapret/stop":

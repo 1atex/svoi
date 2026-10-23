@@ -14,7 +14,7 @@
 class FlutterWindow : public Win32Window {
  public:
 
-  explicit FlutterWindow(const flutter::DartProject& project);
+  explicit FlutterWindow(const flutter::DartProject& project, bool start_hidden = false);
   virtual ~FlutterWindow();
 
  protected:
@@ -34,6 +34,7 @@ class FlutterWindow : public Win32Window {
   bool closing_ = false;
   bool allow_close_ = false;
   bool tray_added_ = false;
+  bool start_hidden_ = false;
   std::wstring tray_tooltip_ = L"SVOI";
   flutter::EncodableList tray_items_;
   bool UpdateTray();

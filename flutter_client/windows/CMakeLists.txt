@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.14)
 project(svoi_flutter LANGUAGES CXX)
 
-set(BINARY_NAME "svoi_flutter")
+set(BINARY_NAME "svoi")
 
 cmake_policy(VERSION 3.14...3.25)
 
@@ -43,7 +43,7 @@ include(flutter/generated_plugins.cmake)
 set(BUILD_BUNDLE_DIR "$<TARGET_FILE_DIR:${BINARY_NAME}>")
 
 set(CMAKE_VS_INCLUDE_INSTALL_TO_DEFAULT_BUILD 1)
-if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
+if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT OR CMAKE_INSTALL_PREFIX STREQUAL "$<TARGET_FILE_DIR:svoi_flutter>")
   set(CMAKE_INSTALL_PREFIX "${BUILD_BUNDLE_DIR}" CACHE PATH "..." FORCE)
 endif()
 

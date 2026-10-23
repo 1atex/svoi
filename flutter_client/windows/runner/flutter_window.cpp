@@ -80,8 +80,8 @@ HMENU BuildTrayMenu(const flutter::EncodableList& items, UINT& next,
 }
 }
 
-FlutterWindow::FlutterWindow(const flutter::DartProject& project)
-    : project_(project) {}
+FlutterWindow::FlutterWindow(const flutter::DartProject& project, bool start_hidden)
+    : project_(project), start_hidden_(start_hidden) {}
 
 FlutterWindow::~FlutterWindow() {}
 
@@ -174,7 +174,7 @@ bool FlutterWindow::OnCreate() {
   SetChildContent(flutter_controller_->view()->GetNativeWindow());
 
   flutter_controller_->engine()->SetNextFrameCallback([&]() {
-    this->Show();
+    if (!start_hidden_ || !UpdateTray()) this->Show();
   });
 
   flutter_controller_->ForceRedraw();

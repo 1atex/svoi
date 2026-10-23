@@ -115,7 +115,26 @@ class _ConnectionOrbitState extends State<ConnectionOrbit> {
                                         color: color,
                                       ),
                               )
-                            : Icon(LucideIcons.power, size: 39, color: color),
+                            : Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    LucideIcons.power,
+                                    size: 32,
+                                    color: color,
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    widget.running
+                                        ? 'Отключить VPN'
+                                        : 'Подключить',
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      color: color,
+                                    ),
+                                  ),
+                                ],
+                              ),
                       ),
                     ),
                   ),

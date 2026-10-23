@@ -26,7 +26,7 @@ import (
 )
 
 var appVersion = "0.4.0-prebeta.3"
-var nativeVersion = "0.5.0-beta.3"
+var nativeVersion = "0.5.0-beta.4"
 
 //go:embed web/*
 var assets embed.FS
@@ -253,7 +253,7 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 	_ = json.NewEncoder(w).Encode(v)
 }
 func (a *App) dispatch(w http.ResponseWriter, r *http.Request) error {
-	if r.URL.Path == "/api/settings" || strings.HasPrefix(r.URL.Path, "/api/updates") || strings.HasPrefix(r.URL.Path, "/api/zapret") {
+	if r.URL.Path == "/api/settings" || r.URL.Path == "/api/startup" || strings.HasPrefix(r.URL.Path, "/api/updates") || strings.HasPrefix(r.URL.Path, "/api/zapret") {
 		return a.desktopAPI(w, r)
 	}
 	if strings.HasPrefix(r.URL.Path, "/api/transfer/") {
@@ -680,15 +680,32 @@ func run() error {
 	data := flag.String("data", "", "state file (default: user config directory)")
 	headless := flag.Bool("server", false, "Run only the group service, without a desktop window")
 	native := flag.Bool("native-backend", false, "Private desktop backend; exit when parent stdin closes")
+	flag.StringVar(&desktopExecutable, "desktop-exe", "", "Desktop executable for Windows startup")
+	startup := flag.Bool("startup", false, "Start saved services after Windows logon")
+	removeStartup := flag.Bool("remove-startup", false, "Remove the current user's startup task")
+	startupStatus := flag.Bool("startup-status", false, "Check the current user's startup task for uninstall")
 	watchParent := flag.Int("watch-parent", 0, "Internal proxy recovery helper")
 	watchFile := flag.String("watch-proxy", "", "Internal proxy recovery snapshot")
 	updateFile := flag.String("install-update", "", "Internal update installer")
 	updateSHA := flag.String("update-sha256", "", "Internal installer checksum")
 	updateParent := flag.Int("update-parent", 0, "Internal updater parent")
 	flag.Parse()
+	if *startupStatus {
+		enabled, err := startupEnabled(desktopExecutable)
+		if err != nil {
+			return err
+		}
+		if !enabled {
+			return errors.New("autostart is disabled")
+		}
+		return nil
+	}
+	if *removeStartup {
+		return setStartup(desktopExecutable, false)
+	}
 	if *native {
 		appVersion = nativeVersion
-		releaseAssetPrefix = "SVOI-Flutter"
+		releaseAssetPrefix = "SVOI"
 		if *headless {
 			return errors.New("native-backend and server are mutually exclusive")
 		}
@@ -740,6 +757,11 @@ func run() error {
 		defer a.engine.Stop()
 		a.zapret = newZapret(a)
 		defer a.zapret.Stop()
+		if *native && *startup {
+			if err := a.startSavedZapret(); err != nil {
+				log.Print(err)
+			}
+		}
 		if a.localSettings().ZapretAutoUpdate && a.zapret.installed.Directory != "" {
 			a.zapret.launchJob("update", nil, false)
 		}

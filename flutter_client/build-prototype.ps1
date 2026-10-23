@@ -1,5 +1,5 @@
 param(
-    [string]$Version = '0.5.0-beta.3',
+    [string]$Version = '0.5.0-beta.4',
     [string]$FlutterSdk = '',
     [string]$CrtDirectory = '',
     [switch]$SkipChecks
@@ -47,12 +47,13 @@ try {
         (Get-Item windows/runner/Runner.rc).LastWriteTime = Get-Date
         & $flutter --no-version-check build windows --release
         if ($LASTEXITCODE) { throw 'Flutter release build failed' }
-        & "$PSScriptRoot/verify-windows-branding.ps1" -Executable "$PSScriptRoot/build/windows/x64/runner/Release/svoi_flutter.exe"
+        & "$PSScriptRoot/verify-windows-branding.ps1" -Executable "$PSScriptRoot/build/windows/x64/runner/Release/svoi.exe"
     } finally { Pop-Location; Remove-Item Env:SVOI_BACKEND -ErrorAction SilentlyContinue }
-    $release = Join-Path $root "releases/flutter-v$Version"
-    $stage = Join-Path $release ('SVOI-Flutter-' + (Get-Date -Format 'yyyyMMdd-HHmmss'))
+    $release = Join-Path $root "releases/v$Version"
+    $stage = Join-Path $release ('SVOI-' + (Get-Date -Format 'yyyyMMdd-HHmmss'))
     New-Item -ItemType Directory -Path "$stage/backend/core" -Force | Out-Null
     Copy-Item -Path "$PSScriptRoot/build/windows/x64/runner/Release/*" -Destination $stage -Recurse
+    if (Test-Path -LiteralPath "$stage/svoi_flutter.exe") { Remove-Item -LiteralPath "$stage/svoi_flutter.exe" }
     Copy-Item -LiteralPath dist/svoi-backend.exe -Destination "$stage/backend"
     foreach ($name in @('xray.exe','wintun.dll','geoip.dat','geosite.dat','LICENSE','LICENSE-Wintun','SOURCE.txt')) {
         Copy-Item -LiteralPath "dist/core/$name" -Destination "$stage/backend/core"
@@ -61,20 +62,23 @@ try {
     Copy-Item -LiteralPath LICENSE -Destination $stage
     Copy-Item -LiteralPath assets/svoi.ico -Destination $stage
     Copy-Item -LiteralPath "$FlutterSdk/LICENSE" -Destination "$stage/LICENSE-Flutter.txt"
-    Copy-Item -LiteralPath "$PSScriptRoot/README.md" -Destination "$stage/README.md"
-    $zip = Join-Path $release "SVOI-Flutter-$Version-windows-x64.zip"
+    Copy-Item -LiteralPath "$PSScriptRoot/WINDOWS-README.md" -Destination "$stage/README.md"
+    $zip = Join-Path $release "SVOI-$Version-windows-x64.zip"
     Compress-Archive -Path "$stage/*" -DestinationPath $zip -Force
     $hash = (Get-FileHash -LiteralPath $zip -Algorithm SHA256).Hash.ToLower()
     "$hash  $([IO.Path]::GetFileName($zip))" | Set-Content -LiteralPath "$zip.sha256" -Encoding ascii
-    Write-Output "APP=$stage/svoi_flutter.exe"
+    Write-Output "APP=$stage/svoi.exe"
     Write-Output "ZIP=$zip"
     Write-Output "SHA256=$hash"
     $iscc = 'C:/Program Files (x86)/Inno Setup 6/ISCC.exe'
     if (!(Test-Path -LiteralPath $iscc)) { throw 'Install Inno Setup 6 to build the Windows installer. ZIP is already built.' }
     & $iscc /Qp "/DAppVersion=$Version" "/DPayloadDir=$stage" "/DReleaseDir=$release" "$PSScriptRoot/installer.iss"
     if ($LASTEXITCODE) { throw 'Flutter installer build failed' }
-    $setup = Join-Path $release "SVOI-Flutter-$Version-windows-x64-setup.exe"
+    $setup = Join-Path $release "SVOI-$Version-windows-x64-setup.exe"
     $setupHash = (Get-FileHash -LiteralPath $setup -Algorithm SHA256).Hash.ToLower()
     "$setupHash  $([IO.Path]::GetFileName($setup))" | Set-Content -LiteralPath "$setup.sha256" -Encoding ascii
     Write-Output "SETUP=$setup"
+    $legacySetup = Join-Path $release "SVOI-Flutter-$Version-windows-x64-setup.exe"
+    Copy-Item -LiteralPath $setup -Destination $legacySetup
+    "$setupHash  $([IO.Path]::GetFileName($legacySetup))" | Set-Content -LiteralPath "$legacySetup.sha256" -Encoding ascii
 } finally { Pop-Location }

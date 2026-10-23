@@ -8,7 +8,6 @@ class ZapretPage extends StatefulWidget {
 }
 
 class _ZapretPageState extends State<ZapretPage> {
-  String? strategy;
   String kind = 'standard';
   int tab = 0;
   bool sweep = false, problemsOnly = false;
@@ -21,10 +20,11 @@ class _ZapretPageState extends State<ZapretPage> {
         path: 'zapret',
         builder: (context, z, acting, act) {
           final strategies = List<String>.from(z['strategies'] ?? []);
-          final current = strategies.contains(strategy)
-              ? strategy
-              : strategies.contains(z['strategy'])
+          final current =
+              z['running'] == true && strategies.contains(z['strategy'])
               ? z['strategy']?.toString()
+              : strategies.contains(z['savedStrategy'])
+              ? z['savedStrategy']?.toString()
               : strategies.firstOrNull;
           final job = Map<String, dynamic>.from(z['job'] ?? {});
           final running = z['running'] == true,
@@ -145,7 +145,10 @@ class _ZapretPageState extends State<ZapretPage> {
                               .toList(),
                           onChanged: working || running
                               ? null
-                              : (v) => setState(() => strategy = v),
+                              : (v) async {
+                                  if (v == null) return;
+                                  await act('select', {'strategy': v});
+                                },
                         ),
                         const SizedBox(height: 12),
                         Text(
@@ -199,6 +202,15 @@ class _ZapretPageState extends State<ZapretPage> {
                               ),
                             ),
                           ),
+                        const SizedBox(height: 16),
+                        const Text(
+                          'Автозапуск SVOI и выбранной стратегии при входе в Windows включается в Настройках.',
+                          style: TextStyle(
+                            color: muted,
+                            fontSize: 12,
+                            height: 1.5,
+                          ),
+                        ),
                       ],
                     ),
                   ),

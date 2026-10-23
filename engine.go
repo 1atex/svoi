@@ -20,6 +20,7 @@ import (
 
 type EngineStatus struct {
 	Available  bool       `json:"available"`
+	Elevated   bool       `json:"elevated"`
 	Problem    string     `json:"problem,omitempty"`
 	Version    string     `json:"version"`
 	State      string     `json:"state"`
@@ -86,6 +87,7 @@ func (e *Engine) snapshot(includeLogs bool) EngineStatus {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	s := e.status
+	s.Elevated = isElevated()
 	s.Routing.Processes = append([]string{}, e.status.Routing.Processes...)
 	s.Logs = nil
 	if includeLogs {
