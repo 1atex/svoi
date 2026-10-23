@@ -12,6 +12,35 @@ import (
 	"time"
 )
 
+func TestWindowsStartupPrincipalKeepsUnambiguousSID(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	script := `
+$ErrorActionPreference = 'Stop'
+$sid = [Security.Principal.WindowsIdentity]::GetCurrent().User.Value
+` + startupPrincipalScript + `
+if ($principal.UserId -ne $sid) { throw 'Principal was shortened to an ambiguous account name' }
+$service = New-Object -ComObject 'Schedule.Service'
+$service.Connect()
+$definition = $service.NewTask(0)
+$definition.Principal.UserId = $principal.UserId
+$definition.Principal.LogonType = [int]$principal.LogonType
+$definition.Principal.RunLevel = [int]$principal.RunLevel
+$trigger = $definition.Triggers.Create(9)
+$trigger.UserId = $sid
+$action = $definition.Actions.Create(0)
+$action.Path = Join-Path $env:SystemRoot 'System32/notepad.exe'
+$null = $service.GetFolder('\').RegisterTaskDefinition('SVOI-Test-ValidateOnly', $definition, 1, $null, $null, 3)
+Write-Output 'SID validation passed'
+`
+	cmd := exec.CommandContext(ctx, filepath.Join(os.Getenv("SystemRoot"), "System32", "WindowsPowerShell", "v1.0", "powershell.exe"), "-NoLogo", "-NoProfile", "-NonInteractive", "-Command", script)
+	hideCommand(cmd)
+	output, err := cmd.CombinedOutput()
+	if err != nil || !strings.Contains(string(output), "SID validation passed") {
+		t.Fatalf("principal validation: %v; %s", err, output)
+	}
+}
+
 func TestWindowsStartupTaskLifecycle(t *testing.T) {
 	if !isElevated() {
 		if os.Getenv("GITHUB_ACTIONS") == "true" {
@@ -51,6 +80,9 @@ func TestWindowsStartupTaskLifecycle(t *testing.T) {
 		if !strings.Contains(text, want) {
 			t.Fatalf("task missing %s", want)
 		}
+	}
+	if strings.Count(text, "<UserId>S-1-") != 2 {
+		t.Fatal("trigger and principal must both use a SID")
 	}
 	if enabled, err := startupTaskNamed(exe, "disable", name); err != nil || enabled {
 		t.Fatal(enabled, err)

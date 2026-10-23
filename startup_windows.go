@@ -13,6 +13,11 @@ import (
 	"time"
 )
 
+const startupPrincipalScript = `
+    $principal = New-ScheduledTaskPrincipal -UserId $sid -LogonType Interactive -RunLevel Highest
+    $principal.UserId = $sid
+`
+
 const startupScript = `
 $ErrorActionPreference = 'Stop'
 [Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)
@@ -24,7 +29,7 @@ try {
   if ($env:SVOI_STARTUP_ACTION -eq 'enable') {
     $action = New-ScheduledTaskAction -Execute $env:SVOI_STARTUP_EXE -Argument '--startup' -WorkingDirectory ([IO.Path]::GetDirectoryName($env:SVOI_STARTUP_EXE))
     $trigger = New-ScheduledTaskTrigger -AtLogOn -User $sid
-    $principal = New-ScheduledTaskPrincipal -UserId $sid -LogonType Interactive -RunLevel Highest
+` + startupPrincipalScript + `
     $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit ([TimeSpan]::Zero) -MultipleInstances IgnoreNew
     $task = Register-ScheduledTask -TaskName $name -TaskPath '\' -Action $action -Trigger $trigger -Principal $principal -Settings $settings -Description 'SVOI: запуск при входе в Windows' -Force
   } elseif ($env:SVOI_STARTUP_ACTION -eq 'disable') {

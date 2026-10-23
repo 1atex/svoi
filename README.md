@@ -16,7 +16,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/1atex/svoi/releases/download/v0.5.0-beta.5/SVOI-0.5.0-beta.5-windows-x64-setup.exe"><b>↓ Скачать для Windows</b></a>
+  <a href="https://github.com/1atex/svoi/releases/download/v0.5.0-beta.6/SVOI-0.5.0-beta.6-windows-x64-setup.exe"><b>↓ Скачать для Windows</b></a>
   &nbsp; · &nbsp;
   <a href="https://github.com/1atex/svoi/releases/latest">Последний релиз</a>
   &nbsp; · &nbsp;
@@ -71,11 +71,11 @@
 
 ## Первый запуск
 
-1. **Установите SVOI.** [Установщик Windows x64](https://github.com/1atex/svoi/releases/download/v0.5.0-beta.5/SVOI-0.5.0-beta.5-windows-x64-setup.exe) уже содержит Xray, Wintun и необходимые библиотеки. WebView2 не нужен.
+1. **Установите SVOI.** [Установщик Windows x64](https://github.com/1atex/svoi/releases/download/v0.5.0-beta.6/SVOI-0.5.0-beta.6-windows-x64-setup.exe) уже содержит Xray, Wintun и необходимые библиотеки. WebView2 не нужен.
 2. **Добавьте свою подписку.** Вставьте ссылку или импортируйте конфигурацию из файла / текста.
 3. **Выберите сервер и режим.** Для TUN нужны права администратора. Нажмите на кнопку включения.
 
-Предпочитаете без установки? [Скачайте portable ZIP](https://github.com/1atex/svoi/releases/download/v0.5.0-beta.5/SVOI-0.5.0-beta.5-windows-x64.zip), распакуйте **весь архив** и запустите `svoi.exe`.
+Предпочитаете без установки? [Скачайте portable ZIP](https://github.com/1atex/svoi/releases/download/v0.5.0-beta.6/SVOI-0.5.0-beta.6-windows-x64.zip), распакуйте **весь архив** и запустите `svoi.exe`.
 
 Установщик предлагает запуск после установки. Ярлык на рабочем столе и запуск от имени администратора включены по умолчанию; флажки можно снять. При запуске с повышенными правами Windows покажет запрос UAC.
 
@@ -96,7 +96,7 @@
 
 ## Статус проекта
 
-**0.5.0-beta.5 · Windows x64.** Android и iOS пока не выпускаются. SVOI использует ваши подписки; VPN-серверы в комплект не входят.
+**0.5.0-beta.6 · Windows x64.** Android и iOS пока не выпускаются. SVOI использует ваши подписки; VPN-серверы в комплект не входят.
 
 - Проверка одного HTTPS-адреса не гарантирует доступность всех сайтов. «Нет ответа» не блокирует подключение.
 - Совместимость TUN и zapret зависит от стратегии и сети. Kill switch пока отсутствует.
