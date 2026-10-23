@@ -1,0 +1,50 @@
+name: Windows release
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Verify version
+        shell: pwsh
+        run: |
+          $version = [regex]::Match((Get-Content main.go -Raw), 'const appVersion = "([^"]+)"').Groups[1].Value
+          if ($env:GITHUB_REF_TYPE -eq 'tag' -and $env:GITHUB_REF_NAME -ne "v$version") { throw 'Tag and application version differ' }
+          "SVOI_VERSION=$version" >> $env:GITHUB_ENV
+      - name: Fetch pinned Xray
+        shell: pwsh
+        run: ./prepare-core.ps1
+      - name: Ensure Inno Setup
+        shell: pwsh
+        run: |
+          if (-not (Test-Path "${env:ProgramFiles(x86)}/Inno Setup 6/ISCC.exe")) {
+            choco install innosetup --yes --no-progress
+            if ($LASTEXITCODE -ne 0) { throw 'Inno Setup installation failed' }
+          }
+      - name: Build and test
+        shell: pwsh
+        run: ./package.ps1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SVOI-windows
+          path: releases/v${{ env.SVOI_VERSION }}/*
+      - name: Publish prerelease
+        if: github.ref_type == 'tag'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $assets = Get-ChildItem "releases/v$env:SVOI_VERSION" -File | ForEach-Object { $_.FullName }
+          $options = @('release','create',$env:GITHUB_REF_NAME,'--title',"SVOI $env:SVOI_VERSION",'--notes-file','RELEASE-NOTES.md','--verify-tag')
+          if ($env:SVOI_VERSION.Contains('-')) { $options += '--prerelease' }
+          & gh @options @assets
+          if ($LASTEXITCODE -ne 0) { throw 'Release publication failed' }

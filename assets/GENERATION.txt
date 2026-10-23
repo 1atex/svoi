@@ -1,0 +1,7 @@
+SVOI application icon
+Generated with the built-in image_gen tool on 2026-10-23.
+PNG is the unmodified generated original. ICO is a format conversion with
+16, 20, 24, 32, 40, 48, 64, 128 and 256 pixel frames, preserving transparency.
+
+Final generation prompt:
+Use case: logo-brand. Asset type: Windows application icon for SVOI, an independent VPN configurator with shared family profiles. Generate ONE finished square 1024x1024 icon, front facing and flat, not a mockup or contact sheet. A bold custom lowercase s monogram in very dark forest green (#101710), centered on a bright soft lime (#cdf58b) rounded square. The s is a single memorable continuous ribbon with generous thickness and clear negative space, subtly suggesting two connected paths. Premium minimalist geometric identity, clean precise curves, slightly playful, confident, readable at 16px. Rounded-square tile fills almost all canvas with a small even transparent outer margin. No wordmark, no other text, no shield, no globe, no padlock, no device illustrations, no tiny detail, no 3D, no gradients, no glow, no cast shadow, no perspective, no watermark. Genuine transparent background outside the rounded square. All edges crisp.

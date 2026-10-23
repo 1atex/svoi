@@ -1,0 +1,7 @@
+Xray-core v26.10.21 (unmodified official Windows amd64 distribution)
+Release: https://github.com/XTLS/Xray-core/releases/tag/v26.10.21
+Source code: https://github.com/XTLS/Xray-core/tree/v26.10.21
+Archive: https://github.com/XTLS/Xray-core/releases/download/v26.10.21/Xray-windows-64.zip
+SHA256: fc58c39ee2f2717b4c54d28d374362389e5319b20ae44aea76ea45a5243ec827
+License: MPL-2.0, see LICENSE. Wintun: see LICENSE-Wintun.
+The bundled xray.exe, wintun.dll, geoip.dat and geosite.dat come from that archive.
