@@ -1,4 +1,9 @@
-SVOI application icon
+Legacy green SVOI avatar (svoi-icon.png).
+Current amber avatar: brand/svoi-avatar-amber.png.
+Current generation prompt: brand/svoi-avatar-amber.prompt.txt.
+Current ICO/PNG exports are produced with brand/export-icons.py.
+
+Historical generation details:
 Generated with the built-in image_gen tool on 2026-10-23.
 PNG is the unmodified generated original. ICO is a format conversion with
 16, 20, 24, 32, 40, 48, 64, 128 and 256 pixel frames, preserving transparency.

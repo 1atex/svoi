@@ -1,5 +1,5 @@
 /* SVOI: neutral dark utility UI. Accent is reserved for actions and focus. */
-:root{--bg:#101114;--surface:#181a1f;--raised:#22252c;--border:#353941;--text:#f0f2f6;--muted:#a9b0bd;--green:#9bbcff;--ink:#111724;--danger:#ffaaa6;--radius:12px}
+:root{--bg:#101114;--surface:#181a1f;--raised:#22252c;--border:#353941;--text:#f0f2f6;--muted:#a9b0bd;--green:#9bbcff;--ink:#111724;--danger:#ffaaa6;--radius:12px;--scrollbar-thumb:#64676e}
 body{font-family:"Segoe UI",sans-serif;font-size:14px}
 .sidebar{background:#141519;border-color:#2b2e35;width:212px;padding:26px 16px}
 .brand{font-size:24px;letter-spacing:1px;gap:11px;font-weight:700}.brandmark{width:32px;height:32px;filter:grayscale(1)}

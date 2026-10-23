@@ -66,12 +66,24 @@ func zapretStrategies(folder string) []string {
 }
 func (z *Zapret) running() bool { z.mu.Lock(); defer z.mu.Unlock(); return z.cmd != nil }
 func (z *Zapret) status(folder string) map[string]any {
+	return z.snapshot(folder, false)
+}
+
+func (z *Zapret) snapshot(folder string, summary bool) map[string]any {
 	z.mu.Lock()
-	defer z.mu.Unlock()
 	folder = z.effectiveFolderLocked(folder)
 	job := z.job
-	job.Results = append([]CheckResult{}, z.job.Results...)
-	return map[string]any{"running": z.cmd != nil, "strategy": z.strategy, "error": z.lastError, "logs": append([]string{}, z.logs...), "strategies": zapretStrategies(folder), "elevated": isElevated(), "folder": folder, "managed": folder != "" && folder == z.managedFolderLocked(), "version": z.installed.Version, "pendingVersion": z.installed.PendingVersion, "job": job}
+	results := z.job.Results
+	if summary && len(results) > 400 {
+		results = results[len(results)-400:]
+	}
+	job.Results = append([]CheckResult{}, results...)
+	status := map[string]any{"running": z.cmd != nil, "strategy": z.strategy, "error": z.lastError, "logs": append([]string{}, z.logs...), "folder": folder, "managed": folder != "" && folder == z.managedFolderLocked(), "version": z.installed.Version, "pendingVersion": z.installed.PendingVersion, "job": job}
+	z.mu.Unlock()
+	// Filesystem and Windows calls must not hold up job progress or log writers.
+	status["strategies"] = zapretStrategies(folder)
+	status["elevated"] = isElevated()
+	return status
 }
 
 // Read only the winws argument line. Never execute BAT scripts or service.bat.
@@ -300,6 +312,6 @@ func (z *Zapret) API(w http.ResponseWriter, r *http.Request, folder string) erro
 	default:
 		return fail(404, "Метод zapret не найден")
 	}
-	writeJSON(w, 200, z.status(folder))
+	writeJSON(w, 200, z.snapshot(folder, r.URL.Query().Get("summary") == "1"))
 	return nil
 }

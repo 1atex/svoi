@@ -1,6 +1,17 @@
 'use strict';
 const $ = (s, root=document) => root.querySelector(s);
 const $$ = (s, root=document) => [...root.querySelectorAll(s)];
+// One request at a time; hidden windows have no polling timer at all.
+function visiblePoll(task,interval,enabled){
+ let timer=null,running=false;
+ const allowed=()=>!document.hidden&&enabled();
+ const schedule=()=>{clearTimeout(timer);timer=null;if(!running&&allowed())timer=setTimeout(tick,interval());};
+ const tick=async()=>{timer=null;if(running||!allowed())return;running=true;try{await task();}finally{running=false;schedule();}};
+ document.addEventListener('visibilitychange',()=>{clearTimeout(timer);timer=null;if(allowed())void tick();});
+ document.addEventListener('svoi:view',schedule);
+ document.addEventListener('svoi:state',schedule);
+ schedule();
+}
 const paths = {
  settings:'M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8 M12 2v3 M12 19v3 M2 12h3 M19 12h3 M5 5l2 2 M17 17l2 2 M5 19l2-2 M17 7l2-2',
  grid:'M3 3h7v7H3z M14 3h7v7h-7z M3 14h7v7H3z M14 14h7v7h-7z',
@@ -31,8 +42,8 @@ async function api(path, method='GET', body, download=false) {
  return download?response.blob():response.json();
 }
 function detectPlatform(){const p=navigator.userAgent;if(/Android/i.test(p))return 'Android';if(/iPhone|iPad/i.test(p))return 'iOS';if(/Macintosh/i.test(p))return 'macOS';if(/Windows/i.test(p))return 'Windows';return 'Linux';}
-function view(name){if(!group){welcome();return;}$$('.view').forEach(v=>v.hidden=v.id!==name);$$('.nav').forEach(b=>{b.classList.toggle('active',b.dataset.view===name);if(b.dataset.view===name)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');});window.scrollTo({top:0,behavior:'instant'});$('#breadcrumb').textContent=({overview:'Подключение',servers:'Серверы',devices:'Перенос профиля',identity:'Параметры запроса',settings:'Настройки',applications:'Приложения',zapret:'zapret'})[name];if(typeof viewExtras==='function')viewExtras(name);}
-function welcome(){group=null;$('#workspace').hidden=true;$('#welcome').hidden=false;$('#breadcrumb').textContent='Начало';$('#group-title').textContent='SVOI';$('#nav-count').textContent='0';const saved=$('#saved-sessions');saved.replaceChildren();sessions.forEach(s=>{const b=el('button','secondary saved-session',`Вернуться: ${s.name}`);b.onclick=()=>busy(b,async()=>{token=s.token;remember();await load();}).catch(e=>toast(e.message));saved.append(b);});}
+function view(name){if(!group){welcome();return;}$$('.view').forEach(v=>v.hidden=v.id!==name);$$('.nav').forEach(b=>{b.classList.toggle('active',b.dataset.view===name);if(b.dataset.view===name)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');});window.scrollTo({top:0,behavior:'instant'});$('#breadcrumb').textContent=({overview:'Подключение',servers:'Серверы',devices:'Перенос профиля',identity:'Параметры запроса',settings:'Настройки',applications:'Приложения',zapret:'zapret'})[name];if(name==='servers')renderServerLists();if(typeof viewExtras==='function')viewExtras(name);document.dispatchEvent(new Event('svoi:view'));}
+function welcome(){group=null;document.dispatchEvent(new Event('svoi:view'));svoiCancelProbes();$('#workspace').hidden=true;$('#welcome').hidden=false;$('#breadcrumb').textContent='Начало';$('#group-title').textContent='SVOI';$('#nav-count').textContent='0';const saved=$('#saved-sessions');saved.replaceChildren();sessions.forEach(s=>{const b=el('button','secondary saved-session',`Вернуться: ${s.name}`);b.onclick=()=>busy(b,async()=>{token=s.token;remember();await load();}).catch(e=>toast(e.message));saved.append(b);});}
 async function load(){group=await api('me');render();if(typeof refreshConnection==='function')await refreshConnection();if(typeof onGroupReady==='function')onGroupReady();}
 function render(){
  $('#welcome').hidden=true;$('#workspace').hidden=false;$('#group-title').textContent=group.name;$('#hero-hwid').textContent=group.identity.hwid;

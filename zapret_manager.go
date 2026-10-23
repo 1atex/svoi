@@ -34,16 +34,18 @@ type CheckResult struct {
 	Millis   int64  `json:"millis,omitempty"`
 }
 type ZapretJob struct {
-	Sweep      bool          `json:"sweep"`
-	Busy       bool          `json:"busy"`
-	Kind       string        `json:"kind"`
-	State      string        `json:"state"`
-	Message    string        `json:"message"`
-	Completed  int           `json:"completed"`
-	Total      int           `json:"total"`
-	Downloaded int64         `json:"downloaded"`
-	Size       int64         `json:"size"`
-	Results    []CheckResult `json:"results"`
+	ResultCount int           `json:"resultCount"`
+	Successful  int           `json:"successful"`
+	Sweep       bool          `json:"sweep"`
+	Busy        bool          `json:"busy"`
+	Kind        string        `json:"kind"`
+	State       string        `json:"state"`
+	Message     string        `json:"message"`
+	Completed   int           `json:"completed"`
+	Total       int           `json:"total"`
+	Downloaded  int64         `json:"downloaded"`
+	Size        int64         `json:"size"`
+	Results     []CheckResult `json:"results"`
 }
 
 func newZapret(a *App) *Zapret {
@@ -225,6 +227,10 @@ func (z *Zapret) addResult(r CheckResult) {
 	z.mu.Lock()
 	defer z.mu.Unlock()
 	z.job.Results = append(z.job.Results, r)
+	z.job.ResultCount++
+	if r.State == "ok" {
+		z.job.Successful++
+	}
 	z.job.Completed++
 }
 func validZapretAsset(a releaseAsset) bool {

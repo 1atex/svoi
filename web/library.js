@@ -1,6 +1,7 @@
 'use strict';
 const serverProbes=new Map();
 let probeRunning=false,probeAbort=null;
+function svoiCancelProbes(){probeAbort?.abort();}
 
 function renderSubscriptions(){
  const sources=group.subscriptions||[];const list=$('#subscription-list');list.replaceChildren();
@@ -60,4 +61,4 @@ async function runProbes(servers){
  try{await Promise.all(Array.from({length:Math.min(4,servers.length)},worker));}finally{cancelAnimationFrame(frame);probeRunning=false;probeAbort=null;button.textContent='Проверить пинг';if(group?.id===gid){renderServerLists();$('#probe-progress').textContent=`${controller.signal.aborted?'Остановлено. ':''}Проверено ${completed} из ${servers.length}. HTTPS через профиль, включая его маршрутизацию. Активный VPN может влиять на результат.`;}}
 }
 $('#source-filter').onchange=renderServerLists;
-$('#probe-all').onclick=()=>{if(probeRunning){probeAbort?.abort();return;}const source=$('#source-filter').value,search=$('#server-search').value.trim().toLocaleLowerCase();runProbes((group?.servers||[]).filter(s=>(!source||s.subscriptionId===source)&&`${s.name} ${s.address} ${s.protocol} ${countryLabel(s.name).code} ${countryLabel(s.name).country}`.toLocaleLowerCase().includes(search)));};
+$('#probe-all').onclick=()=>{if(probeRunning){probeAbort?.abort();return;}const source=$('#source-filter').value,search=$('#server-search').value.trim().toLocaleLowerCase();runProbes((group?.servers||[]).filter(s=>(!source||s.subscriptionId===source)&&(!search||serverSearchText(s).includes(search))));};

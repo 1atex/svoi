@@ -52,6 +52,20 @@ func TestUpdateAssetTrust(t *testing.T) {
 		t.Fatal("invalid hash accepted")
 	}
 }
+
+func TestFlutterUpdateChannelRejectsWebViewInstaller(t *testing.T) {
+	previous := releaseAssetPrefix
+	releaseAssetPrefix = "SVOI-Flutter"
+	t.Cleanup(func() { releaseAssetPrefix = previous })
+	asset := updateFixture("flutter installer")
+	if validUpdateAsset(asset) {
+		t.Fatal("Flutter accepted a WebView installer")
+	}
+	asset.Name = strings.Replace(asset.Name, "SVOI-", "SVOI-Flutter-", 1)
+	if !validUpdateAsset(asset) {
+		t.Fatal("Flutter installer was rejected")
+	}
+}
 func TestUpdateDownloadIntegrityAndCache(t *testing.T) {
 	for _, body := range []string{"installer", "corrupted", "installer-extra"} {
 		t.Run(body, func(t *testing.T) {

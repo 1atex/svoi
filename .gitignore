@@ -15,3 +15,5 @@
 /preview*.jpg
 /rsrc_windows_*.syso
 /installer/redist/*.exe
+/node_modules/
+/.tools/

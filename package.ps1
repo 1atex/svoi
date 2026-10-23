@@ -2,7 +2,7 @@ param([switch]$SkipInstaller, [string]$IsccPath)
 $ErrorActionPreference = 'Stop'
 Push-Location -LiteralPath $PSScriptRoot
 try {
-    $versionMatch = [regex]::Match((Get-Content -LiteralPath 'main.go' -Raw), 'const appVersion = "([^"]+)"')
+    $versionMatch = [regex]::Match((Get-Content -LiteralPath 'main.go' -Raw), '(?:const|var) appVersion = "([^"]+)"')
     if (-not $versionMatch.Success) { throw 'Version missing in main.go' }
     $version = $versionMatch.Groups[1].Value
     if (-not (Get-Content -LiteralPath 'web/index.html' -Raw).Contains($version)) { throw 'UI version does not match backend' }
@@ -33,7 +33,7 @@ try {
     $sourceStage = Join-Path $stage 'source'
     $releaseDir = Join-Path $PSScriptRoot ('releases/v' + $version)
     New-Item -ItemType Directory -Path (Join-Path $binaryStage 'core'),(Join-Path $binaryStage 'licenses'),(Join-Path $sourceStage 'core'),$releaseDir -Force | Out-Null
-    & go build -trimpath -ldflags '-H windowsgui' -o (Join-Path $binaryStage 'svoi.exe') .
+    & go build -trimpath -ldflags '-H windowsgui -s -w' -o (Join-Path $binaryStage 'svoi.exe') .
     if ($LASTEXITCODE -ne 0) { throw 'Build failed' }
     Copy-Item -LiteralPath 'START.cmd','README.md','RELEASE-NOTES.md','LICENSE','assets/svoi.ico' -Destination $binaryStage
     foreach ($name in $coreFiles) { Copy-Item -LiteralPath (Join-Path 'core' $name) -Destination (Join-Path $binaryStage 'core') }
@@ -42,6 +42,8 @@ try {
     Get-ChildItem -LiteralPath $PSScriptRoot -Filter '*.go' -File | Copy-Item -Destination $sourceStage
     Copy-Item -LiteralPath 'go.mod','go.sum','.gitignore','START.cmd','run.ps1','package.ps1','build-resources.ps1','prepare-core.ps1','README.md','RELEASE-NOTES.md','ANNOUNCEMENT.txt','LICENSE','ROADMAP.md','ANDROID.md' -Destination $sourceStage
     Copy-Item -LiteralPath 'web','licenses','assets' -Destination $sourceStage -Recurse
+    Copy-Item -LiteralPath 'package.json','package-lock.json','PERFORMANCE.md' -Destination $sourceStage
+    Copy-Item -LiteralPath 'tests' -Destination $sourceStage -Recurse
     Copy-Item -LiteralPath '.github' -Destination $sourceStage -Recurse
     New-Item -ItemType Directory -Path (Join-Path $sourceStage 'installer/redist') -Force | Out-Null
     Copy-Item -LiteralPath 'installer/svoi.iss','installer/install-info.txt','installer/prepare-redist.ps1','installer/test-setup.ps1' -Destination (Join-Path $sourceStage 'installer')

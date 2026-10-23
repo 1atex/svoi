@@ -20,6 +20,7 @@ import (
 
 // Override with -ldflags -X main.releaseRepository=owner/repository for forks.
 var releaseRepository = "1atex/svoi"
+var releaseAssetPrefix = "SVOI"
 
 type UpdateStatus struct {
 	Current    string `json:"current"`
@@ -172,7 +173,7 @@ func (u *Updater) check() error {
 		}
 		version := strings.TrimPrefix(r.Tag, "v")
 		for _, asset := range r.Assets {
-			if asset.Name == "SVOI-"+version+"-windows-x64-setup.exe" && validUpdateAsset(asset) {
+			if asset.Name == releaseAssetPrefix+"-"+version+"-windows-x64-setup.exe" && validUpdateAsset(asset) {
 				current = version
 				chosen = asset
 				notes = r.Body
@@ -200,7 +201,7 @@ func (u *Updater) check() error {
 	return nil
 }
 func validUpdateAsset(a releaseAsset) bool {
-	if filepath.Base(a.Name) != a.Name || !regexp.MustCompile(`^SVOI-\d+\.\d+\.\d+(?:-(?:prebeta|beta|rc)\.\d+)?-windows-x64-setup\.exe$`).MatchString(a.Name) {
+	if filepath.Base(a.Name) != a.Name || !regexp.MustCompile(`^`+regexp.QuoteMeta(releaseAssetPrefix)+`-\d+\.\d+\.\d+(?:-(?:prebeta|beta|rc)\.\d+)?-windows-x64-setup\.exe$`).MatchString(a.Name) {
 		return false
 	}
 	parsed, err := url.Parse(a.URL)

@@ -1,4 +1,4 @@
-//go:build windows
+//go:build windows && !native_core
 
 package main
 
@@ -18,7 +18,11 @@ import (
 )
 
 const desktopSupported = true
-const windowTitle = "SVOI — Xray VPN"
+
+var windowTitle = "SVOI — Xray VPN"
+
+// Override at build time for isolated UI benchmarks; production keeps SVOI.
+var desktopDataName = "SVOI"
 
 var user32 = windows.NewLazySystemDLL("user32.dll")
 var desktopHandle atomic.Uintptr
@@ -32,7 +36,7 @@ func closeDesktop() {
 func showDesktop(address string) error {
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()
-	mutexName, _ := windows.UTF16PtrFromString(`Local\SVOI.Desktop`)
+	mutexName, _ := windows.UTF16PtrFromString(`Local\` + desktopDataName + `.Desktop`)
 	// CreateMutex can succeed while setting ERROR_ALREADY_EXISTS. Preserve that
 	// last-error value; older x/sys wrappers discard it on a nonzero handle.
 	rawHandle, _, err := windows.NewLazySystemDLL("kernel32.dll").NewProc("CreateMutexW").Call(0, 0, uintptr(unsafe.Pointer(mutexName)))
@@ -60,7 +64,7 @@ func showDesktop(address string) error {
 		return err
 	}
 	w := webview2.NewWithOptions(webview2.WebViewOptions{
-		DataPath:      filepath.Join(dir, "SVOI", "WebView2"),
+		DataPath:      filepath.Join(dir, desktopDataName, "WebView2"),
 		AutoFocus:     true,
 		WindowOptions: webview2.WindowOptions{Title: windowTitle, Width: 1240, Height: 900, Center: true, IconId: 1},
 	})

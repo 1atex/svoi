@@ -1,6 +1,6 @@
 /* Desktop workspace: compact connection controls and a readable server library. */
 :root{--bg:#111412;--surface:#1a1e1b;--raised:#252c26;--border:#343d35;--muted:#b3bdb4;--radius:16px}
-html{scrollbar-color:#465147 #151a16;scrollbar-width:thin;scroll-padding-top:20px}
+html{scrollbar-color:var(--scrollbar-thumb,var(--muted)) var(--bg);scrollbar-width:thin;scroll-padding-top:20px}
 body{font-size:14px}
 p{font-size:14px;line-height:1.55}
 h1{font-size:30px;letter-spacing:-.8px}

@@ -32,6 +32,8 @@ type EngineStatus struct {
 	Error      string     `json:"error,omitempty"`
 	Latency    int64      `json:"latency,omitempty"`
 	Checked    bool       `json:"checked"`
+	CheckedAt  *time.Time `json:"checkedAt,omitempty"`
+	Routing    AppRouting `json:"routing"`
 	Logs       []string   `json:"logs"`
 }
 type Engine struct {
@@ -77,10 +79,18 @@ func newEngine(binary, dir string) (*Engine, error) {
 	return e, nil
 }
 func (e *Engine) Status() EngineStatus {
+	return e.snapshot(true)
+}
+
+func (e *Engine) snapshot(includeLogs bool) EngineStatus {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	s := e.status
-	s.Logs = append([]string{}, s.Logs...)
+	s.Routing.Processes = append([]string{}, e.status.Routing.Processes...)
+	s.Logs = nil
+	if includeLogs {
+		s.Logs = append([]string{}, e.status.Logs...)
+	}
 	return s
 }
 func (e *Engine) Write(p []byte) (int, error) {
@@ -196,6 +206,7 @@ func (e *Engine) startContext(parent context.Context, server ServerConfig, mode 
 	e.status.State = "starting"
 	e.status.Error = ""
 	e.status.Checked = false
+	e.status.CheckedAt = nil
 	e.status.Latency = 0
 	e.status.Logs = []string{}
 	e.redactions = credentialStrings(outbound)
@@ -292,6 +303,10 @@ func (e *Engine) startContext(parent context.Context, server ServerConfig, mode 
 	e.status.ServerID = server.ID
 	e.status.ServerName = server.Name
 	e.status.Mode = mode
+	e.status.Routing = AppRouting{Mode: "all", Processes: []string{}}
+	if mode == "tun" && server.RuntimeApps != nil {
+		e.status.Routing = AppRouting{Mode: server.RuntimeApps.Mode, Processes: append([]string{}, server.RuntimeApps.Processes...)}
+	}
 	e.status.SocksPort = sp
 	e.status.HTTPPort = hp
 	e.status.StartedAt = &now
@@ -341,6 +356,7 @@ func (e *Engine) stopLocked() error {
 	e.mu.Lock()
 	e.status.State = "stopped"
 	e.status.Checked = false
+	e.status.CheckedAt = nil
 	e.status.SocksPort = 0
 	e.status.Latency = 0
 	e.status.HTTPPort = 0
@@ -381,8 +397,11 @@ func (e *Engine) Check(ctx context.Context) (int64, error) {
 	}
 	e.mu.Lock()
 	defer e.mu.Unlock()
+	checkedAt := time.Now().UTC()
+	e.status.CheckedAt = &checkedAt
 	if err != nil {
 		e.status.Checked = false
+		e.status.Latency = 0
 		e.status.Error = "Проверка соединения не прошла: " + err.Error()
 		return 0, fail(502, e.status.Error)
 	}
@@ -404,14 +423,15 @@ func (a *App) engineAPI(w http.ResponseWriter, r *http.Request) error {
 		a.mu.Unlock()
 		return err
 	}
-	servers := append([]ServerConfig{}, g.Servers...)
+	var servers []ServerConfig
+	// Polling and stopping need authentication, not a copy of every profile.
+	if r.Method == "POST" && r.URL.Path == "/api/connection/start" {
+		servers = append([]ServerConfig{}, g.Servers...)
+	}
 	a.mu.Unlock()
 	switch {
 	case r.Method == "GET" && r.URL.Path == "/api/connection":
-		status := a.engine.Status()
-		if r.URL.Query().Get("logs") != "1" {
-			status.Logs = nil
-		}
+		status := a.engine.snapshot(r.URL.Query().Get("logs") == "1")
 		writeJSON(w, 200, status)
 		return nil
 	case r.Method == "POST" && r.URL.Path == "/api/connection/start":

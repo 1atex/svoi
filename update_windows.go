@@ -5,6 +5,7 @@ package main
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"golang.org/x/sys/windows"
 	"io"
@@ -50,13 +51,18 @@ func installUpdateAfterExit(installer, checksum string, parent int) error {
 		return fmt.Errorf("invalid update request")
 	}
 	handle, err := windows.OpenProcess(windows.SYNCHRONIZE, false, uint32(parent))
-	if err != nil {
+	if err != nil && !errors.Is(err, windows.ERROR_INVALID_PARAMETER) {
 		return err
 	}
-	defer windows.CloseHandle(handle)
-	result, err := windows.WaitForSingleObject(handle, 120000)
-	if err != nil || result != windows.WAIT_OBJECT_0 {
-		return fmt.Errorf("SVOI не завершился, установка отменена")
+	// The Flutter parent can close its backend before this helper gets scheduled.
+	// ERROR_INVALID_PARAMETER means the positive PID no longer exists: continue
+	// with checksum verification instead of failing an otherwise valid update.
+	if err == nil {
+		defer windows.CloseHandle(handle)
+		result, waitErr := windows.WaitForSingleObject(handle, 120000)
+		if waitErr != nil || result != windows.WAIT_OBJECT_0 {
+			return fmt.Errorf("SVOI не завершился, установка отменена")
+		}
 	}
 	f, err := os.Open(installer)
 	if err != nil {

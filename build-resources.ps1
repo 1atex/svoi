@@ -1,7 +1,7 @@
 $ErrorActionPreference = 'Stop'
 Push-Location -LiteralPath $PSScriptRoot
 try {
-    $version = [regex]::Match((Get-Content -LiteralPath 'main.go' -Raw), 'const appVersion = "([^"]+)"').Groups[1].Value
+    $version = [regex]::Match((Get-Content -LiteralPath 'main.go' -Raw), '(?:const|var) appVersion = "([^"]+)"').Groups[1].Value
     $parts = [regex]::Match($version, '^(\d+)\.(\d+)\.(\d+)(?:-prebeta\.(\d+))?$')
     if (-not $parts.Success) { throw 'Unsupported resource version' }
     $revision = if ($parts.Groups[4].Success) { $parts.Groups[4].Value } else { '0' }

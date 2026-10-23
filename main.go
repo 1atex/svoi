@@ -25,7 +25,8 @@ import (
 	"time"
 )
 
-const appVersion = "0.4.0-prebeta.2"
+var appVersion = "0.4.0-prebeta.3"
+var nativeVersion = "0.5.0-prebeta.6"
 
 //go:embed web/*
 var assets embed.FS
@@ -681,12 +682,26 @@ func run() error {
 	listen := flag.String("listen", "127.0.0.1:8787", "HTTP listen address; use TLS reverse proxy for remote devices")
 	data := flag.String("data", "", "state file (default: user config directory)")
 	headless := flag.Bool("server", false, "Run only the group service, without a desktop window")
+	native := flag.Bool("native-backend", false, "Private desktop backend; exit when parent stdin closes")
 	watchParent := flag.Int("watch-parent", 0, "Internal proxy recovery helper")
 	watchFile := flag.String("watch-proxy", "", "Internal proxy recovery snapshot")
 	updateFile := flag.String("install-update", "", "Internal update installer")
 	updateSHA := flag.String("update-sha256", "", "Internal installer checksum")
 	updateParent := flag.Int("update-parent", 0, "Internal updater parent")
 	flag.Parse()
+	if *native {
+		appVersion = nativeVersion
+		releaseAssetPrefix = "SVOI-Flutter"
+		if *headless {
+			return errors.New("native-backend and server are mutually exclusive")
+		}
+		if err := validateNativeAddress(*listen); err != nil {
+			return err
+		}
+		if *data == "" {
+			return errors.New("native backend requires a separate -data path")
+		}
+	}
 	if *updateFile != "" {
 		return installUpdateAfterExit(*updateFile, *updateSHA, *updateParent)
 	}
@@ -702,7 +717,7 @@ func run() error {
 	}
 	listener, err := net.Listen("tcp", *listen)
 	if err != nil {
-		if existingInstance(*listen) {
+		if !*native && existingInstance(*listen) {
 			if desktopSupported && !*headless {
 				return showDesktop("http://" + *listen)
 			}
@@ -716,7 +731,7 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	if desktopSupported && !*headless {
+	if desktopSupported && (!*headless || *native) {
 		exe, err := os.Executable()
 		if err != nil {
 			return err
@@ -738,6 +753,9 @@ func run() error {
 	}
 	log.Printf("SVOI %s — http://%s", appVersion, *listen)
 	server := &http.Server{Addr: *listen, Handler: a.handler(), ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 15 * time.Second, WriteTimeout: 45 * time.Second, IdleTimeout: 60 * time.Second, MaxHeaderBytes: 16384}
+	if *native {
+		return serveNativeBackend(server, listener, os.Stdin, os.Stdout)
+	}
 	if desktopSupported && !*headless {
 		go func() {
 			if err := server.Serve(listener); err != nil && !errors.Is(err, http.ErrServerClosed) {
@@ -758,7 +776,11 @@ func run() error {
 
 func main() {
 	if err := run(); err != nil {
-		showStartupError(err.Error())
+		if flag.Lookup("native-backend").Value.String() == "true" {
+			log.Print(err)
+		} else {
+			showStartupError(err.Error())
+		}
 		os.Exit(1)
 	}
 }

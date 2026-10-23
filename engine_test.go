@@ -214,6 +214,22 @@ func TestTunHealthCheckUsesSystemRoute(t *testing.T) {
 	if !e.Status().Checked {
 		t.Fatal("successful check not recorded")
 	}
+	if e.Status().CheckedAt == nil {
+		t.Fatal("successful check timestamp missing")
+	}
+}
+
+func TestHealthFailureClearsOldLatencyAndUpdatesTimestamp(t *testing.T) {
+	target := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(503) }))
+	defer target.Close()
+	e := &Engine{status: EngineStatus{State: "running", Mode: "tun", Checked: true, Latency: 42}, checkURL: target.URL}
+	if _, err := e.Check(context.Background()); err == nil {
+		t.Fatal("expected failed check")
+	}
+	s := e.Status()
+	if s.Checked || s.Latency != 0 || s.CheckedAt == nil || s.Error == "" {
+		t.Fatalf("stale health state: %+v", s)
+	}
 }
 func TestXrayUnexpectedExitCleanup(t *testing.T) {
 	e, err := newEngine(testCore(t), t.TempDir())
