@@ -408,8 +408,10 @@ func (a *App) engineAPI(w http.ResponseWriter, r *http.Request) error {
 	a.mu.Unlock()
 	switch {
 	case r.Method == "GET" && r.URL.Path == "/api/connection":
-		status:=a.engine.Status()
-		if r.URL.Query().Get("logs")!="1" { status.Logs=nil }
+		status := a.engine.Status()
+		if r.URL.Query().Get("logs") != "1" {
+			status.Logs = nil
+		}
 		writeJSON(w, 200, status)
 		return nil
 	case r.Method == "POST" && r.URL.Path == "/api/connection/start":
@@ -422,8 +424,8 @@ func (a *App) engineAPI(w http.ResponseWriter, r *http.Request) error {
 		}
 		for _, server := range servers {
 			if server.ID == in.ServerID {
-				if in.Mode == "tun" && a.zapret != nil && a.zapret.running() {
-					return fail(409, "Остановите zapret перед включением TUN")
+				if a.zapret != nil && a.zapret.blocksVPN(in.Mode) {
+					return fail(409, "Дождитесь окончания перебора стратегий; перед TUN остановите zapret")
 				}
 				settings := a.localSettings()
 				server.RuntimeApps = &settings.Routing

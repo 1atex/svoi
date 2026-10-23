@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -13,6 +14,14 @@ import (
 )
 
 type Zapret struct {
+	app       *App
+	root      string
+	client    *http.Client
+	installed zapretInstall
+	job       ZapretJob
+	cancel    context.CancelFunc
+	jobDone   chan struct{}
+
 	op        sync.Mutex
 	mu        sync.Mutex
 	cmd       *exec.Cmd
@@ -59,7 +68,10 @@ func (z *Zapret) running() bool { z.mu.Lock(); defer z.mu.Unlock(); return z.cmd
 func (z *Zapret) status(folder string) map[string]any {
 	z.mu.Lock()
 	defer z.mu.Unlock()
-	return map[string]any{"running": z.cmd != nil, "strategy": z.strategy, "error": z.lastError, "logs": append([]string{}, z.logs...), "strategies": zapretStrategies(folder), "elevated": isElevated(), "folder": folder}
+	folder = z.effectiveFolderLocked(folder)
+	job := z.job
+	job.Results = append([]CheckResult{}, z.job.Results...)
+	return map[string]any{"running": z.cmd != nil, "strategy": z.strategy, "error": z.lastError, "logs": append([]string{}, z.logs...), "strategies": zapretStrategies(folder), "elevated": isElevated(), "folder": folder, "managed": folder != "" && folder == z.managedFolderLocked(), "version": z.installed.Version, "pendingVersion": z.installed.PendingVersion, "job": job}
 }
 
 // Read only the winws argument line. Never execute BAT scripts or service.bat.
@@ -130,9 +142,16 @@ func parseZapretStrategy(folder, name string) ([]string, error) {
 	}
 	return args, nil
 }
-func (z *Zapret) Start(folder, name string) error {
+func (z *Zapret) Start(folder, name string) error { return z.start(folder, name, false) }
+func (z *Zapret) start(folder, name string, internal bool) error {
 	z.op.Lock()
 	defer z.op.Unlock()
+	z.mu.Lock()
+	busy := z.job.Busy
+	z.mu.Unlock()
+	if busy && !internal {
+		return fail(409, "Дождитесь завершения проверки или обновления")
+	}
 	if z.running() {
 		return fail(409, "Сначала остановите текущую стратегию")
 	}
@@ -159,6 +178,11 @@ func (z *Zapret) Start(folder, name string) error {
 		p := filepath.Join(folder, "lists", n)
 		f, e := os.OpenFile(p, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0600)
 		if e == nil {
+			placeholder := "domain.example.abc\n"
+			if n == "ipset-exclude-user.txt" {
+				placeholder = "203.0.113.113/32\n"
+			}
+			f.WriteString(placeholder)
 			f.Close()
 		} else if !os.IsExist(e) {
 			return e
@@ -204,7 +228,7 @@ func (z *Zapret) Start(folder, name string) error {
 	}()
 	return nil
 }
-func (z *Zapret) Stop() {
+func (z *Zapret) stopProcess() {
 	z.op.Lock()
 	defer z.op.Unlock()
 	z.mu.Lock()
@@ -216,7 +240,25 @@ func (z *Zapret) Stop() {
 		<-done
 	}
 }
+func (z *Zapret) Stop() {
+	z.mu.Lock()
+	cancel, done := z.cancel, z.jobDone
+	z.mu.Unlock()
+	if cancel != nil {
+		cancel()
+		if done != nil {
+			<-done
+		}
+	}
+	z.stopProcess()
+	z.op.Lock()
+	defer z.op.Unlock()
+	z.activatePending()
+}
 func (z *Zapret) API(w http.ResponseWriter, r *http.Request, folder string) error {
+	z.mu.Lock()
+	folder = z.effectiveFolderLocked(folder)
+	z.mu.Unlock()
 	switch {
 	case r.Method == "GET" && r.URL.Path == "/api/zapret":
 	case r.Method == "POST" && r.URL.Path == "/api/zapret/start":
@@ -230,7 +272,31 @@ func (z *Zapret) API(w http.ResponseWriter, r *http.Request, folder string) erro
 			return err
 		}
 	case r.Method == "POST" && r.URL.Path == "/api/zapret/stop":
+		z.mu.Lock()
+		busy := z.job.Busy
+		z.mu.Unlock()
+		if busy {
+			return fail(409, "Сначала остановите текущую задачу")
+		}
 		z.Stop()
+	case r.Method == "POST" && r.URL.Path == "/api/zapret/cancel":
+		z.mu.Lock()
+		if z.cancel != nil {
+			z.cancel()
+		}
+		z.mu.Unlock()
+	case r.Method == "POST" && r.URL.Path == "/api/zapret/job":
+		var input struct {
+			Kind       string   `json:"kind"`
+			Strategies []string `json:"strategies"`
+			Sweep      bool     `json:"sweep"`
+		}
+		if json.NewDecoder(http.MaxBytesReader(w, r.Body, 8192)).Decode(&input) != nil {
+			return fail(400, "Некорректная задача")
+		}
+		if err := z.launchJob(input.Kind, input.Strategies, input.Sweep); err != nil {
+			return err
+		}
 	default:
 		return fail(404, "Метод zapret не найден")
 	}

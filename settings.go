@@ -14,15 +14,16 @@ type AppRouting struct {
 	Processes []string `json:"processes"`
 }
 type LocalSettings struct {
-	AutoRefresh  bool       `json:"autoRefresh"`
-	AutoUpdate   bool       `json:"autoUpdate"`
-	AutoDownload bool       `json:"autoDownload"`
-	Routing      AppRouting `json:"routing"`
-	ZapretFolder string     `json:"zapretFolder"`
+	AutoRefresh      bool       `json:"autoRefresh"`
+	AutoUpdate       bool       `json:"autoUpdate"`
+	AutoDownload     bool       `json:"autoDownload"`
+	Routing          AppRouting `json:"routing"`
+	ZapretFolder     string     `json:"zapretFolder"`
+	ZapretAutoUpdate bool       `json:"zapretAutoUpdate"`
 }
 
 func (a *App) loadSettings() error {
-	a.settings = LocalSettings{AutoRefresh: true, AutoUpdate: true, AutoDownload: true, Routing: AppRouting{Mode: "all", Processes: []string{}}}
+	a.settings = LocalSettings{AutoRefresh: true, AutoUpdate: true, AutoDownload: true, ZapretAutoUpdate: true, Routing: AppRouting{Mode: "all", Processes: []string{}}}
 	b, err := os.ReadFile(a.path + ".settings.json")
 	if os.IsNotExist(err) {
 		return nil

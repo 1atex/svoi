@@ -25,7 +25,7 @@ import (
 	"time"
 )
 
-const appVersion = "0.4.0-prebeta.1"
+const appVersion = "0.4.0-prebeta.2"
 
 //go:embed web/*
 var assets embed.FS
@@ -726,8 +726,11 @@ func run() error {
 			return err
 		}
 		defer a.engine.Stop()
-		a.zapret = &Zapret{engine: a.engine}
+		a.zapret = newZapret(a)
 		defer a.zapret.Stop()
+		if a.localSettings().ZapretAutoUpdate && a.zapret.installed.Directory != "" {
+			a.zapret.launchJob("update", nil, false)
+		}
 		a.updates = newUpdater(a)
 		if a.localSettings().AutoUpdate {
 			a.updates.start("check")

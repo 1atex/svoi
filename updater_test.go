@@ -12,7 +12,7 @@ import (
 )
 
 func TestUpdateVersionOrder(t *testing.T) {
-	for _, pair := range [][2]string{{"0.4.0-prebeta.2", "0.4.0-prebeta.1"}, {"0.4.0-beta.1", "0.4.0-prebeta.9"}, {"0.4.0-rc.1", "0.4.0-beta.9"}, {"v0.4.0", "0.4.0-rc.9"}, {"0.5.0-prebeta.1", "0.4.0"}} {
+	for _, pair := range [][2]string{{"9.1.0-prebeta.1", "0.4.0-prebeta.1"}, {"0.4.0-beta.1", "0.4.0-prebeta.9"}, {"0.4.0-rc.1", "0.4.0-beta.9"}, {"v0.4.0", "0.4.0-rc.9"}, {"0.5.0-prebeta.1", "0.4.0"}} {
 		if !newerVersion(pair[0], pair[1]) || newerVersion(pair[1], pair[0]) || newerVersion(pair[0], pair[0]) {
 			t.Fatal(pair)
 		}
@@ -25,7 +25,7 @@ func TestUpdateVersionOrder(t *testing.T) {
 }
 func updateFixture(body string) releaseAsset {
 	sum := sha256.Sum256([]byte(body))
-	return releaseAsset{Name: "SVOI-0.4.0-prebeta.2-windows-x64-setup.exe", URL: "https://github.com/" + releaseRepository + "/releases/download/v0.4.0-prebeta.2/setup.exe", Digest: "sha256:" + hex.EncodeToString(sum[:]), Size: int64(len(body))}
+	return releaseAsset{Name: "SVOI-9.1.0-prebeta.1-windows-x64-setup.exe", URL: "https://github.com/" + releaseRepository + "/releases/download/v9.1.0-prebeta.1/setup.exe", Digest: "sha256:" + hex.EncodeToString(sum[:]), Size: int64(len(body))}
 }
 func TestUpdateAssetTrust(t *testing.T) {
 	good := updateFixture("installer")
@@ -91,7 +91,7 @@ func TestUpdateCheckSelectsNewestUsableRelease(t *testing.T) {
 	a := newTestApp(t)
 	a.settings.AutoDownload = false
 	u := newUpdater(a)
-	releases := []githubRelease{{Tag: "v0.4.0-prebeta.2", Assets: []releaseAsset{updateFixture("installer")}}, {Tag: "v9.0.0", Draft: true, Assets: []releaseAsset{updateFixture("installer")}}, {Tag: "v0.1.0", Assets: []releaseAsset{updateFixture("installer")}}}
+	releases := []githubRelease{{Tag: "v9.1.0-prebeta.1", Assets: []releaseAsset{updateFixture("installer")}}, {Tag: "v9.0.0", Draft: true, Assets: []releaseAsset{updateFixture("installer")}}, {Tag: "v0.1.0", Assets: []releaseAsset{updateFixture("installer")}}}
 	data, _ := json.Marshal(releases)
 	u.client = &http.Client{Transport: transportFunc(func(r *http.Request) (*http.Response, error) {
 		if r.URL.Host != "api.github.com" || r.Header.Get("x-hwid") != "" || r.Header.Get("Authorization") != "" {
@@ -102,7 +102,7 @@ func TestUpdateCheckSelectsNewestUsableRelease(t *testing.T) {
 	if err := u.check(); err != nil {
 		t.Fatal(err)
 	}
-	if s := u.Status(); s.State != "available" || s.Version != "0.4.0-prebeta.2" {
+	if s := u.Status(); s.State != "available" || s.Version != "9.1.0-prebeta.1" {
 		t.Fatal(s)
 	}
 	if files, _ := filepath.Glob(filepath.Join(u.dir, "*")); len(files) != 0 {
