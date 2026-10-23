@@ -81,8 +81,23 @@ func TestWindowsStartupTaskLifecycle(t *testing.T) {
 			t.Fatalf("task missing %s", want)
 		}
 	}
-	if strings.Count(text, "<UserId>S-1-") != 2 {
-		t.Fatal("trigger and principal must both use a SID")
+	verify := exec.CommandContext(ctx, filepath.Join(os.Getenv("SystemRoot"), "System32", "WindowsPowerShell", "v1.0", "powershell.exe"), "-NoProfile", "-NonInteractive", "-Command", `
+$ErrorActionPreference = 'Stop'
+$task = Get-ScheduledTask -TaskPath '\' -TaskName $env:SVOI_STARTUP_TEST_NAME
+$expected = [Security.Principal.WindowsIdentity]::GetCurrent().User.Value
+$users = @($task.Principal.UserId) + @($task.Triggers | ForEach-Object { $_.UserId })
+if ($users.Count -ne 2) { throw 'Expected principal and logon trigger' }
+foreach ($user in $users) {
+  if ($user -eq $expected) { continue }
+  $resolved = ([Security.Principal.NTAccount]::new($user)).Translate([Security.Principal.SecurityIdentifier]).Value
+  if ($resolved -ne $expected) { throw 'Task belongs to a different account' }
+}
+Write-Output 'Identity verified'
+`)
+	verify.Env = append(os.Environ(), "SVOI_STARTUP_TEST_NAME="+name)
+	hideCommand(verify)
+	if output, err := verify.CombinedOutput(); err != nil || !strings.Contains(string(output), "Identity verified") {
+		t.Fatalf("task account verification: %v; %s", err, output)
 	}
 	if enabled, err := startupTaskNamed(exe, "disable", name); err != nil || enabled {
 		t.Fatal(enabled, err)
