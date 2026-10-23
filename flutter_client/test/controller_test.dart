@@ -34,6 +34,32 @@ class ProbeBackend extends DemoBackend {
   }
 }
 
+class StalledProbeBackend extends ProbeBackend {
+  final stalled = <Completer<Map<String, dynamic>>>[];
+  final cancellations = <RequestCancellation>[];
+
+  @override
+  Future<Map<String, dynamic>> request(
+    String path, {
+    String method = 'GET',
+    Object? body,
+    RequestCancellation? cancellation,
+  }) {
+    if (path.endsWith('/probe') && int.parse(path.split('/')[1]) < 4) {
+      final response = Completer<Map<String, dynamic>>();
+      stalled.add(response);
+      cancellations.add(cancellation!);
+      return response.future;
+    }
+    return super.request(
+      path,
+      method: method,
+      body: body,
+      cancellation: cancellation,
+    );
+  }
+}
+
 class DelayedConnectionBackend extends DemoBackend {
   final started = Completer<void>(), checked = Completer<void>();
   Map<String, dynamic> state = {'state': 'stopped', 'available': true};
@@ -171,6 +197,29 @@ void main() {
     expect(controller.probes.values.any((p) => p.value.busy), false);
     await controller.close();
   });
+  testWidgets(
+    'stalled probes are cancelled and release the queue after six seconds',
+    (tester) async {
+      final backend = StalledProbeBackend();
+      final c = SvoiController(backend);
+      await c.initialize();
+      final pending = c.probe(c.servers.value.take(5).toList());
+      expect(backend.stalled.length, 4);
+      await tester.pump(const Duration(seconds: 6));
+      expect(backend.cancellations.every((request) => request.cancelled), true);
+      await tester.pump(const Duration(milliseconds: 20));
+      await pending;
+      expect(c.probing.value, false);
+      expect(c.probes['0']!.value.error, contains('Локальный сервис'));
+      expect(c.probes['4']!.value.latency, 42);
+      for (final response in backend.stalled) {
+        response.complete({'latency': 999});
+      }
+      await tester.pump();
+      expect(c.probes['0']!.value.latency, isNull);
+      await c.close();
+    },
+  );
   test('unchanged status does not notify widgets', () async {
     final c = SvoiController(ProbeBackend());
     await c.initialize();

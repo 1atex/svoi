@@ -501,6 +501,7 @@ class SvoiController {
     }
     final generation = ++_probeGeneration;
     probing.value = true;
+    probeProgress.value = '0 из ${list.length} · до 4 одновременно · лимит 4 с';
     var next = 0, done = 0;
     Future<void> worker() async {
       while (next < list.length && generation == _probeGeneration && !_closed) {
@@ -512,11 +513,21 @@ class SvoiController {
         _requests.add(cancellation);
         result.value = const ProbeState(busy: true);
         try {
-          final response = await api.request(
-            'servers/${Uri.encodeComponent(server.id)}/probe',
-            method: 'POST',
-            cancellation: cancellation,
-          );
+          final response = await api
+              .request(
+                'servers/${Uri.encodeComponent(server.id)}/probe',
+                method: 'POST',
+                cancellation: cancellation,
+              )
+              .timeout(
+                const Duration(seconds: 6),
+                onTimeout: () {
+                  cancellation.cancel();
+                  throw ApiException(
+                    'Локальный сервис не завершил проверку. Повторите попытку.',
+                  );
+                },
+              );
           if (generation == _probeGeneration) {
             result.value = ProbeState(
               latency: response['latency'],
@@ -536,7 +547,7 @@ class SvoiController {
         if (generation == _probeGeneration) {
           done++;
           probeProgress.value =
-              '$done из ${list.length} · HTTPS, до 4 одновременно';
+              '$done из ${list.length} · HTTPS · до 4 одновременно · лимит 4 с';
         }
       }
     }

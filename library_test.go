@@ -3,12 +3,14 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestSubscriptionLibraryIsolation(t *testing.T) {
@@ -141,5 +143,71 @@ func TestProbeIsolatedAndCleanedUp(t *testing.T) {
 	cancel()
 	if _, err = probeServer(ctx, base, server); err == nil {
 		t.Fatal("cancelled probe started")
+	}
+}
+
+func TestProbeDeadlineAndCancellationReleaseResources(t *testing.T) {
+	binary := testCore(t)
+	for _, cancelEarly := range []bool{false, true} {
+		t.Run(map[bool]string{false: "timeout", true: "cancel"}[cancelEarly], func(t *testing.T) {
+			entered, release := make(chan struct{}, 1), make(chan struct{})
+			target := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				entered <- struct{}{}
+				select {
+				case <-release:
+				case <-r.Context().Done():
+				}
+			}))
+			defer target.Close()
+			defer close(release)
+			base := &Engine{binary: binary, dir: t.TempDir(), checkURL: target.URL, status: EngineStatus{Available: true, State: "running", ServerID: "active", Mode: "tun", HTTPPort: 12345}}
+			before := base.Status()
+			server := ServerConfig{Outbound: json.RawMessage(`{"protocol":"freedom","settings":{"finalRules":[{"action":"allow","ip":["127.0.0.1"]}]}}`)}
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			result := make(chan error, 1)
+			started := time.Now()
+			go func() { _, err := probeServer(ctx, base, server); result <- err }()
+			select {
+			case <-entered:
+			case err := <-result:
+				t.Fatalf("probe failed before reaching target: %v", err)
+			case <-time.After(6 * time.Second):
+				t.Fatal("probe did not reach target")
+			}
+			want := context.DeadlineExceeded
+			if cancelEarly {
+				started = time.Now()
+				cancel()
+				want = context.Canceled
+			}
+			select {
+			case err := <-result:
+				if !errors.Is(err, want) {
+					t.Fatalf("want %v, got %v", want, err)
+				}
+			case <-time.After(6 * time.Second):
+				t.Fatal("stalled probe did not finish")
+			}
+			limit := 6 * time.Second
+			if cancelEarly {
+				limit = 2 * time.Second
+			}
+			if elapsed := time.Since(started); elapsed > limit {
+				t.Fatalf("probe took %v", elapsed)
+			}
+			if !reflect.DeepEqual(before, base.Status()) {
+				t.Fatal("probe changed active connection")
+			}
+			if files, err := os.ReadDir(base.dir); err != nil || len(files) != 0 {
+				t.Fatal("probe left temporary files", err)
+			}
+			responsive := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(204) }))
+			defer responsive.Close()
+			base.checkURL = responsive.URL
+			if _, err := probeServer(context.Background(), base, server); err != nil {
+				t.Fatal("next probe failed", err)
+			}
+		})
 	}
 }

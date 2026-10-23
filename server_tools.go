@@ -3,12 +3,15 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net"
 	"net/http"
 	"os"
 	"strings"
 	"time"
 )
+
+const serverProbeTimeout = 4 * time.Second
 
 func (a *App) serverToolsAPI(w http.ResponseWriter, r *http.Request) error {
 	parts := strings.Split(strings.TrimPrefix(r.URL.Path, "/api/servers/"), "/")
@@ -79,10 +82,11 @@ func (a *App) serverToolsAPI(w http.ResponseWriter, r *http.Request) error {
 	if !a.engine.Status().Available {
 		return fail(503, "Ядро Xray не найдено")
 	}
-	ctx, cancel := context.WithTimeout(r.Context(), 15*time.Second)
-	defer cancel()
-	latency, err := probeServer(ctx, a.engine, server)
+	latency, err := probeServer(r.Context(), a.engine, server)
 	if err != nil {
+		if errors.Is(err, context.DeadlineExceeded) {
+			return fail(502, "Нет ответа за 4 секунды. Можно повторить проверку или подключиться вручную.")
+		}
 		return fail(502, "Профиль не прошёл HTTPS-проверку. Сервер, маршрут или адрес проверки недоступен.")
 	}
 	writeJSON(w, 200, map[string]any{"latency": latency, "checkedAt": time.Now().UTC(), "method": "HTTPS", "url": a.engine.checkURL})
@@ -90,6 +94,8 @@ func (a *App) serverToolsAPI(w http.ResponseWriter, r *http.Request) error {
 }
 
 func probeServer(ctx context.Context, base *Engine, server ServerConfig) (int64, error) {
+	ctx, cancel := context.WithTimeout(ctx, serverProbeTimeout)
+	defer cancel()
 	if err := ctx.Err(); err != nil {
 		return 0, err
 	}
@@ -101,7 +107,14 @@ func probeServer(ctx context.Context, base *Engine, server ServerConfig) (int64,
 	probe := &Engine{binary: base.binary, dir: dir, checkURL: base.checkURL, status: EngineStatus{State: "stopped", Available: true, Logs: []string{}}}
 	defer probe.Stop()
 	if err = probe.startContext(ctx, server, "local"); err != nil {
+		if ctx.Err() != nil {
+			return 0, ctx.Err()
+		}
 		return 0, err
 	}
-	return probe.Check(ctx)
+	latency, err := probe.Check(ctx)
+	if ctx.Err() != nil {
+		return 0, ctx.Err()
+	}
+	return latency, err
 }
