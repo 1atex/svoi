@@ -43,11 +43,11 @@ HTTP ResponseRecorder; цифры годятся для сравнения ре�
 ## Повторение проверок
 
 ```powershell
-npm ci --ignore-scripts
-npm test
+npm --prefix backend ci --ignore-scripts
+npm --prefix backend test
 go test ./... -count=1
 go vet ./...
-go test -run '^$' -bench 'Benchmark(Connection|Zapret)Polling' -benchmem -count=3
+go test ./backend -run '^$' -bench 'Benchmark(Connection|Zapret)Polling' -benchmem -count=3
 ```
 
 Дальнейшие измерения: холодный/повторный запуск окна; рабочий набор и CPU всего дерева

@@ -26,7 +26,7 @@ $env:CI = 'true'
 Push-Location $root
 try {
     New-Item -ItemType Directory -Force dist | Out-Null
-    & $go build -tags native_core -trimpath -ldflags "-H windowsgui -s -w -X main.nativeVersion=$Version" -o dist/svoi-backend.exe .
+    & $go build -tags native_core -trimpath -ldflags "-H windowsgui -s -w -X main.nativeVersion=$Version" -o dist/svoi-backend.exe ./backend
     if ($LASTEXITCODE) { throw 'Go backend build failed' }
 
     New-Item -ItemType Directory -Force dist/core | Out-Null

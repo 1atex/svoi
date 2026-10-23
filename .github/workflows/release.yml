@@ -17,7 +17,7 @@ jobs:
       - name: Verify version
         shell: pwsh
         run: |
-          $version = [regex]::Match((Get-Content main.go -Raw), 'var nativeVersion = "([^"]+)"').Groups[1].Value
+          $version = [regex]::Match((Get-Content backend/main.go -Raw), 'var nativeVersion = "([^"]+)"').Groups[1].Value
           if (!$version) { throw 'Application version is missing' }
           if ($env:GITHUB_REF_TYPE -eq 'tag' -and $env:GITHUB_REF_NAME -ne "v$version") { throw 'Tag and application version differ' }
           "SVOI_VERSION=$version" >> $env:GITHUB_ENV
@@ -25,7 +25,7 @@ jobs:
           "SVOI_RELEASE_DIR=$dir" >> $env:GITHUB_ENV
       - name: Fetch pinned Xray
         shell: pwsh
-        run: ./prepare-core.ps1
+        run: ./scripts/prepare-core.ps1
       - name: Ensure Inno Setup
         shell: pwsh
         run: |

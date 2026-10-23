@@ -119,7 +119,7 @@
 Нужны Go, Flutter 3.47.7, Visual Studio с C++ Desktop workload и Inno Setup 6:
 
 ```powershell
-./prepare-core.ps1
+./scripts/prepare-core.ps1
 ./flutter_client/build-prototype.ps1 -FlutterSdk C:/path/to/flutter
 ```
 
@@ -127,7 +127,7 @@
 
 ## Выпуск обновления
 
-1. Обновите `nativeVersion` в `main.go`, версию в `flutter_client/pubspec.yaml`, `clientVersion` в `flutter_client/lib/features.dart`, версию сборочного скрипта и release notes.
+1. Обновите `nativeVersion` в `backend/main.go`, версию в `flutter_client/pubspec.yaml`, `clientVersion` в `flutter_client/lib/features.dart`, версию сборочного скрипта и release notes.
 2. Выполните проверки и соберите пакет локально.
 3. Отправьте коммит и тег `v<версия>` в GitHub.
 

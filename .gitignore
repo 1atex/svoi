@@ -16,4 +16,5 @@
 /rsrc_windows_*.syso
 /installer/redist/*.exe
 /node_modules/
+/backend/node_modules/
 /.tools/

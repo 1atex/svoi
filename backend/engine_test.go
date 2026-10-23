@@ -25,7 +25,7 @@ func testCore(t *testing.T) string {
 	t.Helper()
 	path := os.Getenv("SVOI_TEST_CORE")
 	if path == "" {
-		path = filepath.Join("core", "xray.exe")
+		path = filepath.Join("..", "core", "xray.exe")
 	}
 	binary, err := filepath.Abs(path)
 	if err != nil {

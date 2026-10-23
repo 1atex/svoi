@@ -1,5 +1,5 @@
 $ErrorActionPreference = 'Stop'
-$coreRoot = Join-Path $PSScriptRoot 'core'
+$coreRoot = Join-Path (Split-Path $PSScriptRoot -Parent) 'core'
 $url = 'https://github.com/XTLS/Xray-core/releases/download/v26.10.21/Xray-windows-64.zip'
 $sha = 'fc58c39ee2f2717b4c54d28d374362389e5319b20ae44aea76ea45a5243ec827'
 $tempRoot = Join-Path ([IO.Path]::GetTempPath()) ('svoi-core-' + [guid]::NewGuid().ToString('N'))
