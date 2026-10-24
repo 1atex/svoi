@@ -30,7 +30,7 @@ class _MobileShellState extends State<MobileShell> {
   @override
   Widget build(BuildContext context) => ListenableBuilder(
     listenable: Listenable.merge([
-      if (updates != null) updates!,
+      ?updates,
       c.group,
       c.sessions,
       c.servers,

@@ -80,6 +80,7 @@ void main() {
     expect(calls.last.method, 'status');
     await tester.pump(const Duration(seconds: 1));
     expect(calls.length, 3);
+    model.didChangeAppLifecycleState(AppLifecycleState.paused);
   });
 
   testWidgets('native errors remain visible and allow retry', (tester) async {
