@@ -74,7 +74,7 @@ jobs:
           script: |
             adb install -r SVOI-Android-preview.5-emulator.apk
             adb shell appops set dev.svoi.app.preview ACTIVATE_VPN allow
-            cd flutter_client/android && ./gradlew :app:connectedDebugAndroidTest
+            cd flutter_client/android && ./gradlew :app:connectedDebugAndroidTest || { adb logcat -d > /tmp/svoi-android-resources.log; exit 1; }
             adb logcat -d -s SvoiPerf:I '*:S' > /tmp/svoi-android-resources.log
       - name: Build optimized APK for ARM64 phones
         working-directory: flutter_client

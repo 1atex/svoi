@@ -21,7 +21,7 @@ class BackendClient(private val context: Context) : AutoCloseable {
     private var ready = CountDownLatch(1)
     private var bound = false
     private var closed = false
-    private val connection = object : ServiceConnection {
+    private val connection: ServiceConnection = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName, binder: IBinder) = synchronized(lock) {
             remote = IBackendService.Stub.asInterface(binder); ready.countDown()
         }
@@ -32,7 +32,7 @@ class BackendClient(private val context: Context) : AutoCloseable {
         override fun onNullBinding(name: ComponentName) { reset() }
     }
 
-    private fun reset() = synchronized(lock) {
+    private fun reset(): Unit = synchronized(lock) {
         remote = null; ready.countDown()
         if (bound) runCatching { context.unbindService(connection) }
         bound = false; ready = CountDownLatch(1)
