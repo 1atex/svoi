@@ -4,6 +4,7 @@ analyzer:
   exclude:
     - build/**
     - windows/**
+    - android/**
 
 linter:
   rules: {}

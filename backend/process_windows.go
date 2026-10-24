@@ -1,6 +1,6 @@
 //go:build windows
 
-package main
+package backend
 
 import (
 	"golang.org/x/sys/windows"

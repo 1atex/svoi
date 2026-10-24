@@ -103,14 +103,15 @@ class SvoiController {
         method: 'POST',
         body: {
           'name': 'Моя сеть',
-          'deviceName': 'Windows',
-          'platform': 'Windows',
+          'deviceName': api.platformName,
+          'platform': api.platformName,
         },
       );
       api.token = result['token'];
       _acceptGroup(result['group']);
       await saveSession();
     }
+    if (api.mobile) mode.value = 'tun';
     preferences.value = await api.request('settings');
     await poll();
     if (preferences.value['autoRefresh'] == true) {
@@ -358,8 +359,8 @@ class SvoiController {
         method: 'POST',
         body: {
           'code': text,
-          'deviceName': 'Windows',
-          'platform': 'Windows',
+          'deviceName': api.platformName,
+          'platform': api.platformName,
           'replace': true,
         },
       );
@@ -395,7 +396,11 @@ class SvoiController {
     final result = await api.request(
       'groups',
       method: 'POST',
-      body: {'name': name, 'deviceName': 'Мой ПК', 'platform': 'Windows'},
+      body: {
+        'name': name,
+        'deviceName': api.platformName,
+        'platform': api.platformName,
+      },
     );
     api.token = result['token'];
     _acceptGroup(result['group']);
@@ -426,8 +431,8 @@ class SvoiController {
           method: 'POST',
           body: {
             'code': code,
-            'deviceName': 'Мой ПК',
-            'platform': 'Windows',
+            'deviceName': api.platformName,
+            'platform': api.platformName,
             'replace': replace,
           },
         );

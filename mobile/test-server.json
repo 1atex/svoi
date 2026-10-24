@@ -1,0 +1,5 @@
+{
+  "log": {"loglevel":"warning"},
+  "inbounds": [{"listen":"127.0.0.1","port":10880,"protocol":"vless","settings":{"decryption":"none","clients":[{"id":"90e3da82-374e-46ef-9099-761d39b86b82"}]}}],
+  "outbounds": [{"protocol":"freedom","settings":{"redirect":"127.0.0.1:18080"}}]
+}

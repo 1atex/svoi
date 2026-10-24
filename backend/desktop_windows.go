@@ -1,6 +1,6 @@
 //go:build windows && !native_core
 
-package main
+package backend
 
 import (
 	"errors"

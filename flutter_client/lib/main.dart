@@ -10,6 +10,7 @@ import 'package:country_flags/country_flags.dart';
 import 'countries.dart';
 
 import 'backend.dart';
+import 'android_backend.dart';
 import 'controller.dart';
 import 'demo.dart';
 import 'data_directory.dart';
@@ -23,6 +24,7 @@ part 'servers.dart';
 part 'zapret_page.dart';
 part 'tray.dart';
 part 'startup_panel.dart';
+part 'mobile_shell.dart';
 
 const windowChannel = MethodChannel('dev.svoi/window');
 const canvas = Color(0xff101013),
@@ -174,11 +176,16 @@ class _BootstrapState extends State<Bootstrap> with WidgetsBindingObserver {
 
   Future<void> _start() async {
     try {
-      final data = widget.demo
-          ? Directory.systemTemp
-          : await prepareDataDirectory();
+      final android =
+          !widget.demo && widget.backend == null && Platform.isAndroid
+          ? await AndroidBackend.launch()
+          : null;
+      final data =
+          android?.directory ??
+          (widget.demo ? Directory.systemTemp : await prepareDataDirectory());
       final api =
           widget.backend ??
+          android ??
           (widget.demo
               ? DemoBackend()
               : await NativeBackend.launch(data, startup: widget.startup));
@@ -247,7 +254,13 @@ class _BootstrapState extends State<Bootstrap> with WidgetsBindingObserver {
     home: _closing
         ? const Scaffold(body: Center(child: Text('Завершаем соединение…')))
         : _ready
-        ? SvoiShell(key: _shellKey, controller: _controller!, demo: widget.demo)
+        ? (_controller!.api.mobile
+              ? MobileShell(c: _controller!)
+              : SvoiShell(
+                  key: _shellKey,
+                  controller: _controller!,
+                  demo: widget.demo,
+                ))
         : Scaffold(
             body: Center(
               child: SizedBox(

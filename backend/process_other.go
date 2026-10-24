@@ -1,5 +1,5 @@
 //go:build !windows
 
-package main
+package backend
 
 func externalZapretRunning() bool { return false }

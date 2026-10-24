@@ -1,4 +1,4 @@
-package main
+package backend
 
 import (
 	"context"
@@ -297,7 +297,11 @@ func (a *App) dispatch(w http.ResponseWriter, r *http.Request) error {
 					return fail(409, "Лимит групп на этом сервере достигнут")
 				}
 				member.Device.Owner = true
-				g := Group{ID: secret(), Name: strings.TrimSpace(in.Name), Identity: Identity{HWID: digest(secret())[:32], OS: "Windows", Model: "SVOI Group", Locale: "ru-RU", UserAgent: "SVOI/0.2"}, Devices: []Member{member}}
+				identityOS := "Windows"
+				if in.Platform == "Android" {
+					identityOS = "Android"
+				}
+				g := Group{ID: secret(), Name: strings.TrimSpace(in.Name), Identity: Identity{HWID: digest(secret())[:32], OS: identityOS, Model: "SVOI Group", Locale: "ru-RU", UserAgent: "SVOI/0.2"}, Devices: []Member{member}}
 				a.state.Groups = append(a.state.Groups, g)
 				result = snapshot(&g, &member)
 			} else {
@@ -793,7 +797,7 @@ func run() error {
 	return nil
 }
 
-func main() {
+func Main() {
 	if err := run(); err != nil {
 		if flag.Lookup("native-backend").Value.String() == "true" {
 			log.Print(err)

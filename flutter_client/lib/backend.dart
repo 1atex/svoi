@@ -20,6 +20,8 @@ class RequestCancellation {
 }
 
 abstract class Backend {
+  bool get mobile => false;
+  String get platformName => 'Windows';
   String token = '';
   Future<Map<String, dynamic>> request(
     String path, {
