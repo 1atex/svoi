@@ -119,6 +119,7 @@ class AndroidUpdates private constructor(private val context: Context) {
     }
 
     @Synchronized fun check(force: Boolean): JSONObject {
+        refreshDownload()
         if (stage == "checking" || downloadId >= 0 || validating || ready) return status()
         if (!force && (!prefs.getBoolean("autoCheck", true) || System.currentTimeMillis() - prefs.getLong("checkedAt", 0) < 6 * 60 * 60 * 1000)) return status()
         stage = "checking"; error = ""

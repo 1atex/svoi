@@ -10,6 +10,49 @@ import java.io.File
 
 @RunWith(AndroidJUnit4::class)
 class UpdateTest {
+    @Test fun persistedApkIsVerifiedBeforeNetworkCheckAndInstallerGetsContentUri() {
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        val base = instrumentation.targetContext
+        val context = object : android.content.ContextWrapper(base) {
+            override fun getSharedPreferences(name: String, mode: Int) = base.getSharedPreferences("update-test", mode)
+        }
+        val prefs = context.getSharedPreferences("update-test", 0)
+        prefs.edit().clear().commit()
+        val file = File(context.filesDir, "updates/update.apk")
+        file.parentFile!!.mkdirs()
+        try {
+            instrumentation.context.assets.open("update.apk").use { input -> file.outputStream().use { input.copyTo(it) } }
+            val info = context.packageManager.getPackageArchiveInfo(file.path, AndroidApkVerifier.flags())!!
+            val release = AndroidRelease(info.versionName!!, AndroidApkVerifier.code(info), "x86_64", "https://github.com/1atex/svoi/releases/download/test/update.apk", AndroidApkVerifier.hash(file), file.length())
+            prefs.edit().putString("release", release.json().toString()).commit()
+            val constructor = AndroidUpdates::class.java.getDeclaredConstructor(android.content.Context::class.java)
+            constructor.isAccessible = true
+            val updates = constructor.newInstance(context)
+            assertEquals("verifying", updates.check(false).getString("state"))
+            val deadline = System.nanoTime() + java.util.concurrent.TimeUnit.SECONDS.toNanos(25)
+            var status = updates.status()
+            while (status.getString("state") == "verifying" && System.nanoTime() < deadline) {
+                Thread.sleep(100); status = updates.status()
+            }
+            assertEquals(status.toString(), "ready", status.getString("state"))
+            fun permission(value: String) {
+                instrumentation.uiAutomation.executeShellCommand("appops set ${context.packageName} REQUEST_INSTALL_PACKAGES $value").use {
+                    android.os.ParcelFileDescriptor.AutoCloseInputStream(it).readBytes()
+                }
+            }
+            permission("deny")
+            assertEquals(android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, updates.installIntent().action)
+            permission("allow")
+            val intent = updates.installIntent()
+            assertEquals(android.content.Intent.ACTION_VIEW, intent.action)
+            assertEquals("content", intent.data!!.scheme)
+            assertTrue(intent.flags and android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION != 0)
+            assertNotNull(context.packageManager.resolveActivity(intent, 0))
+            permission("deny")
+            updates.cancel()
+        } finally { file.delete(); prefs.edit().clear().commit() }
+    }
+
     @Test fun providerExposesOnlyUpdateDirectory() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val file = File(context.filesDir, "updates/provider-test.apk")
