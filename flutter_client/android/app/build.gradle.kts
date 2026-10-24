@@ -21,6 +21,15 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
     signingConfigs {
+        getByName("debug") {
+            val testKey = System.getenv("SVOI_ANDROID_TEST_KEYSTORE")
+            if (!testKey.isNullOrBlank()) {
+                storeFile = file(testKey)
+                storePassword = "android"
+                keyAlias = "androiddebugkey"
+                keyPassword = "android"
+            }
+        }
         create("release") {
             val path = System.getenv("SVOI_ANDROID_KEYSTORE")
             if (!path.isNullOrBlank()) {

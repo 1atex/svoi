@@ -75,7 +75,11 @@ object AndroidApkVerifier {
         val installed = pm.getPackageInfo(context.packageName, flags())
         require(archive.packageName == context.packageName) { "APK предназначен для другого приложения" }
         val trusted = signers(installed)
-        require(trusted.isNotEmpty() && signers(archive) == trusted) { "Подпись APK не совпадает с установленным SVOI. Автоматическая установка запрещена." }
+        val candidate = signers(archive)
+        if (trusted.isEmpty() || candidate != trusted) {
+            android.util.Log.w("SvoiUpdate", "Certificate mismatch: installed=$trusted apk=$candidate")
+            throw IllegalArgumentException("Подпись APK не совпадает с установленным SVOI. Автоматическая установка запрещена.")
+        }
         require(code(archive) == release.code && release.code > code(installed)) { "Версия APK не подходит для обновления" }
         require((archive.applicationInfo?.minSdkVersion ?: Int.MAX_VALUE) <= Build.VERSION.SDK_INT) { "Нужна более новая версия Android" }
         require(release.abi in Build.SUPPORTED_ABIS) { "APK не подходит для процессора устройства" }

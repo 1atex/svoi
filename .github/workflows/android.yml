@@ -56,6 +56,9 @@ jobs:
       - name: Check Flutter and build update fixtures
         working-directory: flutter_client
         run: |
+          export SVOI_ANDROID_TEST_KEYSTORE="$RUNNER_TEMP/svoi-test-debug.p12"
+          echo "SVOI_ANDROID_TEST_KEYSTORE=$SVOI_ANDROID_TEST_KEYSTORE" >> "$GITHUB_ENV"
+          keytool -genkeypair -keystore "$SVOI_ANDROID_TEST_KEYSTORE" -storepass android -keypass android -alias androiddebugkey -dname 'CN=SVOI Test' -keyalg RSA -validity 2
           flutter pub get
           dart format --output=none --set-exit-if-changed lib test
           flutter analyze
@@ -67,6 +70,8 @@ jobs:
           "$ANDROID_HOME/build-tools/36.0.0/apksigner" sign --ks "$RUNNER_TEMP/test-key.p12" --ks-pass pass:android --out android/app/src/androidTest/assets/wrong-key.apk android/app/src/androidTest/assets/update.apk
           flutter build apk --debug --target-platform android-x64 --build-name "$ANDROID_VERSION" --build-number "$ANDROID_CODE"
           cp build/app/outputs/flutter-apk/app-debug.apk ../.tools/android-debug.apk
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --print-certs android/app/src/androidTest/assets/update.apk
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --print-certs ../.tools/android-debug.apk
       - name: Enable KVM
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
@@ -106,7 +111,7 @@ jobs:
           python3 ../scripts/android-release.py prepare
       - name: Remove signing key from runner
         if: always()
-        run: rm -f "$RUNNER_TEMP/svoi-android-release.p12" "$RUNNER_TEMP/test-key.p12"
+        run: rm -f "$RUNNER_TEMP/svoi-android-release.p12" "$RUNNER_TEMP/test-key.p12" "$RUNNER_TEMP/svoi-test-debug.p12"
       - name: Upload diagnostics
         if: always()
         uses: actions/upload-artifact@v4
