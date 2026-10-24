@@ -580,6 +580,7 @@ Future<void> importDialog(BuildContext context, SvoiController c) async {
     context: context,
     builder: (context) => AlertDialog(
       title: const Text('Добавить подписку'),
+      scrollable: true,
       content: SizedBox(
         width: 560,
         child: Column(

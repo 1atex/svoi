@@ -30,6 +30,16 @@ void main() {
     );
     expect(find.byType(NavigationBar), findsOneWidget);
     expect(tester.takeException(), isNull);
+    await tester.tap(find.widgetWithText(FilledButton, 'Добавить подписку'));
+    await tester.pumpAndSettle();
+    tester.view.viewInsets = const FakeViewPadding(bottom: 280);
+    addTearDown(tester.view.resetViewInsets);
+    await tester.pumpAndSettle();
+    expect(
+      find.widgetWithText(FilledButton, 'Добавить').hitTestable(),
+      findsOneWidget,
+    );
+    expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());
     await c.close();
   });
