@@ -10,14 +10,13 @@ import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 import org.json.JSONObject
-import mobile.ProbeRequest
-import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
 
 class MainActivity : FlutterActivity() {
     private val workers = Executors.newFixedThreadPool(4)
     private val probes = Executors.newFixedThreadPool(2)
-    private val activeProbes = ConcurrentHashMap<String, ProbeRequest>()
+    private val control = Executors.newSingleThreadExecutor()
+    private val backend by lazy { BackendClient(applicationContext) }
     private val main = Handler(Looper.getMainLooper())
     private var vpnResult: MethodChannel.Result? = null
     private var vpnBody: JSONObject? = null
@@ -25,10 +24,10 @@ class MainActivity : FlutterActivity() {
     private var fileResult: MethodChannel.Result? = null
     private var exportResult: MethodChannel.Result? = null
     private var exportContent = ""
-    private class BackendError(val status: Int, message: String) : Exception(message)
 
     override fun onDestroy() {
-        activeProbes.values.forEach { it.cancel() }
+        control.execute { backend.close() }
+        control.shutdown()
         workers.shutdown()
         probes.shutdown()
         super.onDestroy()
@@ -38,54 +37,20 @@ class MainActivity : FlutterActivity() {
         super.configureFlutterEngine(engine)
         MethodChannel(engine.dartExecutor.binaryMessenger, "dev.svoi/mobile").setMethodCallHandler { call, result ->
             if (call.method == "init") {
-                work(result) {
-                    VpnRuntime.init(applicationContext)
-                    val lowRam = getSystemService(android.app.ActivityManager::class.java).isLowRamDevice
-                    JSONObject().put("directory", filesDir.absolutePath).put("probeConcurrency", if (lowRam) 1 else 2).toString()
-                }
+                work(result) { backend.request("init").toString() }
             } else if (call.method == "cancelProbe") {
-                call.argument<String>("id")?.let { activeProbes[it]?.cancel() }
-                result.success(null)
+                control.execute {
+                    runCatching { backend.cancelProbe(call.argument<String>("id") ?: "") }
+                    main.post { result.success(null) }
+                }
             } else if (call.method == "request") {
                 val path = call.argument<String>("path") ?: ""
                 val token = call.argument<String>("token") ?: ""
-                val body = JSONObject(call.argument<String>("body") ?: "{}")
+                val body = call.argument<String>("body") ?: "{}"
                 val method = call.argument<String>("method") ?: "GET"
-                when {
-                    path == "connection/start" -> prepareVpn(token, body, result)
-                    path == "connection/stop" -> VpnRuntime.stop { reply(result, it) }
-                    path == "connection/check" -> VpnRuntime.check { reply(result, it) }
-                    path.startsWith("connection") -> result.success(VpnRuntime.status().toString())
-                    path == "android/apps" -> work(result) { VpnRuntime.apps(applicationContext).toString() }
-                    path == "android/routing" -> work(result) {
-                        if (method == "PUT") VpnRuntime.saveRouting(applicationContext, body)
-                        VpnRuntime.routing(applicationContext).toString()
-                    }
-                    path.startsWith("servers/") && path.endsWith("/probe") && method == "POST" -> {
-                        val id = android.net.Uri.decode(path.removePrefix("servers/").removeSuffix("/probe"))
-                        val requestId = call.argument<String>("probeID") ?: java.util.UUID.randomUUID().toString()
-                        if (activeProbes.size >= 2) {
-                            result.error("busy", "Завершается предыдущая проверка. Повторите через несколько секунд.", null)
-                            return@setMethodCallHandler
-                        }
-                        val probe = VpnRuntime.session!!.newProbe(token, id)
-                        activeProbes[requestId] = probe
-                        probes.execute {
-                            var response: String? = null
-                            var error: String? = null
-                            try {
-                                val latency = probe.run()
-                                response = JSONObject().put("latency", latency).put("method", "HTTPS").put("checkedAt", java.time.Instant.now().toString()).toString()
-                            } catch(e: Exception) { error = e.message ?: "Проверка не завершена" }
-                            finally { activeProbes.remove(requestId); probe.cancel() }
-                            main.post { if (error == null) result.success(response) else result.error("probe", error, null) }
-                        }
-                    }
-                    else -> work(result) {
-                        val response = JSONObject(VpnRuntime.session!!.request(method, "/api/$path", token, body.toString()))
-                        if (response.getInt("status") >= 400) throw BackendError(response.getInt("status"), response.getJSONObject("body").optString("error", "Ошибка сервиса"))
-                        response.getJSONObject("body").toString()
-                    }
+                if (path == "connection/start") prepareVpn(token, JSONObject(body), result)
+                else work(result, if (path.endsWith("/probe")) probes else workers) {
+                    backend.request(path, method, token, body, call.argument<String>("probeID") ?: "").toString()
                 }
             } else result.notImplemented()
         }
@@ -111,11 +76,11 @@ class MainActivity : FlutterActivity() {
             }
         }
     }
-    private fun work(result: MethodChannel.Result, block: () -> String) {
-        workers.execute { try { val value = block(); main.post { result.success(value) } } catch(e: Exception) { main.post { result.error(if (e is BackendError) e.status.toString() else "backend", e.message, null) } } }
-    }
-    private fun reply(result: MethodChannel.Result, error: String?) {
-        main.post { if (error != null) result.error("vpn", error, null) else result.success(VpnRuntime.status().toString()) }
+    private fun work(result: MethodChannel.Result, executor: java.util.concurrent.Executor = workers, block: () -> String) {
+        executor.execute {
+            try { val value = block(); main.post { result.success(value) } }
+            catch(e: Exception) { main.post { result.error(if (e is BackendClient.Failure) e.status.toString() else "backend", e.message, null) } }
+        }
     }
     private fun prepareVpn(token: String, body: JSONObject, result: MethodChannel.Result) {
         if (vpnResult != null) { result.error("busy", "Ожидается разрешение VPN", null); return }
@@ -128,12 +93,14 @@ class MainActivity : FlutterActivity() {
         if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
             requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 44)
         }
-        val intent = Intent(this, SvoiVpnService::class.java).putExtra("serverId", vpnBody!!.getString("serverId")).putExtra("token", vpnToken)
+        val body = vpnBody!!.toString()
+        val token = vpnToken
         vpnResult = null; vpnBody = null; vpnToken = ""
-        VpnRuntime.onStarted = { reply(result, it) }
+        val intent = Intent(this, SvoiVpnService::class.java).setAction("foreground")
         try {
             if (Build.VERSION.SDK_INT >= 26) startForegroundService(intent) else startService(intent)
-        } catch (e: Exception) { VpnRuntime.onStarted = null; result.error("vpn", e.message, null) }
+            work(result) { backend.request("connection/start", "POST", token, body).toString() }
+        } catch (e: Exception) { result.error("vpn", e.message, null) }
     }
     @Deprecated("Activity result bridge")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {

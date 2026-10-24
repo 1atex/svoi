@@ -52,9 +52,9 @@ jobs:
           dart format --output=none --set-exit-if-changed lib test
           flutter analyze
           flutter test
-          flutter build apk --debug --target-platform android-arm64,android-x64 --build-name 0.1.0-preview.4 --build-number 4
-          cp build/app/outputs/flutter-apk/app-debug.apk ../SVOI-Android-preview.4-emulator.apk
-          (cd .. && sha256sum SVOI-Android-preview.4-emulator.apk > SVOI-Android-preview.4-emulator.apk.sha256)
+          flutter build apk --debug --target-platform android-arm64,android-x64 --build-name 0.1.0-preview.5 --build-number 5
+          cp build/app/outputs/flutter-apk/app-debug.apk ../SVOI-Android-preview.5-emulator.apk
+          (cd .. && sha256sum SVOI-Android-preview.5-emulator.apk > SVOI-Android-preview.5-emulator.apk.sha256)
       - name: Enable KVM
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
@@ -72,16 +72,16 @@ jobs:
           profile: pixel_2
           disable-animations: true
           script: |
-            adb install -r SVOI-Android-preview.4-emulator.apk
+            adb install -r SVOI-Android-preview.5-emulator.apk
             adb shell appops set dev.svoi.app.preview ACTIVATE_VPN allow
             cd flutter_client/android && ./gradlew :app:connectedDebugAndroidTest
             adb logcat -d -s SvoiPerf:I '*:S' > /tmp/svoi-android-resources.log
       - name: Build optimized APK for ARM64 phones
         working-directory: flutter_client
         run: |
-          flutter build apk --release --split-per-abi --target-platform android-arm64 --build-name 0.1.0-preview.4 --build-number 4
-          cp build/app/outputs/flutter-apk/app-arm64-v8a-release.apk ../SVOI-Android-preview.4-arm64.apk
-          (cd .. && sha256sum SVOI-Android-preview.4-arm64.apk > SVOI-Android-preview.4-arm64.apk.sha256)
+          flutter build apk --release --split-per-abi --target-platform android-arm64 --build-name 0.1.0-preview.5 --build-number 5
+          cp build/app/outputs/flutter-apk/app-arm64-v8a-release.apk ../SVOI-Android-preview.5-arm64.apk
+          (cd .. && sha256sum SVOI-Android-preview.5-arm64.apk > SVOI-Android-preview.5-arm64.apk.sha256)
       - name: Upload diagnostics
         if: always()
         uses: actions/upload-artifact@v4
@@ -97,13 +97,13 @@ jobs:
         with:
           name: SVOI-Android-preview-emulator
           path: |
-            SVOI-Android-preview.4-emulator.apk
-            SVOI-Android-preview.4-emulator.apk.sha256
+            SVOI-Android-preview.5-emulator.apk
+            SVOI-Android-preview.5-emulator.apk.sha256
           retention-days: 14
       - uses: actions/upload-artifact@v4
         with:
           name: SVOI-Android-preview-arm64
           path: |
-            SVOI-Android-preview.4-arm64.apk
-            SVOI-Android-preview.4-arm64.apk.sha256
+            SVOI-Android-preview.5-arm64.apk
+            SVOI-Android-preview.5-arm64.apk.sha256
           retention-days: 14

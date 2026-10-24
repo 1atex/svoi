@@ -18,7 +18,6 @@ object VpnRuntime {
     private val queue = Executors.newSingleThreadExecutor()
     @Volatile var session: Session? = null
     @Volatile var service: SvoiVpnService? = null
-    @Volatile var onStarted: ((String?) -> Unit)? = null
     private var snapshot = JSONObject().put("available", true).put("state", "stopped").put("mode", "tun").put("logs", JSONArray())
     @Synchronized fun init(context: Context) {
         if (session != null) return
@@ -37,7 +36,7 @@ object VpnRuntime {
         if (state == "running") snapshot.put("startedAt", java.time.Instant.now().toString())
         if (state == "stopped") snapshot.remove("startedAt")
     }
-    fun start(context: Context, svc: SvoiVpnService, token: String, id: String) = queue.execute {
+    fun start(context: Context, svc: SvoiVpnService, token: String, id: String, callback: (String?) -> Unit) = queue.execute {
         var error: String? = null
         try {
             init(context)
@@ -54,7 +53,7 @@ object VpnRuntime {
             update("stopped", error)
             svc.stopSelf()
         }
-        val callback = onStarted; onStarted = null; callback?.invoke(error)
+        callback(error)
     }
     fun stop(callback: (String?) -> Unit = {}) = queue.execute {
         update("stopping")
@@ -89,13 +88,22 @@ object VpnRuntime {
 
 class SvoiVpnService : VpnService(), Protector {
     private var tunnel: ParcelFileDescriptor? = null
+    private lateinit var endpoint: BackendEndpoint
+    private val main = android.os.Handler(android.os.Looper.getMainLooper())
+    private val promotionTimeout = Runnable {
+        if (VpnRuntime.status().optString("state") !in listOf("running", "starting")) {
+            stopForeground(STOP_FOREGROUND_REMOVE); stopSelf()
+        }
+    }
+    override fun onCreate() { super.onCreate(); endpoint = BackendEndpoint(this) }
+    override fun onBind(intent: Intent?): android.os.IBinder? =
+        if (intent?.action == BackendClient.ACTION) endpoint else super.onBind(intent)
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == "stop") { VpnRuntime.stop(); return START_NOT_STICKY }
-        val id = intent?.getStringExtra("serverId")
-        val token = intent?.getStringExtra("token")
-        if (id == null || token == null) { stopSelf(); return START_NOT_STICKY }
-        showNotification(false)
-        VpnRuntime.start(applicationContext, this, token, id)
+        if (intent?.action == "foreground") {
+            showNotification(VpnRuntime.status().optString("state") == "running")
+            main.removeCallbacks(promotionTimeout); main.postDelayed(promotionTimeout, 20000)
+        }
         return START_NOT_STICKY
     }
     fun showNotification(connected: Boolean) {
@@ -132,6 +140,8 @@ class SvoiVpnService : VpnService(), Protector {
     }
     override fun onRevoke() { VpnRuntime.stop(); super.onRevoke() }
     override fun onDestroy() {
+        main.removeCallbacks(promotionTimeout)
+        endpoint.close()
         if (VpnRuntime.service === this) VpnRuntime.stop()
         super.onDestroy()
     }

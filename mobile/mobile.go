@@ -2,11 +2,13 @@ package mobile
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net"
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -137,4 +139,11 @@ func Check() (int64, error) {
 		return 0, errors.New("Неожиданный ответ проверки соединения")
 	}
 	return time.Since(start).Milliseconds(), nil
+}
+
+func Diagnostics() string {
+	var stats runtime.MemStats
+	runtime.ReadMemStats(&stats)
+	data, _ := json.Marshal(map[string]any{"heapBytes": stats.HeapAlloc, "heapInuseBytes": stats.HeapInuse, "goroutines": runtime.NumGoroutine(), "gcCount": stats.NumGC})
+	return string(data)
 }

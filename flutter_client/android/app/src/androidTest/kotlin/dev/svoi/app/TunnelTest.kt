@@ -2,6 +2,7 @@ package dev.svoi.app
 
 import android.content.Intent
 import android.net.VpnService
+import android.os.ParcelFileDescriptor
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -9,72 +10,108 @@ import org.junit.Assert.*
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.json.JSONObject
+import java.io.File
 import java.net.HttpURLConnection
 import java.net.URL
-import java.util.concurrent.CountDownLatch
-import java.util.concurrent.TimeUnit
 
 @RunWith(AndroidJUnit4::class)
 class TunnelTest {
-    private fun resources(phase: String) {
-        val memory = android.os.Debug.MemoryInfo()
-        android.os.Debug.getMemoryInfo(memory)
-        android.util.Log.i("SvoiPerf", JSONObject()
-            .put("phase", phase).put("pssKiB", memory.totalPss)
-            .put("cpuMs", android.os.Process.getElapsedCpuTime())
-            .put("threads", java.io.File("/proc/self/task").list()?.size)
-            .put("fds", java.io.File("/proc/self/fd").list()?.size).toString())
+    private fun traffic() {
+        val connection = URL("http://198.18.0.42:18080/probe").openConnection() as HttpURLConnection
+        connection.connectTimeout = 8000; connection.readTimeout = 8000
+        connection.setRequestProperty("Connection", "close")
+        try { assertEquals("svoi-mobile-tunnel-ok", connection.inputStream.bufferedReader().use { it.readText().trim() }) }
+        finally { connection.disconnect() }
     }
-    @Test fun importedProfileRoutesTrafficAndReconnects() {
-        val context = InstrumentationRegistry.getInstrumentation().targetContext
-        ActivityScenario.launch(MainActivity::class.java).use {
-            VpnRuntime.init(context)
-            resources("initialized")
+
+    @Test fun isolatedBackendSurvivesUiAndTwentyReconnects() {
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        val context = instrumentation.targetContext
+        var scenario = ActivityScenario.launch(MainActivity::class.java)
+        var client = BackendClient(context)
+        fun request(path: String, method: String = "GET", token: String = "", body: JSONObject = JSONObject(), probeId: String = "") =
+            client.request(path, method, token, body.toString(), probeId)
+        fun sample(phase: String): JSONObject {
+            val snapshot = request("android/diagnostics").put("phase", phase)
+            android.util.Log.i("SvoiPerf", snapshot.toString())
+            return snapshot
+        }
+        fun promote() { context.startForegroundService(Intent(context, SvoiVpnService::class.java).setAction("foreground")) }
+        try {
+            request("init")
             assertNull("Grant ACTIVATE_VPN before this test", VpnService.prepare(context))
-            fun request(method: String, path: String, token: String, body: JSONObject): JSONObject {
-                val response = JSONObject(VpnRuntime.session!!.request(method, "/api/$path", token, body.toString()))
-                assertTrue(response.toString(), response.getInt("status") < 400)
-                return response.getJSONObject("body")
-            }
-            val group = request("POST", "groups", "", JSONObject().put("name","Android smoke").put("deviceName","Emulator").put("platform","Android"))
-            val token = group.getString("token")
-            request("POST", "subscription/import", token, JSONObject().put("content", "vless://90e3da82-374e-46ef-9099-761d39b86b82@10.0.2.2:10880?encryption=none&security=none&type=tcp#Test"))
-            val current = request("GET", "me", token, JSONObject())
-            val id = current.getJSONArray("servers").getJSONObject(0).getString("id")
-            for (cycle in 1..3) {
-                val ready = CountDownLatch(1)
-                var error: String? = null
-                VpnRuntime.onStarted = { error = it; ready.countDown() }
-                context.startForegroundService(Intent(context, SvoiVpnService::class.java).putExtra("token",token).putExtra("serverId",id))
-                assertTrue("VPN startup timeout",ready.await(20, TimeUnit.SECONDS))
-                assertNull(error)
-                assertEquals("running",VpnRuntime.status().getString("state"))
-                resources("connected-$cycle")
+            val first = sample("initialized")
+            assertNotEquals("Backend must be a separate process", android.os.Process.myPid(), first.getInt("pid"))
+            assertFalse("UI must not load a second Go runtime", File("/proc/self/maps").readText().contains("libgojni.so"))
+            val large = "x".repeat(2 * 1024 * 1024)
+            assertEquals(large, request("android/test-echo", "POST", body = JSONObject().put("value", large)).getString("value"))
+            val created = request("groups", "POST", body = JSONObject().put("name", "Android smoke").put("deviceName", "Emulator").put("platform", "Android"))
+            val token = created.getString("token")
+            request("subscription/import", "POST", token, JSONObject().put("content", "vless://90e3da82-374e-46ef-9099-761d39b86b82@10.0.2.2:10880?encryption=none&security=none&type=tcp#Test"))
+            val id = request("me", token = token).getJSONArray("servers").getJSONObject(0).getString("id")
+            var warm: JSONObject? = null
+            for (cycle in 1..20) {
+                promote()
+                val running = request("connection/start", "POST", token, JSONObject().put("serverId", id))
+                assertEquals("running", running.getString("state"))
                 if (cycle == 1) {
-                    val cancelled = VpnRuntime.session!!.newProbe(token, id)
-                    cancelled.cancel()
-                    try { cancelled.run(); fail("Cancelled probe must not start") }
-                    catch(e: Exception) { assertTrue(e.message.orEmpty().contains("canceled")) }
-                    val probes = java.util.concurrent.Executors.newFixedThreadPool(2)
+                    client.cancelProbe("cancel-before-start")
+                    try { request("servers/$id/probe", "POST", token, probeId = "cancel-before-start"); fail("Cancelled probe must not start") }
+                    catch(e: BackendClient.Failure) { assertTrue(e.message.orEmpty().contains("отменена")) }
+                    val pool = java.util.concurrent.Executors.newFixedThreadPool(2)
                     try {
-                        val checks = (1..2).map { probes.submit<Boolean> {
-                            try { VpnRuntime.session!!.probe(token, id); false }
-                            catch(e: Exception) { true }
+                        val checks = (1..2).map { number -> pool.submit<Boolean> {
+                            try { request("servers/$id/probe", "POST", token, probeId = "parallel-$number"); false }
+                            catch(e: BackendClient.Failure) { true }
                         } }
-                        for (check in checks) assertTrue("HTTP-only fixture must fail HTTPS probe", check.get(8, TimeUnit.SECONDS))
-                        assertEquals("probes stopped the active VPN", "running", VpnRuntime.status().getString("state"))
-                    } finally { probes.shutdownNow() }
+                        checks.forEach { assertTrue("HTTP-only fixture must fail HTTPS", it.get(10, java.util.concurrent.TimeUnit.SECONDS)) }
+                    } finally { pool.shutdownNow() }
                 }
-                val connection = URL("http://198.18.0.42:18080/probe").openConnection() as HttpURLConnection
-                connection.connectTimeout=8000;connection.readTimeout=8000
-                try { assertEquals("svoi-mobile-tunnel-ok",connection.inputStream.bufferedReader().use { reader -> reader.readText().trim() }) }
-                finally { connection.disconnect() }
-                val stopped = CountDownLatch(1)
-                VpnRuntime.stop { stopped.countDown() }
-                assertTrue("VPN shutdown timeout",stopped.await(10,TimeUnit.SECONDS))
-                assertEquals("stopped",VpnRuntime.status().getString("state"))
-                resources("stopped-$cycle")
+                traffic()
+                if (cycle == 3) {
+                    val pid = sample("before-ui-close").getInt("pid")
+                    scenario.close(); client.close()
+                    Thread.sleep(1200)
+                    traffic()
+                    client = BackendClient(context)
+                    assertEquals("running", request("connection").getString("state"))
+                    assertEquals(pid, sample("after-ui-rebind").getInt("pid"))
+                    scenario = ActivityScenario.launch(MainActivity::class.java)
+                    assertEquals(id, request("connection").getString("serverId"))
+                    traffic()
+                }
+                request("connection/stop", "POST", token)
+                Thread.sleep(1000)
+                val stopped = sample("stopped-$cycle")
+                assertEquals("stopped", request("connection").getString("state"))
+                assertEquals("TUN descriptor leaked", 0, stopped.getJSONObject("fdKinds").optInt("tun"))
+                if (cycle == 5) warm = stopped
+                if (cycle == 20) {
+                    assertTrue("Descriptors grow after warmup: $warm -> $stopped", stopped.getInt("fds") <= warm!!.getInt("fds") + 4)
+                    assertTrue("Goroutines grow after warmup: $warm -> $stopped", stopped.getJSONObject("go").getInt("goroutines") <= warm!!.getJSONObject("go").getInt("goroutines") + 6)
+                }
             }
+            promote()
+            request("connection/start", "POST", token, JSONObject().put("serverId", id))
+            val oldPid = sample("before-service-crash").getInt("pid")
+            ParcelFileDescriptor.AutoCloseInputStream(instrumentation.uiAutomation.executeShellCommand("run-as ${context.packageName} kill -9 $oldPid")).use { it.readBytes() }
+            var recovered: JSONObject? = null
+            val until = System.nanoTime() + java.util.concurrent.TimeUnit.SECONDS.toNanos(25)
+            while (System.nanoTime() < until) {
+                try {
+                    val current = request("android/diagnostics")
+                    if (current.getInt("pid") != oldPid) { recovered = current; break }
+                } catch (_: Exception) { }
+                Thread.sleep(200)
+            }
+            assertNotNull("Client did not rebind after backend death", recovered)
+            assertEquals("Dead VPN must not stay connected in UI", "stopped", request("connection").getString("state"))
+            assertEquals(id, request("me", token = token).getJSONArray("servers").getJSONObject(0).getString("id"))
+            sample("service-recovered")
+            assertFalse(File("/proc/self/maps").readText().contains("libgojni.so"))
+        } finally {
+            runCatching { request("connection/stop", "POST") }
+            client.close(); scenario.close()
         }
     }
 }

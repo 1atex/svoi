@@ -540,7 +540,7 @@ class _MobileShellState extends State<MobileShell> {
         ),
       ),
       const Divider(),
-      const Text('SVOI · Android Preview 4'),
+      const Text('SVOI · Android Preview 5'),
       const SizedBox(height: 12),
       const Text(
         'Обновления этой тестовой сборки устанавливаются APK-файлом. zapret и настройки автозапуска Windows здесь недоступны.',

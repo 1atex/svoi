@@ -4,6 +4,7 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 android {
+    buildFeatures { aidl = true }
     namespace = "dev.svoi.app"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = "28.2.13676358"
