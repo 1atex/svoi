@@ -26,7 +26,17 @@ class TunnelTest {
     @Test fun isolatedBackendSurvivesUiAndTwentyReconnects() {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         val context = instrumentation.targetContext
-        var scenario = ActivityScenario.launch(MainActivity::class.java)
+        val watchdog = java.util.Timer(true)
+        watchdog.schedule(object : java.util.TimerTask() {
+            override fun run() {
+                Thread.getAllStackTraces().forEach { (thread, stack) ->
+                    android.util.Log.e("SvoiTestWatchdog", "${thread.name} ${thread.state}\n${stack.joinToString("\n")}")
+                }
+            }
+        }, 120000)
+        fun launch() = ActivityScenario.launch<MainActivity>(Intent(context, MainActivity::class.java)
+            .putExtra("enable-software-rendering", true).putExtra("enable-impeller", false))
+        var scenario = launch()
         var client = BackendClient(context)
         fun request(path: String, method: String = "GET", token: String = "", body: JSONObject = JSONObject(), probeId: String = "") =
             client.request(path, method, token, body.toString(), probeId)
@@ -75,7 +85,7 @@ class TunnelTest {
                     client = BackendClient(context)
                     assertEquals("running", request("connection").getString("state"))
                     assertEquals(pid, sample("after-ui-rebind").getInt("pid"))
-                    scenario = ActivityScenario.launch(MainActivity::class.java)
+                    scenario = launch()
                     assertEquals(id, request("connection").getString("serverId"))
                     traffic()
                 }
@@ -111,6 +121,7 @@ class TunnelTest {
         } finally {
             runCatching { request("connection/stop", "POST") }
             client.close(); scenario.close()
+            watchdog.cancel()
         }
     }
 }

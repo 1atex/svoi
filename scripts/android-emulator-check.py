@@ -7,8 +7,8 @@ ROOT = Path(__file__).resolve().parents[1]
 PACKAGE = 'dev.svoi.app.preview'
 
 
-def run(*args, cwd=ROOT):
-    subprocess.run(args, cwd=cwd, check=True)
+def run(*args, cwd=ROOT, timeout=90):
+    subprocess.run(args, cwd=cwd, check=True, timeout=timeout)
 
 
 def stored_profiles():
@@ -19,7 +19,7 @@ def stored_profiles():
 try:
     run('adb', 'install', '-r', str(ROOT / '.tools/android-debug.apk'))
     run('adb', 'shell', 'appops', 'set', PACKAGE, 'ACTIVATE_VPN', 'allow')
-    run('./gradlew', ':app:connectedDebugAndroidTest', cwd=ROOT / 'flutter_client/android')
+    run('./gradlew', ':app:connectedDebugAndroidTest', '-Ptarget-platform=android-x64', cwd=ROOT / 'flutter_client/android', timeout=360)
     run('adb', 'shell', 'am', 'force-stop', PACKAGE)
     before = stored_profiles()
     run('adb', 'install', '-r', str(ROOT / 'flutter_client/android/app/src/androidTest/assets/update.apk'))
@@ -32,4 +32,4 @@ try:
     print('Verified in-place APK update: saved profiles unchanged', flush=True)
 finally:
     with open('/tmp/svoi-android-resources.log', 'wb') as log:
-        subprocess.run(['adb', 'logcat', '-d'], stdout=log, check=False)
+        subprocess.run(['adb', 'logcat', '-d'], stdout=log, check=False, timeout=20)
