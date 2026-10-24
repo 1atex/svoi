@@ -10,11 +10,19 @@ class MobileShell extends StatefulWidget {
 class _MobileShellState extends State<MobileShell> {
   int page = 0;
   String search = '';
+  final searchController = TextEditingController();
   SvoiController get c => widget.c;
+  @override
+  void dispose() {
+    searchController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) => ListenableBuilder(
     listenable: Listenable.merge([
       c.group,
+      c.sessions,
       c.servers,
       c.subscriptions,
       c.selected,
@@ -99,7 +107,11 @@ class _MobileShellState extends State<MobileShell> {
           'Android · экспериментальная сборка',
           style: TextStyle(color: muted),
         ),
-        const SizedBox(height: 24),
+        TextButton.icon(
+          onPressed: () => setState(() => page = 2),
+          icon: const Icon(Icons.people_outline, size: 18),
+          label: Text('Профиль: ${c.group.value['name'] ?? 'Моя сеть'}'),
+        ),
         if (server == null)
           Card(
             child: Padding(
@@ -107,20 +119,35 @@ class _MobileShellState extends State<MobileShell> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const Text(
-                    'Начните с подписки',
-                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.w600),
+                  Text(
+                    c.sessions.value.length > 1
+                        ? 'В этом профиле нет серверов'
+                        : 'Начните с подписки',
+                    style: const TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                   const SizedBox(height: 12),
-                  const Text(
-                    'Вставьте ссылку от провайдера или код переноса из SVOI на компьютере.',
+                  Text(
+                    c.sessions.value.length > 1
+                        ? 'У вас есть другие сохранённые профили. Подписки каждого профиля хранятся отдельно.'
+                        : 'Вставьте ссылку от провайдера или код переноса из SVOI на компьютере.',
                   ),
                   const SizedBox(height: 20),
                   FilledButton.icon(
-                    onPressed: () => importDialog(context, c),
+                    onPressed: c.busy.value
+                        ? null
+                        : () => importDialog(context, c),
                     icon: const Icon(Icons.add_link),
                     label: const Text('Добавить подписку'),
                   ),
+                  if (c.sessions.value.length > 1)
+                    TextButton.icon(
+                      onPressed: () => setState(() => page = 2),
+                      icon: const Icon(Icons.switch_account_outlined),
+                      label: const Text('Выбрать сохранённый профиль'),
+                    ),
                 ],
               ),
             ),
@@ -212,39 +239,86 @@ class _MobileShellState extends State<MobileShell> {
         Padding(
           padding: const EdgeInsets.all(16),
           child: TextField(
+            controller: searchController,
             onChanged: (v) => setState(() => search = v),
-            decoration: const InputDecoration(
-              prefixIcon: Icon(Icons.search),
+            decoration: InputDecoration(
+              prefixIcon: const Icon(Icons.search),
               hintText: 'Название, страна, адрес',
+              suffixIcon: search.isEmpty
+                  ? null
+                  : IconButton(
+                      tooltip: 'Сбросить поиск',
+                      onPressed: () => setState(() {
+                        searchController.clear();
+                        search = '';
+                      }),
+                      icon: const Icon(Icons.close),
+                    ),
             ),
           ),
         ),
         Expanded(
-          child: ListView.builder(
-            itemCount: list.length,
-            itemBuilder: (context, i) {
-              final s = list[i];
-              return ListTile(
-                selected: s.id == c.selected.value,
-                leading: CountryMark(country: s.country),
-                title: Text(
-                  s.country.title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+          child: list.isEmpty
+              ? Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          search.isNotEmpty
+                              ? 'По запросу ничего не найдено'
+                              : 'В выбранном профиле нет серверов',
+                          textAlign: TextAlign.center,
+                        ),
+                        TextButton(
+                          onPressed: () {
+                            setState(() {
+                              if (search.isNotEmpty) {
+                                searchController.clear();
+                                search = '';
+                              } else {
+                                page = 2;
+                              }
+                            });
+                          },
+                          child: Text(
+                            search.isNotEmpty
+                                ? 'Сбросить поиск'
+                                : 'Выбрать профиль',
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+              : ListView.builder(
+                  itemCount: list.length,
+                  itemBuilder: (context, i) {
+                    final s = list[i];
+                    return ListTile(
+                      selected: s.id == c.selected.value,
+                      leading: CountryMark(country: s.country),
+                      title: Text(
+                        s.country.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      subtitle: Text(s.protocol),
+                      trailing: IconButton(
+                        tooltip: 'Конфигурация',
+                        icon: const Icon(Icons.code),
+                        onPressed: () => showConfig(context, c, s),
+                      ),
+                      onTap: c.busy.value
+                          ? null
+                          : () async {
+                              await c.select(s.id);
+                              if (mounted) setState(() => page = 0);
+                            },
+                    );
+                  },
                 ),
-                subtitle: Text(s.protocol),
-                trailing: IconButton(
-                  tooltip: 'Конфигурация',
-                  icon: const Icon(Icons.code),
-                  onPressed: () => showConfig(context, c, s),
-                ),
-                onTap: () async {
-                  await c.select(s.id);
-                  if (mounted) setState(() => page = 0);
-                },
-              );
-            },
-          ),
         ),
       ],
     );
@@ -254,38 +328,67 @@ class _MobileShellState extends State<MobileShell> {
     padding: const EdgeInsets.all(20),
     children: [
       Text(
-        c.group.value['name']?.toString() ?? 'Мой профиль',
+        'Сохранённые профили',
         style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w600),
       ),
       const SizedBox(height: 16),
+      const Text(
+        'Активен один профиль. При переключении VPN отключается; подписки остаются в своём профиле.',
+      ),
+      const SizedBox(height: 12),
+      for (final (index, s) in c.sessions.value.indexed)
+        Card(
+          child: ListTile(
+            leading: Icon(
+              s['token'] == c.api.token
+                  ? Icons.check_circle
+                  : Icons.account_circle_outlined,
+            ),
+            title: Text('${s['name']} · ${index + 1}'),
+            subtitle: Text(
+              [
+                if (s['token'] == c.api.token) 'Активный профиль',
+                if (s.containsKey('serverCount'))
+                  'Серверов: ${s['serverCount']} · подписок: ${s['subscriptionCount']}'
+                else
+                  'Открыть сохранённый профиль',
+                if (s['sources']?.toString().isNotEmpty == true)
+                  s['sources'].toString(),
+              ].join('\n'),
+            ),
+            selected: s['token'] == c.api.token,
+            onTap: c.busy.value || s['token'] == c.api.token
+                ? null
+                : () => c.switchProfile(s['token'] as String),
+          ),
+        ),
+      const SizedBox(height: 24),
       const Text(
         'Перенос подписок между ПК и телефоном. Код содержит доступ к подпискам; передавайте его только получателю.',
       ),
       const SizedBox(height: 20),
       FilledButton.icon(
-        onPressed: () => importDialog(context, c),
+        onPressed: c.busy.value ? null : () => importDialog(context, c),
         icon: const Icon(Icons.download),
         label: const Text('Получить профиль'),
       ),
       const SizedBox(height: 12),
       OutlinedButton.icon(
-        onPressed: () => c.action(() async {
-          final result = await c.api.request('transfer/export', method: 'POST');
-          await Clipboard.setData(
-            ClipboardData(text: result['code'] as String),
-          );
-          c.message.value = 'Код профиля скопирован';
-        }),
+        onPressed: c.busy.value
+            ? null
+            : () => c.action(() async {
+                final result = await c.api.request(
+                  'transfer/export',
+                  method: 'POST',
+                );
+                await Clipboard.setData(
+                  ClipboardData(text: result['code'] as String),
+                );
+                c.message.value = 'Код профиля скопирован';
+              }),
         icon: const Icon(Icons.copy),
         label: const Text('Скопировать код переноса'),
       ),
-      const SizedBox(height: 24),
-      for (final s in c.sessions.value)
-        ListTile(
-          title: Text(s['name'].toString()),
-          selected: s['token'] == c.api.token,
-          onTap: () => c.switchProfile(s['token'] as String),
-        ),
     ],
   );
   Widget settings() => ListView(

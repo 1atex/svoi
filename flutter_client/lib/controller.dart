@@ -112,6 +112,23 @@ class SvoiController {
       await saveSession();
     }
     if (api.mobile) mode.value = 'tun';
+    if (api.mobile) {
+      final activeToken = api.token;
+      try {
+        for (final session in List.of(sessions.value)) {
+          if (session.containsKey('serverCount')) continue;
+          api.token = session['token'] as String;
+          try {
+            _rememberProfile(await api.request('me'));
+          } on ApiException {
+            // An unavailable saved profile must not prevent opening the active one.
+          }
+        }
+      } finally {
+        api.token = activeToken;
+      }
+      await saveSession();
+    }
     preferences.value = await api.request('settings');
     await poll();
     if (preferences.value['autoRefresh'] == true) {
@@ -126,12 +143,7 @@ class SvoiController {
       lastUsed.value = saved['lastUsed']?.toString() ?? '';
     }
     this.group.value = group;
-    if (api.token.isNotEmpty) {
-      sessions.value = [
-        ...sessions.value.where((s) => s['token'] != api.token),
-        {'token': api.token, 'name': group['name'] ?? 'Профиль'},
-      ];
-    }
+    _rememberProfile(group);
     servers.value = (group['servers'] as List? ?? [])
         .map((s) => ServerEntry(Map<String, dynamic>.from(s)))
         .toList(growable: false);
@@ -152,6 +164,28 @@ class SvoiController {
 
   Future<void> reload() async {
     _acceptGroup(await api.request('me'));
+  }
+
+  void _rememberProfile(Map<String, dynamic> profile) {
+    if (api.token.isEmpty) return;
+    final sources = profile['subscriptions'] as List? ?? [];
+    final summary = <String, dynamic>{
+      'token': api.token,
+      'name': profile['name'] ?? 'Профиль',
+      'serverCount': (profile['servers'] as List? ?? []).length,
+      'subscriptionCount': sources.length,
+      'sources': sources
+          .map((s) => s['name'] ?? s['host'] ?? 'Подписка')
+          .join(', '),
+    };
+    final entries = List<Map<String, dynamic>>.of(sessions.value);
+    final index = entries.indexWhere((s) => s['token'] == api.token);
+    if (index < 0) {
+      entries.add(summary);
+    } else {
+      entries[index] = summary;
+    }
+    sessions.value = entries;
   }
 
   Future<void> saveSession() {
@@ -408,6 +442,7 @@ class SvoiController {
   });
 
   Future<void> switchProfile(String token) => action(() async {
+    if (token == api.token) return;
     cancelProbes();
     connection.value = await api.request('connection/stop', method: 'POST');
     final previous = api.token;

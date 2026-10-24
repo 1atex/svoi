@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -99,7 +100,85 @@ class DelayedConnectionBackend extends DemoBackend {
   }
 }
 
+class SavedProfilesBackend extends DemoBackend {
+  @override
+  bool get mobile => true;
+  int stops = 0;
+  @override
+  Future<Map<String, dynamic>> request(
+    String path, {
+    String method = 'GET',
+    Object? body,
+    RequestCancellation? cancellation,
+  }) async {
+    if (path == 'me') {
+      if (token == 'expired') throw ApiException('expired', 401);
+      return {
+        ...this.group,
+        'id': token,
+        'name': 'Моя сеть',
+        if (token == 'empty') 'servers': <dynamic>[],
+        if (token == 'empty') 'subscriptions': <dynamic>[],
+      };
+    }
+    if (path == 'connection/stop') stops++;
+    return super.request(
+      path,
+      method: method,
+      body: body,
+      cancellation: cancellation,
+    );
+  }
+}
+
 void main() {
+  test(
+    'saved profile migration and switching retain servers and stable order',
+    () async {
+      final directory = await Directory.systemTemp.createTemp('svoi-profiles-');
+      addTearDown(() => directory.delete(recursive: true));
+      final file = File('${directory.path}/session.json');
+      await file.writeAsString(
+        jsonEncode({
+          'token': 'empty',
+          'sessions': [
+            for (final token in ['imported', 'expired', 'empty'])
+              {'token': token, 'name': 'Моя сеть'},
+          ],
+        }),
+      );
+      final api = SavedProfilesBackend();
+      final c = SvoiController(api, sessionFile: file);
+      await c.initialize();
+      expect(api.token, 'empty');
+      expect(c.servers.value, isEmpty);
+      expect(c.sessions.value.first['serverCount'], 1000);
+      expect(c.sessions.value.last['serverCount'], 0);
+      await c.switchProfile('imported');
+      expect(c.servers.value.length, 1000);
+      expect(c.selected.value, isNotEmpty);
+      await c.switchProfile('imported');
+      expect(api.stops, 1);
+      await c.switchProfile('empty');
+      expect(c.servers.value, isEmpty);
+      await c.switchProfile('imported');
+      expect(c.servers.value.length, 1000);
+      expect(c.sessions.value.map((s) => s['token']), [
+        'imported',
+        'expired',
+        'empty',
+      ]);
+      await c.close();
+      final reopened = SvoiController(
+        SavedProfilesBackend(),
+        sessionFile: file,
+      );
+      await reopened.initialize();
+      expect(reopened.api.token, 'imported');
+      expect(reopened.servers.value.length, 1000);
+      await reopened.close();
+    },
+  );
   test(
     'connection phases distinguish start, check and an unsuccessful check',
     () async {
