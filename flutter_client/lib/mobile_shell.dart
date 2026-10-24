@@ -8,6 +8,13 @@ class MobileShell extends StatefulWidget {
 }
 
 class _MobileShellState extends State<MobileShell> {
+  MobileUpdateModel? updates;
+  @override
+  void initState() {
+    super.initState();
+    if (c.api is AndroidBackend) updates = MobileUpdateModel()..start();
+  }
+
   int page = 0;
   String search = '';
   bool sortLatency = false;
@@ -15,6 +22,7 @@ class _MobileShellState extends State<MobileShell> {
   SvoiController get c => widget.c;
   @override
   void dispose() {
+    updates?.dispose();
     searchController.dispose();
     super.dispose();
   }
@@ -22,6 +30,7 @@ class _MobileShellState extends State<MobileShell> {
   @override
   Widget build(BuildContext context) => ListenableBuilder(
     listenable: Listenable.merge([
+      if (updates != null) updates!,
       c.group,
       c.sessions,
       c.servers,
@@ -75,6 +84,12 @@ class _MobileShellState extends State<MobileShell> {
                 )
               : Text(['SVOI', 'Серверы', 'Профиль', 'Настройки'][page]),
           actions: [
+            if (updates?.available == true)
+              IconButton(
+                tooltip: 'Доступно обновление SVOI',
+                onPressed: () => setState(() => page = 3),
+                icon: const Icon(Icons.system_update, color: accent),
+              ),
             IconButton(
               tooltip: 'Импортировать подписку',
               onPressed: c.busy.value ? null : () => importDialog(context, c),
@@ -540,10 +555,13 @@ class _MobileShellState extends State<MobileShell> {
         ),
       ),
       const Divider(),
-      const Text('SVOI · Android Preview 5'),
+      if (updates != null)
+        MobileUpdatesPanel(model: updates!)
+      else
+        const Text('SVOI · Android Preview 6'),
       const SizedBox(height: 12),
       const Text(
-        'Обновления этой тестовой сборки устанавливаются APK-файлом. zapret и настройки автозапуска Windows здесь недоступны.',
+        'Новая версия устанавливается через системное окно Android. Профили и подписки сохраняются.',
         style: TextStyle(color: muted),
       ),
       const SizedBox(height: 12),

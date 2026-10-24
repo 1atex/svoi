@@ -35,6 +35,29 @@ class MainActivity : FlutterActivity() {
 
     override fun configureFlutterEngine(engine: FlutterEngine) {
         super.configureFlutterEngine(engine)
+        MethodChannel(engine.dartExecutor.binaryMessenger, "dev.svoi/updates").setMethodCallHandler { call, result ->
+            if (call.method == "install") {
+                workers.execute {
+                    try {
+                        val intent = AndroidUpdates.get(applicationContext).installIntent()
+                        main.post {
+                            try { startActivity(intent); result.success(null) }
+                            catch (e: Exception) { result.error("update", e.message, null) }
+                        }
+                    } catch (e: Exception) { main.post { result.error("update", e.message, null) } }
+                }
+            } else work(result) {
+                val updates = AndroidUpdates.get(applicationContext)
+                when (call.method) {
+                    "status" -> updates.status()
+                    "check" -> updates.check(call.argument<Boolean>("force") == true)
+                    "download" -> updates.download()
+                    "cancel" -> updates.cancel()
+                    "settings" -> updates.settings(call.argument<Boolean>("autoCheck") != false, call.argument<Boolean>("autoDownload") == true)
+                    else -> throw IllegalArgumentException("Неизвестная команда обновления")
+                }.toString()
+            }
+        }
         MethodChannel(engine.dartExecutor.binaryMessenger, "dev.svoi/mobile").setMethodCallHandler { call, result ->
             if (call.method == "init") {
                 work(result) { backend.request("init").toString() }

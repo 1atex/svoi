@@ -11,6 +11,14 @@ jobs:
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
+      - name: Read Android version
+        run: |
+          python3 - <<'PY'
+          import json, os
+          config = json.load(open('config/android-release.json'))
+          with open(os.environ['GITHUB_ENV'], 'a') as env:
+              env.write(f"ANDROID_VERSION={config['versionName']}\nANDROID_CODE={config['versionCode']}\n")
+          PY
       - uses: actions/setup-go@v5
         with:
           go-version: '1.27.3'
@@ -45,16 +53,20 @@ jobs:
           go test -ldflags=-checklinkname=0 ./...
           mkdir -p ../flutter_client/android/app/libs
           gomobile bind -target=android/arm64,android/amd64 -androidapi 26 -trimpath -ldflags='-checklinkname=0 -s -w -extldflags=-Wl,-z,max-page-size=16384' -o ../flutter_client/android/app/libs/svoi-mobile.aar .
-      - name: Check Flutter and build preview APK
+      - name: Check Flutter and build update fixtures
         working-directory: flutter_client
         run: |
           flutter pub get
           dart format --output=none --set-exit-if-changed lib test
           flutter analyze
           flutter test
-          flutter build apk --debug --target-platform android-arm64,android-x64 --build-name 0.1.0-preview.5 --build-number 5
-          cp build/app/outputs/flutter-apk/app-debug.apk ../SVOI-Android-preview.5-emulator.apk
-          (cd .. && sha256sum SVOI-Android-preview.5-emulator.apk > SVOI-Android-preview.5-emulator.apk.sha256)
+          flutter build apk --debug --target-platform android-x64 --build-name "$ANDROID_VERSION-test" --build-number "$((ANDROID_CODE + 1))"
+          mkdir -p android/app/src/androidTest/assets ../.tools
+          cp build/app/outputs/flutter-apk/app-debug.apk android/app/src/androidTest/assets/update.apk
+          keytool -genkeypair -keystore "$RUNNER_TEMP/test-key.p12" -storepass android -keypass android -alias test -dname 'CN=Update Test' -keyalg RSA -validity 2
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" sign --ks "$RUNNER_TEMP/test-key.p12" --ks-pass pass:android --out android/app/src/androidTest/assets/wrong-key.apk android/app/src/androidTest/assets/update.apk
+          flutter build apk --debug --target-platform android-x64 --build-name "$ANDROID_VERSION" --build-number "$ANDROID_CODE"
+          cp build/app/outputs/flutter-apk/app-debug.apk ../.tools/android-debug.apk
       - name: Enable KVM
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
@@ -71,17 +83,30 @@ jobs:
           arch: x86_64
           profile: pixel_2
           disable-animations: true
-          script: |
-            adb install -r SVOI-Android-preview.5-emulator.apk
-            adb shell appops set dev.svoi.app.preview ACTIVATE_VPN allow
-            cd flutter_client/android && ./gradlew :app:connectedDebugAndroidTest || { adb logcat -d > /tmp/svoi-android-resources.log; exit 1; }
-            adb logcat -d -s SvoiPerf:I '*:S' > /tmp/svoi-android-resources.log
-      - name: Build optimized APK for ARM64 phones
-        working-directory: flutter_client
+          script: python3 scripts/android-emulator-check.py
+      - name: Restore permanent signing key
+        env:
+          KEYSTORE_BASE64: ${{ secrets.SVOI_ANDROID_KEYSTORE_BASE64 }}
         run: |
-          flutter build apk --release --split-per-abi --target-platform android-arm64 --build-name 0.1.0-preview.5 --build-number 5
-          cp build/app/outputs/flutter-apk/app-arm64-v8a-release.apk ../SVOI-Android-preview.5-arm64.apk
-          (cd .. && sha256sum SVOI-Android-preview.5-arm64.apk > SVOI-Android-preview.5-arm64.apk.sha256)
+          python3 - <<'PY'
+          import base64, os
+          from pathlib import Path
+          path = Path(os.environ['RUNNER_TEMP']) / 'svoi-android-release.p12'
+          path.write_bytes(base64.b64decode(os.environ['KEYSTORE_BASE64'], validate=True))
+          path.chmod(0o600)
+          with open(os.environ['GITHUB_ENV'], 'a') as env:
+              env.write(f'SVOI_ANDROID_KEYSTORE={path}\n')
+          PY
+      - name: Build signed release APKs
+        working-directory: flutter_client
+        env:
+          SVOI_ANDROID_KEYSTORE_PASSWORD: ${{ secrets.SVOI_ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          flutter build apk --release --split-per-abi --target-platform android-arm64,android-x64 --build-name "$ANDROID_VERSION" --build-number "$ANDROID_CODE"
+          python3 ../scripts/android-release.py prepare
+      - name: Remove signing key from runner
+        if: always()
+        run: rm -f "$RUNNER_TEMP/svoi-android-release.p12" "$RUNNER_TEMP/test-key.p12"
       - name: Upload diagnostics
         if: always()
         uses: actions/upload-artifact@v4
@@ -95,15 +120,23 @@ jobs:
             /tmp/svoi-android-resources.log
       - uses: actions/upload-artifact@v4
         with:
-          name: SVOI-Android-preview-emulator
-          path: |
-            SVOI-Android-preview.5-emulator.apk
-            SVOI-Android-preview.5-emulator.apk.sha256
+          name: SVOI-Android-preview-release
+          path: .tools/android-release/*
+          include-hidden-files: true
           retention-days: 14
-      - uses: actions/upload-artifact@v4
+  publish:
+    needs: android
+    if: github.ref == 'refs/heads/android-preview'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
         with:
-          name: SVOI-Android-preview-arm64
-          path: |
-            SVOI-Android-preview.5-arm64.apk
-            SVOI-Android-preview.5-arm64.apk.sha256
-          retention-days: 14
+          name: SVOI-Android-preview-release
+          path: .tools/android-release
+      - name: Publish Android release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python3 scripts/android-release.py publish

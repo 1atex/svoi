@@ -25,6 +25,7 @@ part 'zapret_page.dart';
 part 'tray.dart';
 part 'startup_panel.dart';
 part 'mobile_shell.dart';
+part 'mobile_updates.dart';
 part 'mobile_identity.dart';
 part 'mobile_design.dart';
 

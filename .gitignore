@@ -22,3 +22,8 @@
 /flutter_client/android/app/src/main/assets/core/*.dat
 /mobile/*.aar
 /mobile/*-sources.jar
+
+*.jks
+*.keystore
+*.p12
+/flutter_client/android/app/src/androidTest/assets/*.apk
