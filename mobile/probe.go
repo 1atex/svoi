@@ -61,6 +61,9 @@ func (p *ProbeRequest) run() (int64, error) {
 		return 0, err
 	}
 	latency, err := probeConfig(ctx, config, "https://www.gstatic.com/generate_204")
+	if err := p.ctx.Err(); err != nil {
+		return 0, err
+	}
 	if ctx.Err() != nil {
 		return 0, errors.New("Нет ответа за 4 секунды. Подключение вручную доступно.")
 	}
@@ -131,10 +134,15 @@ func probeConfig(ctx context.Context, raw, target string) (int64, error) {
 		return 0, err
 	}
 	response, err := client.Do(request)
+	if response != nil {
+		defer response.Body.Close()
+	}
+	if cancelled := ctx.Err(); cancelled != nil {
+		return 0, cancelled
+	}
 	if err != nil {
 		return 0, err
 	}
-	defer response.Body.Close()
 	if response.StatusCode != http.StatusNoContent {
 		return 0, errors.New("неожиданный ответ проверки")
 	}
