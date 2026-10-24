@@ -2,7 +2,6 @@ package dev.svoi.app
 
 import android.content.Intent
 import android.net.VpnService
-import android.os.ParcelFileDescriptor
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -94,7 +93,7 @@ class TunnelTest {
             promote()
             request("connection/start", "POST", token, JSONObject().put("serverId", id))
             val oldPid = sample("before-service-crash").getInt("pid")
-            ParcelFileDescriptor.AutoCloseInputStream(instrumentation.uiAutomation.executeShellCommand("run-as ${context.packageName} kill -9 $oldPid")).use { it.readBytes() }
+            android.os.Process.killProcess(oldPid)
             var recovered: JSONObject? = null
             val until = System.nanoTime() + java.util.concurrent.TimeUnit.SECONDS.toNanos(25)
             while (System.nanoTime() < until) {
