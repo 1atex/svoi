@@ -136,9 +136,15 @@ ThemeData svoiTheme() => ThemeData(
 );
 
 class Bootstrap extends StatefulWidget {
-  const Bootstrap({super.key, this.demo = false, this.startup = false});
+  const Bootstrap({
+    super.key,
+    this.demo = false,
+    this.startup = false,
+    this.backend,
+  });
   final bool demo;
   final bool startup;
+  final Backend? backend;
   @override
   State<Bootstrap> createState() => _BootstrapState();
 }
@@ -171,16 +177,31 @@ class _BootstrapState extends State<Bootstrap> with WidgetsBindingObserver {
       final data = widget.demo
           ? Directory.systemTemp
           : await prepareDataDirectory();
-      final api = widget.demo
-          ? DemoBackend()
-          : await NativeBackend.launch(data, startup: widget.startup);
+      final api =
+          widget.backend ??
+          (widget.demo
+              ? DemoBackend()
+              : await NativeBackend.launch(data, startup: widget.startup));
       _controller = SvoiController(
         api,
         sessionFile: widget.demo ? null : File('${data.path}/session.json'),
       );
       await _controller!.initialize();
       if (mounted) setState(() => _ready = true);
-      if (widget.startup && mounted) {
+    } catch (e) {
+      await _controller?.close();
+      if (mounted) {
+        setState(() {
+          _ready = false;
+          _error = e.toString();
+        });
+      }
+      if (widget.startup) await windowChannel.invokeMethod('show');
+      return;
+    }
+    if (widget.startup && mounted && !_closing) {
+      try {
+        final api = _controller!.api;
         final zapret = await api.request('zapret');
         if (zapret['error']?.toString().isNotEmpty == true) {
           _controller!.message.value = zapret['error'].toString();
@@ -188,11 +209,12 @@ class _BootstrapState extends State<Bootstrap> with WidgetsBindingObserver {
         } else {
           await windowChannel.invokeMethod('tray');
         }
+      } catch (e) {
+        _controller!.message.value = 'Не удалось завершить запуск в трее: $e';
+        try {
+          await windowChannel.invokeMethod('show');
+        } catch (_) {}
       }
-    } catch (e) {
-      await _controller?.close();
-      if (mounted) setState(() => _error = e.toString());
-      if (widget.startup) await windowChannel.invokeMethod('show');
     }
   }
 

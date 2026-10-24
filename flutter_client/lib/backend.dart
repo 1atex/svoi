@@ -131,7 +131,10 @@ class NativeBackend extends Backend {
     Object? body,
     RequestCancellation? cancellation,
   }) async {
-    if (_closed || cancellation?.cancelled == true) {
+    if (_closed) {
+      throw ApiException('Локальный сервис остановлен. Перезапустите SVOI.');
+    }
+    if (cancellation?.cancelled == true) {
       throw ApiException('Запрос отменён.');
     }
     HttpClientRequest? request;
