@@ -562,7 +562,9 @@ class ProfilePage extends StatelessWidget {
                           if (result != null) {
                             await c.mutateGroup(
                               'identity',
-                              body: {'identity': result},
+                              body: {
+                                'identity': {...identity, ...result},
+                              },
                             );
                           }
                         },

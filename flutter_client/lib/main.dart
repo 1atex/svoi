@@ -25,6 +25,7 @@ part 'zapret_page.dart';
 part 'tray.dart';
 part 'startup_panel.dart';
 part 'mobile_shell.dart';
+part 'mobile_identity.dart';
 
 const windowChannel = MethodChannel('dev.svoi/window');
 const canvas = Color(0xff101013),
@@ -80,12 +81,34 @@ ThemeData svoiTheme() => ThemeData(
   colorScheme: const ColorScheme.dark(
     primary: accent,
     onPrimary: canvas,
+    secondary: accent,
+    onSecondary: canvas,
+    secondaryContainer: Color(0xff3b3224),
+    onSecondaryContainer: accent,
     surface: surface,
     onSurface: Color(0xfff4f2ed),
     outline: edge,
     error: Color(0xffffaaa6),
   ),
   scaffoldBackgroundColor: canvas,
+  navigationBarTheme: NavigationBarThemeData(
+    backgroundColor: surface,
+    indicatorColor: accent.withValues(alpha: .16),
+    iconTheme: WidgetStateProperty.resolveWith(
+      (states) => IconThemeData(
+        color: states.contains(WidgetState.selected) ? accent : muted,
+      ),
+    ),
+    labelTextStyle: WidgetStateProperty.resolveWith(
+      (states) => TextStyle(
+        color: states.contains(WidgetState.selected) ? accent : muted,
+        fontSize: 12,
+        fontWeight: states.contains(WidgetState.selected)
+            ? FontWeight.w600
+            : FontWeight.w400,
+      ),
+    ),
+  ),
   dividerColor: edge,
   dividerTheme: const DividerThemeData(color: edge, thickness: 1, space: 1),
   cardTheme: const CardThemeData(elevation: 0),

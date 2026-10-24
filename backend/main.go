@@ -32,11 +32,12 @@ var nativeVersion = "0.5.0-beta.7"
 var assets embed.FS
 
 type Identity struct {
-	HWID      string `json:"hwid"`
-	OS        string `json:"os"`
-	Model     string `json:"model"`
-	Locale    string `json:"locale"`
-	UserAgent string `json:"userAgent"`
+	OmitDeviceHeaders bool   `json:"omitDeviceHeaders,omitempty"`
+	HWID              string `json:"hwid"`
+	OS                string `json:"os"`
+	Model             string `json:"model"`
+	Locale            string `json:"locale"`
+	UserAgent         string `json:"userAgent"`
 }
 type Device struct {
 	ID       string    `json:"id"`
@@ -555,6 +556,9 @@ func subscriptionClient() *http.Client {
 	return &http.Client{Timeout: 20 * time.Second, Transport: &http.Transport{DialContext: dial, TLSHandshakeTimeout: 8 * time.Second, ResponseHeaderTimeout: 10 * time.Second, MaxIdleConns: 10, IdleConnTimeout: 30 * time.Second}, CheckRedirect: func(_ *http.Request, _ []*http.Request) error { return http.ErrUseLastResponse }}
 }
 func headers(i Identity) map[string]string {
+	if i.OmitDeviceHeaders {
+		return map[string]string{"User-Agent": i.UserAgent}
+	}
 	return map[string]string{"x-hwid": i.HWID, "x-device-os": i.OS, "x-device-model": i.Model, "x-device-locale": i.Locale, "User-Agent": i.UserAgent}
 }
 func inspectSubscription(b []byte) (Report, error) {

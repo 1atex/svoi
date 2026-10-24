@@ -68,4 +68,22 @@ func TestMobileImportAndTunConfig(t *testing.T) {
 	if _, err = app.TunnelConfig(token, "missing"); err == nil {
 		t.Fatal("missing server check")
 	}
+	probe, err := app.ProbeConfig(token, id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = json.Unmarshal([]byte(probe), &parsed); err != nil {
+		t.Fatal(err)
+	}
+	for _, raw := range parsed["inbounds"].([]any) {
+		if obj(raw)["protocol"] == "tun" {
+			t.Fatal("probe must not create a TUN")
+		}
+	}
+	if len(obj(parsed["routing"])["balancers"].([]any)) != 2 {
+		t.Fatal("probe lost profile routing")
+	}
+	if _, err = app.ProbeConfig("invalid", id); err == nil {
+		t.Fatal("probe missing auth check")
+	}
 }

@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
@@ -22,6 +23,8 @@ type Protector interface{ Protect(fd int32) bool }
 type Session struct{ app *backend.MobileApp }
 
 func NewSession(directory string) (*Session, error) {
+	os.Setenv("XRAY_LOCATION_ASSET", filepath.Join(directory, "core"))
+	registerNetwork()
 	a, err := backend.OpenMobile(directory)
 	if err != nil {
 		return nil, err
@@ -47,7 +50,7 @@ func protect(_ string, _ string, conn syscall.RawConn) error {
 	p := protector
 	socketMu.RUnlock()
 	if p == nil {
-		return errors.New("VPN socket protector unavailable")
+		return nil
 	}
 	ok := false
 	if err := conn.Control(func(fd uintptr) { ok = p.Protect(int32(fd)) }); err != nil {
@@ -71,21 +74,7 @@ func Start(config string, fd int32, assets string, callback Protector) error {
 	socketMu.Lock()
 	protector = callback
 	socketMu.Unlock()
-	register.Do(func() {
-		_ = internet.RegisterDialerController(protect)
-		net.DefaultResolver = &net.Resolver{PreferGo: true, Dial: func(ctx context.Context, network, address string) (net.Conn, error) {
-			d := net.Dialer{Timeout: 5 * time.Second, Control: func(n, a string, c syscall.RawConn) error {
-				socketMu.RLock()
-				active := protector != nil
-				socketMu.RUnlock()
-				if active {
-					return protect(n, a, c)
-				}
-				return nil
-			}}
-			return d.DialContext(ctx, network, "1.1.1.1:53")
-		}}
-	})
+	registerNetwork()
 	os.Setenv("XRAY_TUN_FD", strconv.Itoa(int(fd)))
 	os.Setenv("XRAY_LOCATION_ASSET", assets)
 	loaded, err := core.LoadConfig("json", strings.NewReader(config))
@@ -105,6 +94,24 @@ func Start(config string, fd int32, assets string, callback Protector) error {
 	}
 	instance = x
 	return nil
+}
+
+func registerNetwork() {
+	register.Do(func() {
+		_ = internet.RegisterDialerController(protect)
+		net.DefaultResolver = &net.Resolver{PreferGo: true, Dial: func(ctx context.Context, network, address string) (net.Conn, error) {
+			d := net.Dialer{Timeout: 5 * time.Second, Control: func(n, a string, c syscall.RawConn) error {
+				socketMu.RLock()
+				active := protector != nil
+				socketMu.RUnlock()
+				if active {
+					return protect(n, a, c)
+				}
+				return nil
+			}}
+			return d.DialContext(ctx, network, "1.1.1.1:53")
+		}}
+	})
 }
 func clearProtector() { socketMu.Lock(); protector = nil; socketMu.Unlock() }
 func Stop() error {

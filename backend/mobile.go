@@ -37,6 +37,14 @@ func (m *MobileApp) Request(method, path, token, body string) string {
 }
 
 func (m *MobileApp) TunnelConfig(token, serverID string) (string, error) {
+	return m.serverConfig(token, serverID, "tun")
+}
+
+func (m *MobileApp) ProbeConfig(token, serverID string) (string, error) {
+	return m.serverConfig(token, serverID, "local")
+}
+
+func (m *MobileApp) serverConfig(token, serverID, mode string) (string, error) {
 	req := httptest.NewRequest("GET", "/api/me", nil)
 	req.Header.Set("Authorization", "Bearer "+token)
 	m.app.mu.Lock()
@@ -60,7 +68,7 @@ func (m *MobileApp) TunnelConfig(token, serverID string) (string, error) {
 		return "", errors.New("сервер не найден")
 	}
 	server.RuntimeApps = nil
-	raw, err := buildXrayConfig(server, 10808, 10809, "tun")
+	raw, err := buildXrayConfig(server, 10808, 10809, mode)
 	if err != nil {
 		return "", err
 	}

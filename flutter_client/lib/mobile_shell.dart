@@ -10,6 +10,7 @@ class MobileShell extends StatefulWidget {
 class _MobileShellState extends State<MobileShell> {
   int page = 0;
   String search = '';
+  bool sortLatency = false;
   final searchController = TextEditingController();
   SvoiController get c => widget.c;
   @override
@@ -33,6 +34,9 @@ class _MobileShellState extends State<MobileShell> {
       c.busy,
       c.preferences,
       c.favorites,
+      c.probing,
+      c.probeProgress,
+      c.probeRevision,
     ]),
     builder: (context, _) => Scaffold(
       appBar: AppBar(
@@ -233,6 +237,7 @@ class _MobileShellState extends State<MobileShell> {
   Widget servers() {
     final list = c.orderedServers(
       c.servers.value.where((s) => s.search.contains(search.toLowerCase())),
+      latency: sortLatency,
     );
     return Column(
       children: [
@@ -255,6 +260,47 @@ class _MobileShellState extends State<MobileShell> {
                       icon: const Icon(Icons.close),
                     ),
             ),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Wrap(
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 12,
+            children: [
+              Text(
+                '${list.length} серверов',
+                style: const TextStyle(color: muted),
+              ),
+              FilterChip(
+                label: const Text('По пингу'),
+                selected: sortLatency,
+                onSelected: (v) => setState(() => sortLatency = v),
+              ),
+              TextButton.icon(
+                onPressed: c.probing.value
+                    ? c.cancelProbes
+                    : c.busy.value ||
+                          list.isEmpty ||
+                          c.connection.value['available'] != true
+                    ? null
+                    : () => c.probe(list),
+                icon: Icon(
+                  c.probing.value ? Icons.stop : Icons.network_check,
+                  size: 18,
+                ),
+                label: Text(c.probing.value ? 'Остановить' : 'Проверить пинг'),
+              ),
+            ],
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+          child: Text(
+            c.probeProgress.value.isEmpty
+                ? 'HTTPS через профиль · до 4 одновременно · лимит 4 с'
+                : c.probeProgress.value,
+            style: const TextStyle(color: muted, fontSize: 12),
           ),
         ),
         Expanded(
@@ -305,10 +351,16 @@ class _MobileShellState extends State<MobileShell> {
                         overflow: TextOverflow.ellipsis,
                       ),
                       subtitle: Text(s.protocol),
-                      trailing: IconButton(
-                        tooltip: 'Конфигурация',
-                        icon: const Icon(Icons.code),
-                        onPressed: () => showConfig(context, c, s),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          MobileProbeButton(c: c, server: s),
+                          IconButton(
+                            tooltip: 'Конфигурация',
+                            icon: const Icon(Icons.code),
+                            onPressed: () => showConfig(context, c, s),
+                          ),
+                        ],
                       ),
                       onTap: c.busy.value
                           ? null
@@ -363,6 +415,18 @@ class _MobileShellState extends State<MobileShell> {
           ),
         ),
       const SizedBox(height: 24),
+      ListTile(
+        contentPadding: EdgeInsets.zero,
+        leading: const Icon(Icons.fingerprint),
+        title: const Text('HWID и данные устройства'),
+        subtitle: const Text('Что отправлять при загрузке подписок'),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute<void>(builder: (_) => MobileIdentityPage(c: c)),
+        ),
+      ),
+      const SizedBox(height: 16),
       const Text(
         'Перенос подписок между ПК и телефоном. Код содержит доступ к подпискам; передавайте его только получателю.',
       ),
@@ -394,6 +458,17 @@ class _MobileShellState extends State<MobileShell> {
   Widget settings() => ListView(
     padding: const EdgeInsets.all(20),
     children: [
+      ListTile(
+        contentPadding: EdgeInsets.zero,
+        leading: const Icon(Icons.fingerprint),
+        title: const Text('HWID и данные устройства'),
+        subtitle: const Text('Параметры активного профиля'),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute<void>(builder: (_) => MobileIdentityPage(c: c)),
+        ),
+      ),
       SwitchListTile(
         contentPadding: EdgeInsets.zero,
         title: const Text('Обновлять подписки при запуске'),
@@ -411,7 +486,7 @@ class _MobileShellState extends State<MobileShell> {
         ),
       ),
       const Divider(),
-      const Text('SVOI · Android Preview 1'),
+      const Text('SVOI · Android Preview 2'),
       const SizedBox(height: 12),
       const Text(
         'Обновления этой тестовой сборки устанавливаются APK-файлом. zapret и настройки автозапуска Windows здесь недоступны.',

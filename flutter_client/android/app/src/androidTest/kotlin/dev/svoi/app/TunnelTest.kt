@@ -39,6 +39,17 @@ class TunnelTest {
                 assertTrue("VPN startup timeout",ready.await(20, TimeUnit.SECONDS))
                 assertNull(error)
                 assertEquals("running",VpnRuntime.status().getString("state"))
+                if (cycle == 1) {
+                    val probes = java.util.concurrent.Executors.newFixedThreadPool(4)
+                    try {
+                        val checks = (1..4).map { probes.submit<Boolean> {
+                            try { VpnRuntime.session!!.probe(token, id); false }
+                            catch(e: Exception) { true }
+                        } }
+                        for (check in checks) assertTrue("HTTP-only fixture must fail HTTPS probe", check.get(8, TimeUnit.SECONDS))
+                        assertEquals("probes stopped the active VPN", "running", VpnRuntime.status().getString("state"))
+                    } finally { probes.shutdownNow() }
+                }
                 val connection = URL("http://198.18.0.42:18080/probe").openConnection() as HttpURLConnection
                 connection.connectTimeout=8000;connection.readTimeout=8000
                 try { assertEquals("svoi-mobile-tunnel-ok",connection.inputStream.bufferedReader().use { reader -> reader.readText().trim() }) }

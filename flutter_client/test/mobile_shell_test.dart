@@ -1,10 +1,113 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_test/flutter_test.dart' hide group;
 import 'package:svoi_flutter/controller.dart';
+import 'package:svoi_flutter/backend.dart';
 import 'package:svoi_flutter/demo.dart';
 import 'package:svoi_flutter/main.dart';
 
+class MobileFeaturesBackend extends DemoBackend {
+  Map<String, dynamic>? savedIdentity;
+  MobileFeaturesBackend() {
+    group['servers'] = (group['servers'] as List).take(3).toList();
+    group['identity'] = {
+      'hwid': 'original-id',
+      'os': 'Android',
+      'model': 'Shared device',
+      'locale': 'ru-RU',
+      'userAgent': 'SVOI-Test',
+    };
+  }
+  @override
+  Future<Map<String, dynamic>> request(
+    String path, {
+    String method = 'GET',
+    Object? body,
+    RequestCancellation? cancellation,
+  }) async {
+    if (path == 'connection') return {'state': 'stopped', 'available': true};
+    if (path.endsWith('/probe')) {
+      if (path.contains('/0/')) throw ApiException('Нет ответа за 4 секунды');
+      return {'latency': 42};
+    }
+    if (path == 'identity') {
+      savedIdentity = Map<String, dynamic>.from((body as Map)['identity']);
+      group['identity'] = savedIdentity;
+      return group;
+    }
+    return super.request(
+      path,
+      method: method,
+      body: body,
+      cancellation: cancellation,
+    );
+  }
+}
+
 void main() {
+  testWidgets(
+    'mobile probes display results and failure does not prevent selection',
+    (tester) async {
+      tester.view.physicalSize = const Size(360, 740);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final c = SvoiController(MobileFeaturesBackend());
+      await c.initialize();
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: svoiTheme(),
+          home: MobileShell(c: c),
+        ),
+      );
+      await tester.tap(find.text('Серверы').last);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Проверить пинг'));
+      await tester.pumpAndSettle();
+      expect(find.text('42 мс'), findsNWidgets(2));
+      expect(find.text('Нет ответа'), findsOneWidget);
+      expect(find.textContaining('3 из 3'), findsOneWidget);
+      await tester.tap(find.byType(ListTile).first);
+      await tester.pumpAndSettle();
+      expect(c.selected.value, '0');
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox.shrink());
+      await c.close();
+    },
+  );
+  testWidgets(
+    'mobile identity edits and header opt-out are saved to the active profile',
+    (tester) async {
+      final api = MobileFeaturesBackend();
+      final c = SvoiController(api);
+      await c.initialize();
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: svoiTheme(),
+          home: MobileShell(c: c),
+        ),
+      );
+      await tester.tap(find.text('Настройки').last);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('HWID и данные устройства'));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.byType(TextFormField).first,
+        'shared-test-id',
+      );
+      await tester.tap(find.byType(SwitchListTile));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Сохранить'));
+      await tester.tap(find.text('Сохранить'));
+      await tester.pumpAndSettle();
+      expect(api.savedIdentity?['hwid'], 'shared-test-id');
+      expect(api.savedIdentity?['os'], 'Android');
+      expect(api.savedIdentity?['omitDeviceHeaders'], true);
+      expect(c.group.value['identity']['hwid'], 'shared-test-id');
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox.shrink());
+      await c.close();
+    },
+  );
   testWidgets('mobile onboarding is visible without scrolling at 360 pixels', (
     tester,
   ) async {
@@ -66,6 +169,7 @@ void main() {
     expect(find.byType(ListTile), findsNothing);
     await tester.tap(find.text('Профиль').last);
     await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.text('Скопировать код переноса'), 200);
     expect(find.text('Скопировать код переноса'), findsOneWidget);
     await tester.tap(find.text('Серверы').last);
     await tester.pumpAndSettle();

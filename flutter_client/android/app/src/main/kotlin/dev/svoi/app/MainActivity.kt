@@ -14,6 +14,7 @@ import java.util.concurrent.Executors
 
 class MainActivity : FlutterActivity() {
     private val workers = Executors.newFixedThreadPool(4)
+    private val probes = Executors.newFixedThreadPool(4)
     private val main = Handler(Looper.getMainLooper())
     private var vpnResult: MethodChannel.Result? = null
     private var vpnBody: JSONObject? = null
@@ -22,6 +23,12 @@ class MainActivity : FlutterActivity() {
     private var exportResult: MethodChannel.Result? = null
     private var exportContent = ""
     private class BackendError(val status: Int, message: String) : Exception(message)
+
+    override fun onDestroy() {
+        workers.shutdown()
+        probes.shutdown()
+        super.onDestroy()
+    }
 
     override fun configureFlutterEngine(engine: FlutterEngine) {
         super.configureFlutterEngine(engine)
@@ -43,7 +50,16 @@ class MainActivity : FlutterActivity() {
                         if (method == "PUT") VpnRuntime.saveRouting(applicationContext, body)
                         VpnRuntime.routing(applicationContext).toString()
                     }
-                    path.endsWith("/probe") -> result.error("unsupported", "В Android-версии проверяйте связь после подключения.", null)
+                    path.startsWith("servers/") && path.endsWith("/probe") && method == "POST" -> {
+                        val id = android.net.Uri.decode(path.removePrefix("servers/").removeSuffix("/probe"))
+                        probes.execute {
+                            try {
+                                val latency = VpnRuntime.session!!.probe(token, id)
+                                val response = JSONObject().put("latency", latency).put("method", "HTTPS").put("checkedAt", java.time.Instant.now().toString())
+                                main.post { result.success(response.toString()) }
+                            } catch(e: Exception) { main.post { result.error("probe", e.message, null) } }
+                        }
+                    }
                     else -> work(result) {
                         val response = JSONObject(VpnRuntime.session!!.request(method, "/api/$path", token, body.toString()))
                         if (response.getInt("status") >= 400) throw BackendError(response.getInt("status"), response.getJSONObject("body").optString("error", "Ошибка сервиса"))
