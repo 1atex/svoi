@@ -18,7 +18,9 @@
 <p align="center">
   <a href="https://github.com/1atex/svoi/releases/download/v0.5.0-beta.7/SVOI-0.5.0-beta.7-windows-x64-setup.exe"><b>↓ Скачать для Windows</b></a>
   &nbsp; · &nbsp;
-  <a href="https://github.com/1atex/svoi/releases/latest">Последний релиз</a>
+  <a href="https://github.com/1atex/svoi/releases/download/android-v0.1.0-preview.6/SVOI-Android-0.1.0-preview.6-arm64.apk"><b>↓ Android APK · Preview</b></a>
+  &nbsp; · &nbsp;
+  <a href="https://github.com/1atex/svoi/releases/latest">Последний релиз Windows</a>
   &nbsp; · &nbsp;
   <a href="https://github.com/1atex/svoi/issues">Сообщить об ошибке</a>
 </p>
@@ -96,7 +98,9 @@
 
 ## Статус проекта
 
-**0.5.0-beta.7 · Windows x64.** Android и iOS пока не выпускаются. SVOI использует ваши подписки; VPN-серверы в комплект не входят.
+**Windows: 0.5.0-beta.7 · x64. Android: 0.1.0-preview.6 · ARM64 и x86_64.** iOS пока не выпускается. SVOI использует ваши подписки; VPN-серверы в комплект не входят.
+
+Android — отдельная экспериментальная сборка: [APK для ARM64-телефонов](https://github.com/1atex/svoi/releases/download/android-v0.1.0-preview.6/SVOI-Android-0.1.0-preview.6-arm64.apk), [APK для эмулятора x86_64](https://github.com/1atex/svoi/releases/download/android-v0.1.0-preview.6/SVOI-Android-0.1.0-preview.6-x64.apk), [инструкция и исходники Android](https://github.com/1atex/svoi/blob/android-preview/docs/ANDROID.md). Обновления проверяются и скачиваются из приложения; установку подтверждает пользователь. При переходе с Preview 5 сохраните коды профилей и переустановите приложение: начиная с Preview 6 используется постоянная подпись.
 
 - Проверка одного HTTPS-адреса не гарантирует доступность всех сайтов. «Нет ответа» не блокирует подключение.
 - Совместимость TUN и zapret зависит от стратегии и сети. Kill switch пока отсутствует.
