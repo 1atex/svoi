@@ -123,6 +123,7 @@ jobs:
             /tmp/svoi-xray-test.log
             /tmp/svoi-http-test.log
             /tmp/svoi-android-resources.log
+            /tmp/svoi-instrumentation.log
       - uses: actions/upload-artifact@v4
         with:
           name: SVOI-Android-preview-release
