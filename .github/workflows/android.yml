@@ -74,7 +74,7 @@ jobs:
           script: |
             adb install -r SVOI-Android-preview.1.apk
             adb shell appops set dev.svoi.app.preview ACTIVATE_VPN allow
-            cd flutter_client/android && ./gradlew connectedDebugAndroidTest
+            cd flutter_client/android && ./gradlew :app:connectedDebugAndroidTest
       - name: Upload diagnostics
         if: always()
         uses: actions/upload-artifact@v4
@@ -83,6 +83,8 @@ jobs:
           path: |
             flutter_client/build/app/reports/androidTests/
             flutter_client/build/app/outputs/androidTest-results/
+            /tmp/svoi-xray-test.log
+            /tmp/svoi-http-test.log
       - uses: actions/upload-artifact@v4
         with:
           name: SVOI-Android-preview
