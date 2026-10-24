@@ -3,6 +3,7 @@ package mobile
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -73,5 +74,53 @@ func TestProbeTimeoutAndInvalidHTTPResponse(t *testing.T) {
 		if time.Since(started) > time.Second {
 			t.Fatal("probe did not release resources within deadline")
 		}
+	}
+}
+
+func TestProbeCancellationClosesRequest(t *testing.T) {
+	entered, closed := make(chan struct{}), make(chan struct{})
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		close(entered)
+		<-r.Context().Done()
+		close(closed)
+	}))
+	defer srv.Close()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	result := make(chan error, 1)
+	config := probeFixture(t, srv.URL)
+	go func() { _, err := probeConfig(ctx, config, srv.URL); result <- err }()
+	select {
+	case <-entered:
+	case <-time.After(3 * time.Second):
+		t.Fatal("request did not arrive")
+	}
+	cancel()
+	select {
+	case err := <-result:
+		if !errors.Is(err, context.Canceled) {
+			t.Fatal(err)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("cancel did not stop probe")
+	}
+	select {
+	case <-closed:
+	case <-time.After(time.Second):
+		t.Fatal("probe left an open connection")
+	}
+}
+
+func TestCancelledProbeNeverLoadsProfile(t *testing.T) {
+	p := (&Session{}).NewProbe("unused", "unused")
+	p.Cancel()
+	if _, err := p.Run(); !errors.Is(err, context.Canceled) {
+		t.Fatal(err)
+	}
+	if len(probeSlots) != 0 {
+		t.Fatal("cancelled probe occupied a slot")
+	}
+	if _, err := p.Run(); err == nil {
+		t.Fatal("a probe cannot be reused")
 	}
 }

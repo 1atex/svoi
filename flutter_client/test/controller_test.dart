@@ -61,6 +61,27 @@ class StalledProbeBackend extends ProbeBackend {
   }
 }
 
+class MobileProbeBackend extends ProbeBackend {
+  int polls = 0;
+  @override
+  bool get mobile => true;
+  @override
+  Future<Map<String, dynamic>> request(
+    String path, {
+    String method = 'GET',
+    Object? body,
+    RequestCancellation? cancellation,
+  }) {
+    if (path == 'connection') polls++;
+    return super.request(
+      path,
+      method: method,
+      body: body,
+      cancellation: cancellation,
+    );
+  }
+}
+
 class DelayedConnectionBackend extends DemoBackend {
   final started = Completer<void>(), checked = Completer<void>();
   Map<String, dynamic> state = {'state': 'stopped', 'available': true};
@@ -309,4 +330,27 @@ void main() {
     expect(notifications, 0);
     await c.close();
   });
+  testWidgets(
+    'mobile background stops UI polling and probe queue; resume refreshes state',
+    (tester) async {
+      final backend = MobileProbeBackend();
+      final c = SvoiController(backend);
+      await c.initialize();
+      c.connection.value = {'state': 'running', 'available': true};
+      final pending = c.probe(c.servers.value.take(12).toList());
+      expect(backend.peak, 2);
+      c.visibility(false);
+      final polls = backend.polls;
+      await tester.pump(const Duration(minutes: 2));
+      await pending;
+      expect(backend.completed, 2);
+      expect(backend.polls, polls);
+      expect(c.probing.value, false);
+      expect(c.connection.value['state'], 'running');
+      c.visibility(true);
+      await tester.pump();
+      expect(backend.polls, polls + 1);
+      await c.close();
+    },
+  );
 }

@@ -284,13 +284,16 @@ class SvoiController {
   void visibility(bool visible) {
     _visible = visible;
     _timer?.cancel();
+    if (!visible && api.mobile) cancelProbes();
     if (visible) unawaited(poll());
     if (!visible) _schedule();
   }
 
   Future<void> poll({bool force = false}) async {
     if (_closed ||
-        (!force && !_visible && connection.value['state'] != 'running') ||
+        (!force &&
+            !_visible &&
+            (api.mobile || connection.value['state'] != 'running')) ||
         _polling ||
         busy.value) {
       return;
@@ -315,7 +318,8 @@ class SvoiController {
 
   void _schedule() {
     _timer?.cancel();
-    if (!_closed && (_visible || connection.value['state'] == 'running')) {
+    if (!_closed &&
+        (_visible || (!api.mobile && connection.value['state'] == 'running'))) {
       _timer = Timer(
         Duration(
           seconds: !_visible
@@ -553,8 +557,10 @@ class SvoiController {
       return;
     }
     final generation = ++_probeGeneration;
+    final concurrency = api.probeConcurrency;
     probing.value = true;
-    probeProgress.value = '0 из ${list.length} · до 4 одновременно · лимит 4 с';
+    probeProgress.value =
+        '0 из ${list.length} · до $concurrency одновременно · лимит 4 с';
     var next = 0, done = 0;
     Future<void> worker() async {
       while (next < list.length && generation == _probeGeneration && !_closed) {
@@ -600,14 +606,17 @@ class SvoiController {
         if (generation == _probeGeneration) {
           done++;
           probeProgress.value =
-              '$done из ${list.length} · HTTPS · до 4 одновременно · лимит 4 с';
+              '$done из ${list.length} · HTTPS · до $concurrency одновременно · лимит 4 с';
         }
       }
     }
 
     try {
       await Future.wait(
-        List.generate(list.length < 4 ? list.length : 4, (_) => worker()),
+        List.generate(
+          list.length < concurrency ? list.length : concurrency,
+          (_) => worker(),
+        ),
       );
     } finally {
       if (generation == _probeGeneration) probing.value = false;

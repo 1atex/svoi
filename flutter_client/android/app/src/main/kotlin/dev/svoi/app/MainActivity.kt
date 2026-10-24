@@ -10,11 +10,14 @@ import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 import org.json.JSONObject
+import mobile.ProbeRequest
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
 
 class MainActivity : FlutterActivity() {
     private val workers = Executors.newFixedThreadPool(4)
-    private val probes = Executors.newFixedThreadPool(4)
+    private val probes = Executors.newFixedThreadPool(2)
+    private val activeProbes = ConcurrentHashMap<String, ProbeRequest>()
     private val main = Handler(Looper.getMainLooper())
     private var vpnResult: MethodChannel.Result? = null
     private var vpnBody: JSONObject? = null
@@ -25,6 +28,7 @@ class MainActivity : FlutterActivity() {
     private class BackendError(val status: Int, message: String) : Exception(message)
 
     override fun onDestroy() {
+        activeProbes.values.forEach { it.cancel() }
         workers.shutdown()
         probes.shutdown()
         super.onDestroy()
@@ -34,7 +38,14 @@ class MainActivity : FlutterActivity() {
         super.configureFlutterEngine(engine)
         MethodChannel(engine.dartExecutor.binaryMessenger, "dev.svoi/mobile").setMethodCallHandler { call, result ->
             if (call.method == "init") {
-                work(result) { VpnRuntime.init(applicationContext); JSONObject().put("directory", filesDir.absolutePath).toString() }
+                work(result) {
+                    VpnRuntime.init(applicationContext)
+                    val lowRam = getSystemService(android.app.ActivityManager::class.java).isLowRamDevice
+                    JSONObject().put("directory", filesDir.absolutePath).put("probeConcurrency", if (lowRam) 1 else 2).toString()
+                }
+            } else if (call.method == "cancelProbe") {
+                call.argument<String>("id")?.let { activeProbes[it]?.cancel() }
+                result.success(null)
             } else if (call.method == "request") {
                 val path = call.argument<String>("path") ?: ""
                 val token = call.argument<String>("token") ?: ""
@@ -52,12 +63,22 @@ class MainActivity : FlutterActivity() {
                     }
                     path.startsWith("servers/") && path.endsWith("/probe") && method == "POST" -> {
                         val id = android.net.Uri.decode(path.removePrefix("servers/").removeSuffix("/probe"))
+                        val requestId = call.argument<String>("probeID") ?: java.util.UUID.randomUUID().toString()
+                        if (activeProbes.size >= 2) {
+                            result.error("busy", "Завершается предыдущая проверка. Повторите через несколько секунд.", null)
+                            return@setMethodCallHandler
+                        }
+                        val probe = VpnRuntime.session!!.newProbe(token, id)
+                        activeProbes[requestId] = probe
                         probes.execute {
+                            var response: String? = null
+                            var error: String? = null
                             try {
-                                val latency = VpnRuntime.session!!.probe(token, id)
-                                val response = JSONObject().put("latency", latency).put("method", "HTTPS").put("checkedAt", java.time.Instant.now().toString())
-                                main.post { result.success(response.toString()) }
-                            } catch(e: Exception) { main.post { result.error("probe", e.message, null) } }
+                                val latency = probe.run()
+                                response = JSONObject().put("latency", latency).put("method", "HTTPS").put("checkedAt", java.time.Instant.now().toString()).toString()
+                            } catch(e: Exception) { error = e.message ?: "Проверка не завершена" }
+                            finally { activeProbes.remove(requestId); probe.cancel() }
+                            main.post { if (error == null) result.success(response) else result.error("probe", error, null) }
                         }
                     }
                     else -> work(result) {

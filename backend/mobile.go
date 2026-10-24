@@ -3,19 +3,23 @@ package backend
 import (
 	"encoding/json"
 	"errors"
+	"net/http"
 	"net/http/httptest"
 	"path/filepath"
 	"strings"
 )
 
-type MobileApp struct{ app *App }
+type MobileApp struct {
+	app     *App
+	handler http.Handler
+}
 
 func OpenMobile(directory string) (*MobileApp, error) {
 	a, err := openApp(filepath.Join(directory, "groups.json"))
 	if err != nil {
 		return nil, err
 	}
-	return &MobileApp{app: a}, nil
+	return &MobileApp{app: a, handler: a.handler()}, nil
 }
 
 func (m *MobileApp) Request(method, path, token, body string) string {
@@ -27,7 +31,7 @@ func (m *MobileApp) Request(method, path, token, body string) string {
 	req.Header.Set("Authorization", "Bearer "+token)
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
-	m.app.handler().ServeHTTP(w, req)
+	m.handler.ServeHTTP(w, req)
 	var bodyJSON any
 	if json.Unmarshal(w.Body.Bytes(), &bodyJSON) != nil {
 		bodyJSON = map[string]string{"error": w.Body.String()}
@@ -76,6 +80,7 @@ func (m *MobileApp) serverConfig(token, serverID, mode string) (string, error) {
 	if err = json.Unmarshal(raw, &config); err != nil {
 		return "", err
 	}
+	config["log"] = object{"loglevel": "warning", "access": "none"}
 	for _, item := range config["inbounds"].([]any) {
 		inbound := obj(item)
 		if str(inbound["protocol"]) == "tun" {

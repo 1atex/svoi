@@ -13,14 +13,18 @@ class ApiException implements Exception {
 class RequestCancellation {
   bool cancelled = false;
   HttpClientRequest? request;
+  void Function()? onCancel;
   void cancel() {
+    if (cancelled) return;
     cancelled = true;
     request?.abort();
+    onCancel?.call();
   }
 }
 
 abstract class Backend {
   bool get mobile => false;
+  int get probeConcurrency => mobile ? 2 : 4;
   String get platformName => 'Windows';
   String token = '';
   Future<Map<String, dynamic>> request(

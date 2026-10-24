@@ -2,6 +2,7 @@ package backend
 
 import (
 	"encoding/json"
+	"net/http"
 	"testing"
 )
 
@@ -59,6 +60,9 @@ func TestMobileImportAndTunConfig(t *testing.T) {
 	if !found {
 		t.Fatal("TUN missing")
 	}
+	if obj(parsed["log"])["access"] != "none" || obj(parsed["log"])["loglevel"] != "warning" {
+		t.Fatal("mobile must suppress access logging while retaining warnings")
+	}
 	if len(obj(parsed["routing"])["balancers"].([]any)) != 2 {
 		t.Fatal("routing graph lost")
 	}
@@ -85,5 +89,28 @@ func TestMobileImportAndTunConfig(t *testing.T) {
 	}
 	if _, err = app.ProbeConfig("invalid", id); err == nil {
 		t.Fatal("probe missing auth check")
+	}
+}
+
+func BenchmarkMobileRequest(b *testing.B) {
+	for _, cached := range []bool{false, true} {
+		name := "rebuild-handler"
+		if cached {
+			name = "cached-handler"
+		}
+		b.Run(name, func(b *testing.B) {
+			app, err := OpenMobile(b.TempDir())
+			if err != nil {
+				b.Fatal(err)
+			}
+			if !cached {
+				app.handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { app.app.handler().ServeHTTP(w, r) })
+			}
+			b.ReportAllocs()
+			b.ResetTimer()
+			for b.Loop() {
+				app.Request("GET", "/api/health", "", "")
+			}
+		})
 	}
 }

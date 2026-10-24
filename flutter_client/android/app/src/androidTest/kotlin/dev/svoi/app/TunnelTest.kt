@@ -16,10 +16,20 @@ import java.util.concurrent.TimeUnit
 
 @RunWith(AndroidJUnit4::class)
 class TunnelTest {
+    private fun resources(phase: String) {
+        val memory = android.os.Debug.MemoryInfo()
+        android.os.Debug.getMemoryInfo(memory)
+        android.util.Log.i("SvoiPerf", JSONObject()
+            .put("phase", phase).put("pssKiB", memory.totalPss)
+            .put("cpuMs", android.os.Process.getElapsedCpuTime())
+            .put("threads", java.io.File("/proc/self/task").list()?.size)
+            .put("fds", java.io.File("/proc/self/fd").list()?.size).toString())
+    }
     @Test fun importedProfileRoutesTrafficAndReconnects() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         ActivityScenario.launch(MainActivity::class.java).use {
             VpnRuntime.init(context)
+            resources("initialized")
             assertNull("Grant ACTIVATE_VPN before this test", VpnService.prepare(context))
             fun request(method: String, path: String, token: String, body: JSONObject): JSONObject {
                 val response = JSONObject(VpnRuntime.session!!.request(method, "/api/$path", token, body.toString()))
@@ -39,10 +49,15 @@ class TunnelTest {
                 assertTrue("VPN startup timeout",ready.await(20, TimeUnit.SECONDS))
                 assertNull(error)
                 assertEquals("running",VpnRuntime.status().getString("state"))
+                resources("connected-$cycle")
                 if (cycle == 1) {
-                    val probes = java.util.concurrent.Executors.newFixedThreadPool(4)
+                    val cancelled = VpnRuntime.session!!.newProbe(token, id)
+                    cancelled.cancel()
+                    try { cancelled.run(); fail("Cancelled probe must not start") }
+                    catch(e: Exception) { assertTrue(e.message.orEmpty().contains("canceled")) }
+                    val probes = java.util.concurrent.Executors.newFixedThreadPool(2)
                     try {
-                        val checks = (1..4).map { probes.submit<Boolean> {
+                        val checks = (1..2).map { probes.submit<Boolean> {
                             try { VpnRuntime.session!!.probe(token, id); false }
                             catch(e: Exception) { true }
                         } }
@@ -58,6 +73,7 @@ class TunnelTest {
                 VpnRuntime.stop { stopped.countDown() }
                 assertTrue("VPN shutdown timeout",stopped.await(10,TimeUnit.SECONDS))
                 assertEquals("stopped",VpnRuntime.status().getString("state"))
+                resources("stopped-$cycle")
             }
         }
     }

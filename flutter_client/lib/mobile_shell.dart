@@ -333,7 +333,7 @@ class _MobileShellState extends State<MobileShell> {
           padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
           child: Text(
             c.probeProgress.value.isEmpty
-                ? 'HTTPS через профиль · до 4 одновременно · лимит 4 с'
+                ? 'HTTPS через профиль · до ${c.api.probeConcurrency} одновременно · лимит 4 с'
                 : c.probeProgress.value,
             style: const TextStyle(color: muted, fontSize: 12),
           ),
@@ -540,7 +540,7 @@ class _MobileShellState extends State<MobileShell> {
         ),
       ),
       const Divider(),
-      const Text('SVOI · Android Preview 3'),
+      const Text('SVOI · Android Preview 4'),
       const SizedBox(height: 12),
       const Text(
         'Обновления этой тестовой сборки устанавливаются APK-файлом. zapret и настройки автозапуска Windows здесь недоступны.',

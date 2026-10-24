@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -6,9 +7,12 @@ import 'package:flutter/services.dart';
 import 'backend.dart';
 
 class AndroidBackend extends Backend {
-  AndroidBackend._(this.directory);
+  AndroidBackend._(this.directory, this.probeConcurrency);
   static const channel = MethodChannel('dev.svoi/mobile');
   final Directory directory;
+  @override
+  final int probeConcurrency;
+  int _nextProbe = 0;
   @override
   bool get mobile => true;
   @override
@@ -17,7 +21,10 @@ class AndroidBackend extends Backend {
     final result = jsonDecode(
       await channel.invokeMethod<String>('init') ?? '{}',
     );
-    return AndroidBackend._(Directory(result['directory'] as String));
+    return AndroidBackend._(
+      Directory(result['directory'] as String),
+      ((result['probeConcurrency'] as int?) ?? 2).clamp(1, 2),
+    );
   }
 
   @override
@@ -28,12 +35,25 @@ class AndroidBackend extends Backend {
     RequestCancellation? cancellation,
   }) async {
     if (cancellation?.cancelled == true) throw ApiException('Запрос отменён.');
+    final probeID = path.endsWith('/probe') && method == 'POST'
+        ? '${++_nextProbe}'
+        : null;
+    if (probeID != null && cancellation != null) {
+      cancellation.onCancel = () {
+        unawaited(
+          channel
+              .invokeMethod<void>('cancelProbe', {'id': probeID})
+              .catchError((Object _) {}),
+        );
+      };
+    }
     try {
       final raw = await channel.invokeMethod<String>('request', {
         'path': path,
         'method': method,
         'body': jsonEncode(body ?? {}),
         'token': token,
+        'probeID': ?probeID,
       });
       if (cancellation?.cancelled == true) {
         throw ApiException('Запрос отменён.');
@@ -44,6 +64,8 @@ class AndroidBackend extends Backend {
         e.message ?? 'Ошибка Android VPN',
         int.tryParse(e.code) ?? 0,
       );
+    } finally {
+      cancellation?.onCancel = null;
     }
   }
 
