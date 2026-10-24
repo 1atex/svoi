@@ -54,6 +54,13 @@ class ConfigPane extends StatelessWidget {
 }
 
 Future<void> saveText(String name, String content) async {
+  if (Platform.isAndroid) {
+    await windowChannel.invokeMethod<void>('exportText', {
+      'name': name,
+      'content': content,
+    });
+    return;
+  }
   final path = await windowChannel.invokeMethod<String>('saveFile', name);
   if (path != null) await File(path).writeAsString(content, flush: true);
 }

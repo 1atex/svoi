@@ -40,7 +40,10 @@ class AndroidBackend extends Backend {
       }
       return Map<String, dynamic>.from(jsonDecode(raw ?? '{}') as Map);
     } on PlatformException catch (e) {
-      throw ApiException(e.message ?? 'Ошибка Android VPN');
+      throw ApiException(
+        e.message ?? 'Ошибка Android VPN',
+        int.tryParse(e.code) ?? 0,
+      );
     }
   }
 

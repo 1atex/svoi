@@ -19,6 +19,9 @@ class MainActivity : FlutterActivity() {
     private var vpnBody: JSONObject? = null
     private var vpnToken = ""
     private var fileResult: MethodChannel.Result? = null
+    private var exportResult: MethodChannel.Result? = null
+    private var exportContent = ""
+    private class BackendError(val status: Int, message: String) : Exception(message)
 
     override fun configureFlutterEngine(engine: FlutterEngine) {
         super.configureFlutterEngine(engine)
@@ -43,7 +46,7 @@ class MainActivity : FlutterActivity() {
                     path.endsWith("/probe") -> result.error("unsupported", "В Android-версии проверяйте связь после подключения.", null)
                     else -> work(result) {
                         val response = JSONObject(VpnRuntime.session!!.request(method, "/api/$path", token, body.toString()))
-                        if (response.getInt("status") >= 400) throw IllegalStateException(response.getJSONObject("body").optString("error", "Ошибка сервиса"))
+                        if (response.getInt("status") >= 400) throw BackendError(response.getInt("status"), response.getJSONObject("body").optString("error", "Ошибка сервиса"))
                         response.getJSONObject("body").toString()
                     }
                 }
@@ -58,13 +61,21 @@ class MainActivity : FlutterActivity() {
                     if (fileResult != null) result.error("busy", "Выбор файла уже открыт", null)
                     else { fileResult = result; startActivityForResult(Intent(Intent.ACTION_OPEN_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("*/*"), 42) }
                 }
-                "saveFile" -> result.success(null)
+                "exportText" -> {
+                    if (exportResult != null) result.error("busy", "Сохранение файла уже открыто", null)
+                    else {
+                        exportResult = result
+                        exportContent = call.argument<String>("content") ?: ""
+                        startActivityForResult(Intent(Intent.ACTION_CREATE_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE)
+                            .setType("application/octet-stream").putExtra(Intent.EXTRA_TITLE, call.argument<String>("name") ?: "profile.json"), 43)
+                    }
+                }
                 else -> result.notImplemented()
             }
         }
     }
     private fun work(result: MethodChannel.Result, block: () -> String) {
-        workers.execute { try { val value = block(); main.post { result.success(value) } } catch(e: Exception) { main.post { result.error("backend", e.message, null) } } }
+        workers.execute { try { val value = block(); main.post { result.success(value) } } catch(e: Exception) { main.post { result.error(if (e is BackendError) e.status.toString() else "backend", e.message, null) } } }
     }
     private fun reply(result: MethodChannel.Result, error: String?) {
         main.post { if (error != null) result.error("vpn", error, null) else result.success(VpnRuntime.status().toString()) }
@@ -77,6 +88,9 @@ class MainActivity : FlutterActivity() {
     }
     private fun launchVpn() {
         val result = vpnResult ?: return
+        if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 44)
+        }
         val intent = Intent(this, SvoiVpnService::class.java).putExtra("serverId", vpnBody!!.getString("serverId")).putExtra("token", vpnToken)
         vpnResult = null; vpnBody = null; vpnToken = ""
         VpnRuntime.onStarted = { reply(result, it) }
@@ -112,6 +126,19 @@ class MainActivity : FlutterActivity() {
                     if (bytes.size > 8 * 1024 * 1024) throw IllegalStateException("Файл слишком большой")
                     target.writeBytes(bytes)
                     main.post { result.success(target.absolutePath) }
+                } catch(e: Exception) { main.post { result.error("file", e.message, null) } }
+            }
+        }
+        if (requestCode == 43) {
+            val result = exportResult ?: return
+            val content = exportContent
+            exportResult = null; exportContent = ""
+            val uri = data?.data
+            if (resultCode != Activity.RESULT_OK || uri == null) { result.success(null); return }
+            workers.execute {
+                try {
+                    contentResolver.openOutputStream(uri, "wt")!!.use { it.write(content.toByteArray(Charsets.UTF_8)) }
+                    main.post { result.success(null) }
                 } catch(e: Exception) { main.post { result.error("file", e.message, null) } }
             }
         }
