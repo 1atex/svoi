@@ -533,6 +533,7 @@ class SvoiController {
   Future<Map<String, dynamic>> logs() => api.request('connection?logs=1');
 
   void cancelProbes() {
+    final wasProbing = probing.value;
     _probeGeneration++;
     for (final request in _requests) {
       request.cancel();
@@ -542,7 +543,7 @@ class SvoiController {
       if (value.value.busy) value.value = const ProbeState();
     }
     probing.value = false;
-    probeProgress.value = 'Проверка остановлена';
+    probeProgress.value = wasProbing ? 'Проверка остановлена' : '';
   }
 
   Future<void> probe(List<ServerEntry> list) async {

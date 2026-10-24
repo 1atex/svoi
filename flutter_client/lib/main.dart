@@ -26,6 +26,7 @@ part 'tray.dart';
 part 'startup_panel.dart';
 part 'mobile_shell.dart';
 part 'mobile_identity.dart';
+part 'mobile_design.dart';
 
 const windowChannel = MethodChannel('dev.svoi/window');
 const canvas = Color(0xff101013),
@@ -273,7 +274,9 @@ class _BootstrapState extends State<Bootstrap> with WidgetsBindingObserver {
   Widget build(BuildContext context) => MaterialApp(
     debugShowCheckedModeBanner: false,
     title: 'SVOI',
-    theme: svoiTheme(),
+    theme: _controller?.api.mobile == true
+        ? mobileTheme(svoiTheme())
+        : svoiTheme(),
     home: _closing
         ? const Scaffold(body: Center(child: Text('Завершаем соединение…')))
         : _ready

@@ -45,6 +45,53 @@ class MobileFeaturesBackend extends DemoBackend {
 
 void main() {
   testWidgets(
+    'mobile connection and subscription fit above the fold and adapt to large text',
+    (tester) async {
+      tester.view.physicalSize = const Size(360, 740);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final c = SvoiController(MobileFeaturesBackend());
+      await c.initialize();
+      Widget app(double scale) => MaterialApp(
+        theme: svoiTheme(),
+        home: MediaQuery(
+          data: MediaQueryData(
+            size: const Size(360, 740),
+            textScaler: TextScaler.linear(scale),
+          ),
+          child: MobileShell(c: c),
+        ),
+      );
+      await tester.pumpWidget(app(1));
+      expect(
+        find.byKey(const ValueKey('mobile-power')).hitTestable(),
+        findsOneWidget,
+      );
+      expect(
+        find.text('Демонстрационная подписка').hitTestable(),
+        findsOneWidget,
+      );
+      expect(find.text('Android · экспериментальная сборка'), findsNothing);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(app(1.6));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      c.connection.value = {
+        'state': 'running',
+        'available': true,
+        'checked': false,
+        'error': 'Контрольный запрос не прошёл',
+      };
+      await tester.pumpAndSettle();
+      expect(find.text('Отключить VPN'), findsOneWidget);
+      expect(find.text('Контрольный запрос не прошёл'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox.shrink());
+      await c.close();
+    },
+  );
+  testWidgets(
     'mobile probes display results and failure does not prevent selection',
     (tester) async {
       tester.view.physicalSize = const Size(360, 740);
@@ -167,6 +214,11 @@ void main() {
     await tester.enterText(find.byType(TextField), 'Server does not exist');
     await tester.pump();
     expect(find.byType(ListTile), findsNothing);
+    tester.view.viewInsets = const FakeViewPadding(bottom: 300);
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    tester.view.resetViewInsets();
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Профиль').last);
     await tester.pumpAndSettle();
     await tester.scrollUntilVisible(find.text('Скопировать код переноса'), 200);

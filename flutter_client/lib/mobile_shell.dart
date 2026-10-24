@@ -38,197 +38,232 @@ class _MobileShellState extends State<MobileShell> {
       c.probeProgress,
       c.probeRevision,
     ]),
-    builder: (context, _) => Scaffold(
-      appBar: AppBar(
-        title: Text(['SVOI', 'Серверы', 'Профиль', 'Настройки'][page]),
-        actions: [
-          IconButton(
-            tooltip: 'Импортировать подписку',
-            onPressed: c.busy.value ? null : () => importDialog(context, c),
-            icon: const Icon(Icons.add),
-          ),
-        ],
-      ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: page,
-        onDestinationSelected: (i) => setState(() => page = i),
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.power_settings_new),
-            label: 'VPN',
-          ),
-          NavigationDestination(icon: Icon(Icons.public), label: 'Серверы'),
-          NavigationDestination(
-            icon: Icon(Icons.people_outline),
-            label: 'Профиль',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.settings_outlined),
-            label: 'Настройки',
-          ),
-        ],
-      ),
-      body: SafeArea(
-        child: Column(
-          children: [
-            if (c.message.value.isNotEmpty)
-              MaterialBanner(
-                content: Text(c.message.value),
-                actions: [
-                  TextButton(
-                    onPressed: () => c.message.value = '',
-                    child: const Text('Закрыть'),
-                  ),
-                ],
-              ),
-            Expanded(
-              child: switch (page) {
-                0 => home(),
-                1 => servers(),
-                2 => profile(),
-                _ => settings(),
-              },
+    builder: (context, _) => Theme(
+      data: mobileTheme(Theme.of(context)),
+      child: Scaffold(
+        appBar: AppBar(
+          title: page == 0
+              ? Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Image.asset(
+                        'assets/svoi-mark.png',
+                        width: 34,
+                        height: 34,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    const Text(
+                      'svoi',
+                      style: TextStyle(
+                        fontSize: 29,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -1,
+                      ),
+                    ),
+                    const Text(
+                      '·',
+                      style: TextStyle(
+                        color: accent,
+                        fontSize: 29,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
+                )
+              : Text(['SVOI', 'Серверы', 'Профиль', 'Настройки'][page]),
+          actions: [
+            IconButton(
+              tooltip: 'Импортировать подписку',
+              onPressed: c.busy.value ? null : () => importDialog(context, c),
+              icon: const Icon(Icons.add),
             ),
           ],
+        ),
+        bottomNavigationBar: DecoratedBox(
+          decoration: const BoxDecoration(
+            border: Border(top: BorderSide(color: edge)),
+          ),
+          child: NavigationBar(
+            selectedIndex: page,
+            onDestinationSelected: (i) => setState(() => page = i),
+            destinations: const [
+              NavigationDestination(
+                icon: Icon(LucideIcons.power, size: 22),
+                label: 'VPN',
+              ),
+              NavigationDestination(
+                icon: Icon(LucideIcons.globe, size: 22),
+                label: 'Серверы',
+              ),
+              NavigationDestination(
+                icon: Icon(LucideIcons.users, size: 22),
+                label: 'Профиль',
+              ),
+              NavigationDestination(
+                icon: Icon(LucideIcons.settings2, size: 22),
+                label: 'Настройки',
+              ),
+            ],
+          ),
+        ),
+        body: SafeArea(
+          child: Column(
+            children: [
+              if (c.message.value.isNotEmpty)
+                MaterialBanner(
+                  content: Text(c.message.value),
+                  actions: [
+                    TextButton(
+                      onPressed: () => c.message.value = '',
+                      child: const Text('Закрыть'),
+                    ),
+                  ],
+                ),
+              Expanded(
+                child: switch (page) {
+                  0 => home(),
+                  1 => servers(),
+                  2 => profile(),
+                  _ => settings(),
+                },
+              ),
+            ],
+          ),
         ),
       ),
     ),
   );
   Widget home() {
-    final view = ConnectionView(c);
     final server = c.servers.value
         .where((s) => s.id == c.selected.value)
         .firstOrNull;
     return ListView(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
       children: [
-        const Text(
-          'На своих условиях.',
-          style: TextStyle(fontSize: 28, fontWeight: FontWeight.w700),
-        ),
-        const SizedBox(height: 8),
-        const Text(
-          'Android · экспериментальная сборка',
-          style: TextStyle(color: muted),
-        ),
-        TextButton.icon(
+        TextButton(
+          style: TextButton.styleFrom(
+            foregroundColor: ink,
+            padding: EdgeInsets.zero,
+          ),
           onPressed: () => setState(() => page = 2),
-          icon: const Icon(Icons.people_outline, size: 18),
-          label: Text('Профиль: ${c.group.value['name'] ?? 'Моя сеть'}'),
-        ),
-        if (server == null)
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text(
-                    c.sessions.value.length > 1
-                        ? 'В этом профиле нет серверов'
-                        : 'Начните с подписки',
-                    style: const TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    c.sessions.value.length > 1
-                        ? 'У вас есть другие сохранённые профили. Подписки каждого профиля хранятся отдельно.'
-                        : 'Вставьте ссылку от провайдера или код переноса из SVOI на компьютере.',
-                  ),
-                  const SizedBox(height: 20),
-                  FilledButton.icon(
-                    onPressed: c.busy.value
-                        ? null
-                        : () => importDialog(context, c),
-                    icon: const Icon(Icons.add_link),
-                    label: const Text('Добавить подписку'),
-                  ),
-                  if (c.sessions.value.length > 1)
-                    TextButton.icon(
-                      onPressed: () => setState(() => page = 2),
-                      icon: const Icon(Icons.switch_account_outlined),
-                      label: const Text('Выбрать сохранённый профиль'),
-                    ),
-                ],
+          child: Row(
+            children: [
+              const Icon(Icons.people_outline_rounded, size: 18, color: accent),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  c.group.value['name']?.toString() ?? 'Моя сеть',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
+              const Icon(Icons.expand_more, size: 18, color: muted),
+            ],
+          ),
+        ),
+        const SizedBox(height: 10),
+        if (server == null)
+          MobilePanel(
+            hero: true,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Align(
+                  alignment: Alignment.centerLeft,
+                  child: Icon(Icons.add_link_rounded, color: accent, size: 36),
+                ),
+                const SizedBox(height: 24),
+                Text(
+                  c.sessions.value.length > 1
+                      ? 'В этом профиле нет серверов'
+                      : 'Начните с подписки',
+                  style: const TextStyle(
+                    fontSize: 26,
+                    height: 1.15,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  c.sessions.value.length > 1
+                      ? 'Подписки каждого профиля хранятся отдельно. Выберите сохранённый профиль или добавьте подписку.'
+                      : 'Вставьте ссылку от провайдера или перенесите профиль из SVOI на компьютере.',
+                  style: const TextStyle(color: muted, height: 1.5),
+                ),
+                const SizedBox(height: 24),
+                FilledButton.icon(
+                  onPressed: c.busy.value
+                      ? null
+                      : () => importDialog(context, c),
+                  icon: const Icon(Icons.add),
+                  label: const Text('Добавить подписку'),
+                ),
+                if (c.sessions.value.length > 1)
+                  TextButton(
+                    onPressed: () => setState(() => page = 2),
+                    child: const Text('Выбрать сохранённый профиль'),
+                  ),
+              ],
             ),
           )
-        else ...[
-          Card(
-            child: ListTile(
-              leading: CountryMark(country: server.country),
-              title: Text(server.country.title),
-              subtitle: Text(server.protocol),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () => setState(() => page = 1),
-            ),
+        else
+          MobileConnectionCard(
+            c: c,
+            server: server,
+            onServer: () => setState(() => page = 1),
           ),
-          const SizedBox(height: 28),
-          Center(
-            child: SizedBox(
-              width: 144,
-              height: 144,
-              child: FilledButton(
-                style: FilledButton.styleFrom(
-                  shape: const CircleBorder(),
-                  backgroundColor: view.running ? success : accent,
-                ),
-                onPressed: c.busy.value || view.phase.isNotEmpty
-                    ? null
-                    : c.toggleConnection,
-                child: const Icon(Icons.power_settings_new, size: 60),
-              ),
-            ),
-          ),
-          const SizedBox(height: 20),
-          Text(
-            view.title,
-            textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w600),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            view.detail,
-            textAlign: TextAlign.center,
-            style: const TextStyle(color: muted),
-          ),
-          if (view.error.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(top: 12),
+        const SizedBox(height: 24),
+        Row(
+          children: [
+            const Expanded(
               child: Text(
-                view.error,
-                style: const TextStyle(color: Color(0xffffaaa6)),
+                'Подписки',
+                style: TextStyle(fontSize: 19, fontWeight: FontWeight.w700),
               ),
             ),
-          const SizedBox(height: 16),
-          if (view.running)
-            TextButton.icon(
-              onPressed: c.busy.value ? null : c.check,
-              icon: const Icon(Icons.network_check),
-              label: const Text('Проверить интернет'),
+            if (c.subscriptions.value.isNotEmpty)
+              IconButton(
+                tooltip: 'Обновить подписки',
+                onPressed: c.busy.value ? null : c.refreshSubscriptions,
+                icon: const Icon(Icons.refresh_rounded, size: 21),
+              ),
+            IconButton(
+              tooltip: 'Добавить подписку',
+              onPressed: c.busy.value ? null : () => importDialog(context, c),
+              icon: const Icon(Icons.add_rounded, size: 21),
             ),
-          const SizedBox(height: 20),
-        ],
-        const Text(
-          'Подписки',
-          style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
+          ],
         ),
+        const SizedBox(height: 8),
         for (final source in c.subscriptions.value)
           Card(
             child: ListTile(
-              title: Text(source['name']?.toString() ?? 'Подписка'),
+              leading: Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: accent.withValues(alpha: .08),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.link_rounded, color: accent, size: 22),
+              ),
+              title: Text(
+                source['name']?.toString() ?? 'Подписка',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
               subtitle: Text('${source['count'] ?? 0} серверов'),
+              trailing: const Icon(Icons.chevron_right_rounded, size: 20),
               onTap: () => editSource(context, c, source),
             ),
           ),
-        if (c.subscriptions.value.isNotEmpty)
-          TextButton.icon(
-            onPressed: c.busy.value ? null : c.refreshSubscriptions,
-            icon: const Icon(Icons.refresh),
-            label: const Text('Обновить подписки'),
+        if (c.subscriptions.value.isEmpty)
+          const Text(
+            'Здесь появятся ваши источники серверов.',
+            style: TextStyle(color: muted, fontSize: 13),
           ),
       ],
     );
@@ -305,7 +340,7 @@ class _MobileShellState extends State<MobileShell> {
         ),
         Expanded(
           child: list.isEmpty
-              ? Center(
+              ? SingleChildScrollView(
                   child: Padding(
                     padding: const EdgeInsets.all(24),
                     child: Column(
@@ -339,35 +374,54 @@ class _MobileShellState extends State<MobileShell> {
                   ),
                 )
               : ListView.builder(
+                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
                   itemCount: list.length,
                   itemBuilder: (context, i) {
                     final s = list[i];
-                    return ListTile(
-                      selected: s.id == c.selected.value,
-                      leading: CountryMark(country: s.country),
-                      title: Text(
-                        s.country.title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                    return Card(
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(18),
+                        side: BorderSide(
+                          color: s.id == c.selected.value
+                              ? accent.withValues(alpha: .5)
+                              : edge,
+                        ),
                       ),
-                      subtitle: Text(s.protocol),
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          MobileProbeButton(c: c, server: s),
-                          IconButton(
-                            tooltip: 'Конфигурация',
-                            icon: const Icon(Icons.code),
-                            onPressed: () => showConfig(context, c, s),
-                          ),
-                        ],
+                      color: s.id == c.selected.value
+                          ? const Color(0xff25221d)
+                          : surface,
+                      child: ListTile(
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
+                        horizontalTitleGap: 10,
+                        selected: s.id == c.selected.value,
+                        leading: CountryMark(country: s.country),
+                        title: Text(
+                          s.country.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        subtitle: Text(s.protocol),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            MobileProbeButton(c: c, server: s),
+                            IconButton(
+                              tooltip: 'Конфигурация',
+                              icon: const Icon(Icons.code),
+                              onPressed: () => showConfig(context, c, s),
+                            ),
+                          ],
+                        ),
+                        onTap: c.busy.value
+                            ? null
+                            : () async {
+                                await c.select(s.id);
+                                if (mounted) setState(() => page = 0);
+                              },
                       ),
-                      onTap: c.busy.value
-                          ? null
-                          : () async {
-                              await c.select(s.id);
-                              if (mounted) setState(() => page = 0);
-                            },
                     );
                   },
                 ),
@@ -486,7 +540,7 @@ class _MobileShellState extends State<MobileShell> {
         ),
       ),
       const Divider(),
-      const Text('SVOI · Android Preview 2'),
+      const Text('SVOI · Android Preview 3'),
       const SizedBox(height: 12),
       const Text(
         'Обновления этой тестовой сборки устанавливаются APK-файлом. zapret и настройки автозапуска Windows здесь недоступны.',
