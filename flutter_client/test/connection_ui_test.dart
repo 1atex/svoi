@@ -148,21 +148,19 @@ void main() {
       expect(backend.state['serverId'], c.selected.value);
       expect(backend.state['mode'], 'tun');
       expect(find.text('Подключено'), findsWidgets);
-      expect(find.textContaining('HTTPS-проверка пройдена'), findsOneWidget);
+      expect(find.text('Интернет проверен'), findsOneWidget);
 
       await c.select('1');
       await tester.pumpAndSettle();
-      expect(find.text('Применить выбранный сервер и режим'), findsOneWidget);
+      expect(find.text('Переключиться'), findsOneWidget);
       await tester.tap(connect);
       await tester.pumpAndSettle();
       expect(backend.state['state'], 'stopped');
-      await tester.tap(find.byKey(const ValueKey('open-server-picker')));
+      await tester.tap(find.byTooltip('Действия сервера').first);
       await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const ValueKey('favorite-2')));
+      await tester.tap(find.text('В избранное'));
       await tester.pumpAndSettle();
-      expect(c.favorites.value.contains('2'), true);
-      await tester.tap(find.byTooltip('Закрыть').last);
-      await tester.pumpAndSettle();
+      expect(c.favorites.value.isNotEmpty, true);
 
       Focus.of(
         tester.element(

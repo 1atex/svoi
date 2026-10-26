@@ -16,6 +16,7 @@ import 'data_directory.dart';
 part 'features.dart';
 part 'design.dart';
 part 'overview.dart';
+part 'desktop_workspace.dart';
 part 'power_control.dart';
 part 'connection_view.dart';
 part 'connection_card.dart';
@@ -317,13 +318,7 @@ class _SvoiShellState extends State<SvoiShell> {
     await windowChannel.invokeMethod('show');
     if (!mounted) return;
     if (action == 'servers' || action == 'settings' || action == 'connection') {
-      setState(
-        () => page = action == 'servers'
-            ? 1
-            : action == 'settings'
-            ? 5
-            : 0,
-      );
+      setState(() => page = action == 'settings' ? 5 : 0);
       return;
     }
     if (_trayDialogOpen) return;
@@ -348,198 +343,109 @@ class _SvoiShellState extends State<SvoiShell> {
   Widget build(BuildContext context) {
     final c = widget.controller;
     return Scaffold(
-      body: Row(
+      body: Column(
         children: [
-          SizedBox(
-            width: 200,
-            child: Material(
-              color: const Color(0xff141417),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
+          Material(
+            color: const Color(0xff141417),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              child: Row(
                 children: [
-                  const Padding(
-                    padding: EdgeInsets.fromLTRB(24, 28, 24, 32),
-                    child: BrandMark(),
-                  ),
-                  const Padding(
-                    padding: EdgeInsets.fromLTRB(24, 0, 24, 14),
-                    child: Eyebrow('ПРОСТРАНСТВО'),
-                  ),
+                  const SizedBox(width: 120, height: 40, child: BrandMark()),
+                  const SizedBox(width: 28),
                   Expanded(
-                    child: ListView(
-                      children: [
-                        for (final (index, label, icon) in [
-                          (0, 'Подключение', LucideIcons.power),
-                          (1, 'Серверы', LucideIcons.globe),
-                          (2, 'Общий профиль', LucideIcons.users),
-                          (3, 'Приложения', LucideIcons.appWindow),
-                          (4, 'zapret', LucideIcons.shield),
-                          (5, 'Настройки', LucideIcons.settings2),
-                        ])
-                          Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 4,
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: [
+                          for (final (index, label, icon) in [
+                            (0, 'Подключение', LucideIcons.power),
+                            (4, 'zapret', LucideIcons.shield),
+                            (5, 'Настройки', LucideIcons.settings2),
+                          ])
+                            Padding(
+                              padding: const EdgeInsets.only(right: 6),
+                              child: TextButton.icon(
+                                style: TextButton.styleFrom(
+                                  foregroundColor: page == index
+                                      ? accent
+                                      : muted,
+                                  backgroundColor: page == index
+                                      ? accent.withValues(alpha: .12)
+                                      : Colors.transparent,
+                                  minimumSize: const Size(0, 42),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                ),
+                                onPressed: () => setState(() => page = index),
+                                icon: Icon(icon, size: 17),
+                                label: Text(label),
+                              ),
                             ),
-                            child: ListTile(
-                              dense: true,
-                              minTileHeight: 44,
-                              horizontalTitleGap: 10,
-                              minLeadingWidth: 24,
-                              contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                              ),
-                              selected: page == index,
-                              selectedTileColor: const Color(0xff30291e),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              leading: Icon(icon, size: 18),
-                              title: Text(
-                                label,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(fontSize: 13),
-                              ),
-                              onTap: () => setState(() => page = index),
-                            ),
-                          ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
-                  Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          widget.demo ? 'ДЕМОНСТРАЦИЯ' : 'WINDOWS · BETA',
-                          style: const TextStyle(
-                            color: muted,
-                            fontSize: 10,
-                            letterSpacing: 1,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        const Text(
-                          clientVersion,
-                          style: TextStyle(fontSize: 12),
-                        ),
-                        const SizedBox(height: 8),
-                        const Text(
-                          'На связи со своими.',
-                          style: TextStyle(color: muted, fontSize: 11),
-                        ),
-                      ],
+                  IconButton(
+                    tooltip: 'Профили и перенос',
+                    onPressed: () => showDesktopSheet(
+                      context,
+                      'Профили и перенос',
+                      ProfilePage(c: c),
                     ),
+                    icon: const Icon(LucideIcons.users, size: 19),
+                  ),
+                  IconButton(
+                    tooltip: 'Свернуть в трей',
+                    onPressed: () => windowChannel.invokeMethod('tray'),
+                    icon: const Icon(LucideIcons.chevronDown, size: 19),
                   ),
                 ],
               ),
             ),
           ),
-          const VerticalDivider(width: 1),
-          Expanded(
-            child: Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(28, 20, 28, 16),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          [
-                            'Подключение',
-                            'Серверы',
-                            'Общий профиль',
-                            'Приложения',
-                            'zapret',
-                            'Настройки',
-                          ][page],
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
+          const Divider(height: 1),
+          ValueListenableBuilder(
+            valueListenable: c.message,
+            builder: (context, message, _) => message.isEmpty
+                ? const SizedBox.shrink()
+                : Material(
+                    color: const Color(0xff382327),
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 6, 12, 6),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            LucideIcons.info,
+                            size: 18,
+                            color: Color(0xffffaaa6),
                           ),
-                        ),
-                      ),
-                      IconButton(
-                        tooltip: 'Свернуть в трей',
-                        icon: const Icon(LucideIcons.chevronDown),
-                        onPressed: () => windowChannel.invokeMethod('tray'),
-                      ),
-                      ListenableBuilder(
-                        listenable: Listenable.merge([
-                          c.connection,
-                          c.connectionPhase,
-                          c.connectionIssue,
-                        ]),
-                        builder: (context, _) {
-                          final view = ConnectionView(c);
-                          return StatusPill(view.title, active: view.verified);
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-                const Divider(height: 1),
-                ValueListenableBuilder(
-                  valueListenable: c.message,
-                  builder: (context, message, _) => message.isEmpty
-                      ? const SizedBox.shrink()
-                      : Container(
-                          width: double.infinity,
-                          color: const Color(0xff382327),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 28,
-                            vertical: 12,
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              message,
+                              maxLines: 3,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(fontSize: 12),
+                            ),
                           ),
-                          child: Row(
-                            children: [
-                              const Icon(
-                                Icons.info_outline,
-                                color: Color(0xffffaaa6),
-                                size: 18,
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Text(
-                                  message,
-                                  style: const TextStyle(fontSize: 12),
-                                ),
-                              ),
-                              IconButton(
-                                tooltip: 'Закрыть сообщение',
-                                onPressed: () => c.message.value = '',
-                                icon: const Icon(Icons.close, size: 18),
-                              ),
-                            ],
+                          IconButton(
+                            tooltip: 'Закрыть сообщение',
+                            onPressed: () => c.message.value = '',
+                            icon: const Icon(LucideIcons.x, size: 18),
                           ),
-                        ),
-                ),
-                Expanded(
-                  child: AnimatedSwitcher(
-                    duration: MediaQuery.disableAnimationsOf(context)
-                        ? Duration.zero
-                        : const Duration(milliseconds: 160),
-                    child: KeyedSubtree(
-                      key: ValueKey(page),
-                      child: SizedBox.expand(
-                        child: switch (page) {
-                          0 => Overview(
-                            c: c,
-                            onServers: () => setState(() => page = 1),
-                          ),
-                          1 => ServerPage(c: c),
-                          2 => ProfilePage(c: c),
-                          3 => RoutingPage(c: c),
-                          4 => ZapretPage(c: c),
-                          _ => PreferencesPage(c: c),
-                        },
+                        ],
                       ),
                     ),
                   ),
-                ),
-              ],
-            ),
+          ),
+          Expanded(
+            child: switch (page) {
+              4 => ZapretPage(c: c),
+              5 => PreferencesPage(c: c),
+              _ => DesktopWorkspace(c: c),
+            },
           ),
         ],
       ),

@@ -140,20 +140,19 @@ void main() {
         home: SvoiShell(controller: c),
       ),
     );
-    for (final page in [
-      'Серверы',
-      'Общий профиль',
-      'Приложения',
-      'zapret',
-      'Настройки',
-      'Подключение',
-    ]) {
-      final nav = find.widgetWithText(ListTile, page).first;
+    for (final page in ['zapret', 'Настройки', 'Подключение']) {
+      final nav = find.widgetWithText(TextButton, page).first;
       await tester.ensureVisible(nav);
       await tester.tap(nav);
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull, reason: page);
     }
+    await tester.tap(find.byTooltip('Профили и перенос'));
+    await tester.pumpAndSettle();
+    expect(find.byType(ProfilePage), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await tester.tap(find.byTooltip('Закрыть'));
+    await tester.pumpAndSettle();
     await tester.pumpWidget(const SizedBox.shrink());
     await c.close();
   });
