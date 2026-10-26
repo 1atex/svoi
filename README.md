@@ -16,7 +16,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/1atex/svoi/releases/download/v0.5.0-beta.7/SVOI-0.5.0-beta.7-windows-x64-setup.exe"><b>↓ Скачать для Windows</b></a>
+  <a href="https://github.com/1atex/svoi/releases/download/v0.5.0-beta.8/SVOI-0.5.0-beta.8-windows-x64-setup.exe"><b>↓ Скачать для Windows</b></a>
   &nbsp; · &nbsp;
   <a href="https://github.com/1atex/svoi/releases/download/android-v0.1.0-preview.6/SVOI-Android-0.1.0-preview.6-arm64.apk"><b>↓ Android APK · Preview</b></a>
   &nbsp; · &nbsp;
@@ -29,11 +29,11 @@
 
 ## Подключение без лишних экранов
 
-Выберите сервер и нажмите на кнопку включения. Режим подключения, подписки и быстрый доступ к избранному находятся рядом.
+Выберите сервер слева и подключитесь справа. В небольшом окне управление закреплено снизу. Подписки, избранное и проверка задержки доступны на одном экране; смена работающего сервера применяется кнопкой «Переключиться».
 
 <img src="docs/assets/overview.png" alt="Главный экран SVOI: кнопка подключения, режим TUN и подписки" width="100%">
 
-<sub>Настоящие компоненты интерфейса 0.5.0-beta.2 с демонстрационными данными. Адреса заменены на example.com; подключения и замеры на этих кадрах не выполнялись.</sub>
+<sub>Интерфейс 0.5.0-beta.8 с демонстрационными профилями и задержками; реальные подключения и замеры на этих кадрах не выполнялись.</sub>
 
 ## Всё необходимое — внутри
 
@@ -49,7 +49,7 @@
 
 <table>
   <tr>
-    <td width="50%"><img src="docs/assets/servers.png" alt="Поиск, избранное и проверка серверов"><br><b>Нужный сервер — в пару действий</b></td>
+    <td width="50%"><img src="docs/assets/servers.png" alt="Компактный экран с закреплённым подключением"><br><b>Управление всегда на виду</b></td>
     <td width="50%"><img src="docs/assets/applications.png" alt="Выбор приложений для TUN"><br><b>Решайте, какой трафик подключать</b></td>
   </tr>
 </table>
@@ -73,11 +73,11 @@
 
 ## Первый запуск
 
-1. **Установите SVOI.** [Установщик Windows x64](https://github.com/1atex/svoi/releases/download/v0.5.0-beta.7/SVOI-0.5.0-beta.7-windows-x64-setup.exe) уже содержит Xray, Wintun и необходимые библиотеки. WebView2 не нужен.
+1. **Установите SVOI.** [Установщик Windows x64](https://github.com/1atex/svoi/releases/download/v0.5.0-beta.8/SVOI-0.5.0-beta.8-windows-x64-setup.exe) уже содержит Xray, Wintun и необходимые библиотеки. WebView2 не нужен.
 2. **Добавьте свою подписку.** Вставьте ссылку или импортируйте конфигурацию из файла / текста.
-3. **Выберите сервер и режим.** Для TUN нужны права администратора. Нажмите на кнопку включения.
+3. **Выберите сервер и подключитесь.** На новой установке выбран TUN («Все приложения»); для него нужны права администратора. Сохранённый выбор режима при обновлении не меняется.
 
-Предпочитаете без установки? [Скачайте portable ZIP](https://github.com/1atex/svoi/releases/download/v0.5.0-beta.7/SVOI-0.5.0-beta.7-windows-x64.zip), распакуйте **весь архив** и запустите `svoi.exe`.
+Предпочитаете без установки? [Скачайте portable ZIP](https://github.com/1atex/svoi/releases/download/v0.5.0-beta.8/SVOI-0.5.0-beta.8-windows-x64.zip), распакуйте **весь архив** и запустите `svoi.exe`.
 
 Установщик предлагает запуск после установки. Ярлык на рабочем столе и запуск от имени администратора включены по умолчанию; флажки можно снять. При запуске с повышенными правами Windows покажет запрос UAC.
 
@@ -98,7 +98,7 @@
 
 ## Статус проекта
 
-**Windows: 0.5.0-beta.7 · x64. Android: 0.1.0-preview.6 · ARM64 и x86_64.** iOS пока не выпускается. SVOI использует ваши подписки; VPN-серверы в комплект не входят.
+**Windows: 0.5.0-beta.8 · x64. Android: 0.1.0-preview.6 · ARM64 и x86_64.** iOS пока не выпускается. SVOI использует ваши подписки; VPN-серверы в комплект не входят.
 
 Android — отдельная экспериментальная сборка: [APK для ARM64-телефонов](https://github.com/1atex/svoi/releases/download/android-v0.1.0-preview.6/SVOI-Android-0.1.0-preview.6-arm64.apk), [APK для эмулятора x86_64](https://github.com/1atex/svoi/releases/download/android-v0.1.0-preview.6/SVOI-Android-0.1.0-preview.6-x64.apk), [инструкция и исходники Android](https://github.com/1atex/svoi/blob/android-preview/docs/ANDROID.md). Обновления проверяются и скачиваются из приложения; установку подтверждает пользователь. При переходе с Preview 5 сохраните коды профилей и переустановите приложение: начиная с Preview 6 используется постоянная подпись.
 
