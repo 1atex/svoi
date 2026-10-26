@@ -73,12 +73,18 @@ class BackendEndpoint(private val service: SvoiVpnService) : IBackendService.Stu
                         path == "connection/stop" -> { await { VpnRuntime.stop(it) }; response(VpnRuntime.status()) }
                         path == "connection/check" -> { await { VpnRuntime.check(it) }; response(VpnRuntime.status()) }
                         path == "connection/ip" -> {
-                            check(VpnRuntime.status().optString("state") !in listOf("starting", "stopping")) { "Дождитесь переключения VPN" }
+                            val before = VpnRuntime.status()
+                            check(before.optString("state") !in listOf("starting", "stopping")) { "Дождитесь переключения VPN" }
                             val ip = synchronized(client) {
                                 check(!client.dead && !client.cancelled.remove(id)) { "Проверка отменена" }
                                 Mobile.newPublicIPRequest().also { client.ips[id] = it }
                             }
-                            try { response(JSONObject(ip.run())) }
+                            try {
+                                val result = JSONObject(ip.run())
+                                val after = VpnRuntime.status()
+                                check(listOf("state", "serverId", "startedAt").all { before.optString(it) == after.optString(it) }) { "Подключение изменилось. Проверка IP отменена." }
+                                response(result)
+                            }
                             finally { ip.cancel(); synchronized(client) { client.ips.remove(id); client.cancelled.remove(id) } }
                         }
                         path.startsWith("connection") -> response(VpnRuntime.status())

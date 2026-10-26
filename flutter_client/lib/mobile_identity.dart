@@ -168,8 +168,7 @@ class MobileProbeButton extends StatelessWidget {
     valueListenable: c.probes[server.id]!,
     builder: (context, result, _) => Tooltip(
       message:
-          result.error ??
-          'HTTPS через профиль · лимит 4 с. Ошибка не запрещает подключение.',
+          '${result.error ?? 'GET через профиль · доступность тестового адреса'}\n${result.url ?? defaultProbeUrl}\nОшибка не запрещает подключение.',
       child: SizedBox(
         width: 88,
         child: TextButton(
@@ -188,7 +187,9 @@ class MobileProbeButton extends StatelessWidget {
                 )
               : Text(
                   result.error != null
-                      ? 'Нет ответа'
+                      ? result.setupError
+                            ? 'Ошибка ядра'
+                            : 'Нет ответа'
                       : result.latency != null
                       ? '${result.latency} мс'
                       : 'Пинг',
