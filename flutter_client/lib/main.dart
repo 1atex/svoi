@@ -519,7 +519,7 @@ Future<void> importDialog(BuildContext context, SvoiController c) async {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'HTTPS-ссылка, VLESS / VMess / Trojan / SS, JSON или код SVOI1. Перед переносом профиля будет показан его состав.',
+              'HTTPS-ссылка, VLESS / VMess / Trojan / SS / Hysteria2, JSON или код SVOI1. Перед переносом профиля будет показан его состав.',
               style: TextStyle(color: muted, fontSize: 13),
             ),
             const SizedBox(height: 18),

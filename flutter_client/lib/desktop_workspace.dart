@@ -602,7 +602,8 @@ class DesktopServerRow extends StatelessWidget {
                         }
                       },
                       itemBuilder: (context) => [
-                        if (server.json['fullProfile'] != true)
+                        if (server.json['fullProfile'] != true &&
+                            !server.usesQuic)
                           const PopupMenuItem(
                             value: 'tcp',
                             child: Text('Проверить адрес · TCP'),

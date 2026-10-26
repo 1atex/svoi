@@ -81,6 +81,9 @@ func (a *App) serverToolsAPI(w http.ResponseWriter, r *http.Request) error {
 		return fail(429, "Все четыре слота проверки заняты")
 	}
 	if parts[1] == "tcp" {
+		if isHysteriaServer(server.ServerInfo) {
+			return fail(400, "Hysteria2 работает через UDP. Используйте проверку задержки через профиль вместо TCP-теста.")
+		}
 		if server.FullProfile || server.Address == "" || server.Port < 1 || server.Port > 65535 {
 			return fail(400, "У полного профиля может быть несколько узлов. Используйте HTTPS-проверку профиля.")
 		}

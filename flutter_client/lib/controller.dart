@@ -23,11 +23,16 @@ class ServerEntry {
   final String id, name;
   late final String search;
   late final ServerCountry country;
+  bool get isHysteria =>
+      json['protocol'] == 'hysteria' || json['protocol'] == 'hysteria2';
+  bool get usesQuic => isHysteria || json['network'] == 'hysteria';
   String get details => json['fullProfile'] == true
       ? '${json['nodeCount']} узлов · маршрутизация из подписки'
-      : '${json['address']}:${json['port']} · ${json['network'] ?? 'tcp'} · ${json['security'] ?? ''}';
+      : '${json['address']}:${json['port']} · ${usesQuic ? 'QUIC / UDP' : json['network'] ?? 'tcp'} · ${json['security'] ?? ''}';
   String get protocol => json['fullProfile'] == true
       ? 'Профиль'
+      : isHysteria
+      ? 'HYSTERIA2'
       : (json['protocol'] as String).toUpperCase();
 }
 

@@ -40,4 +40,9 @@ func TestTCPProbeDoesNotStartXrayOrChangeConnection(t *testing.T) {
 	if a.serverToolsAPI(httptest.NewRecorder(), r) == nil {
 		t.Fatal("full profile incorrectly reduced to one address")
 	}
+	a.state.Groups[0].Servers[0].FullProfile = false
+	a.state.Groups[0].Servers[0].Protocol = "hysteria2"
+	if a.serverToolsAPI(httptest.NewRecorder(), r) == nil {
+		t.Fatal("UDP Hysteria2 incorrectly offered a TCP check")
+	}
 }
