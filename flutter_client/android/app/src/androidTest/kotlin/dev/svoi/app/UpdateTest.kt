@@ -35,20 +35,17 @@ class UpdateTest {
                 Thread.sleep(100); status = updates.status()
             }
             assertEquals(status.toString(), "ready", status.getString("state"))
-            fun permission(value: String) {
-                instrumentation.uiAutomation.executeShellCommand("appops set ${context.packageName} REQUEST_INSTALL_PACKAGES $value").use {
-                    android.os.ParcelFileDescriptor.AutoCloseInputStream(it).readBytes()
-                }
-            }
-            permission("deny")
-            assertEquals(android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, updates.installIntent().action)
-            permission("allow")
+            val allowed = InstrumentationRegistry.getArguments().getString("installAllowed", "true").toBoolean()
+            assertEquals(allowed, context.packageManager.canRequestPackageInstalls())
             val intent = updates.installIntent()
-            assertEquals(android.content.Intent.ACTION_VIEW, intent.action)
-            assertEquals("content", intent.data!!.scheme)
-            assertTrue(intent.flags and android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION != 0)
-            assertNotNull(context.packageManager.resolveActivity(intent, 0))
-            permission("deny")
+            if (allowed) {
+                assertEquals(android.content.Intent.ACTION_VIEW, intent.action)
+                assertEquals("content", intent.data!!.scheme)
+                assertTrue(intent.flags and android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION != 0)
+                assertNotNull(context.packageManager.resolveActivity(intent, 0))
+            } else {
+                assertEquals(android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, intent.action)
+            }
             updates.cancel()
         } finally { file.delete(); prefs.edit().clear().commit() }
     }

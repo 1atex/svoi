@@ -75,7 +75,7 @@ class TunnelTest {
                         } }
                         checks.forEach { assertTrue("HTTP-only fixture must fail HTTPS", it.get(10, java.util.concurrent.TimeUnit.SECONDS)) }
                     } finally { pool.shutdownNow() }
-                    request("settings", "PUT", token, JSONObject().put("probe", JSONObject()
+                    request("settings", "PUT", token, request("settings", token = token).put("probe", JSONObject()
                         .put("url", "http://198.18.0.42:18080/probe").put("timeoutSeconds", 1).put("parallel", 2)))
                     val measured = request("servers/$id/probe", "POST", token, probeId = "configured-url")
                     assertTrue("Configured HTTP URL must work through profile", measured.getLong("latency") >= 0)
