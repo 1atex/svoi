@@ -508,7 +508,9 @@ class DesktopServerRow extends StatelessWidget {
                             probe.busy
                                 ? 'Проверяется'
                                 : probe.error != null
-                                ? 'Нет ответа'
+                                ? probe.setupError
+                                      ? 'Ошибка ядра'
+                                      : 'Нет ответа'
                                 : probe.latency != null
                                 ? '${probe.latency} мс'
                                 : 'Не проверен',
@@ -753,6 +755,7 @@ class DesktopConnection extends StatelessWidget {
                     ),
                   ],
                 ),
+                PublicIPLine(c: c),
                 if (view.error.isNotEmpty)
                   Text(
                     detail,
@@ -812,6 +815,8 @@ class DesktopConnection extends StatelessWidget {
                 padding: const EdgeInsets.only(top: 24),
                 child: Column(
                   children: [
+                    PublicIPLine(c: c),
+                    const SizedBox(height: 12),
                     ModePicker(c: c),
                     const SizedBox(height: 12),
                     if (view.running)

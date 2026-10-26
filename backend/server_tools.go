@@ -118,6 +118,10 @@ func (a *App) serverToolsAPI(w http.ResponseWriter, r *http.Request) error {
 	}
 	latency, err := probeServer(r.Context(), a.engine, server, settings)
 	if err != nil {
+		var preparation apiError
+		if errors.As(err, &preparation) {
+			return preparation
+		}
 		if errors.Is(err, context.DeadlineExceeded) {
 			return fail(502, fmt.Sprintf("Нет ответа за %d с. Можно повторить проверку или подключиться вручную.", settings.TimeoutSeconds))
 		}
@@ -135,8 +139,6 @@ func probeServer(ctx context.Context, base *Engine, server ServerConfig, options
 	if err := validateProbeSettings(&settings); err != nil {
 		return 0, err
 	}
-	ctx, cancel := context.WithTimeout(ctx, time.Duration(settings.TimeoutSeconds)*time.Second)
-	defer cancel()
 	if err := ctx.Err(); err != nil {
 		return 0, err
 	}
@@ -147,12 +149,17 @@ func probeServer(ctx context.Context, base *Engine, server ServerConfig, options
 	defer os.RemoveAll(dir)
 	probe := &Engine{binary: base.binary, dir: dir, checkURL: settings.URL, checkTimeout: time.Duration(settings.TimeoutSeconds) * time.Second, status: EngineStatus{State: "stopped", Available: true, Logs: []string{}}}
 	defer probe.Stop()
-	if err = probe.startContext(ctx, server, "local"); err != nil {
+	startup, cancelStartup := context.WithTimeout(ctx, 5*time.Second)
+	err = probe.startContext(startup, server, "local")
+	cancelStartup()
+	if err != nil {
 		if ctx.Err() != nil {
 			return 0, ctx.Err()
 		}
-		return 0, err
+		return 0, fail(503, "Не удалось подготовить Xray к проверке. Лимит запуска — 5 с; это не результат задержки сервера.")
 	}
+	ctx, cancel := context.WithTimeout(ctx, time.Duration(settings.TimeoutSeconds)*time.Second)
+	defer cancel()
 	latency, err := probe.Check(ctx)
 	if ctx.Err() != nil {
 		return 0, ctx.Err()

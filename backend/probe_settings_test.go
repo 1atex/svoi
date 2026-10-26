@@ -104,6 +104,8 @@ func TestProbeAPIUsesSavedURLAndGET(t *testing.T) {
 	if a.engine.Status().State != "stopped" {
 		t.Fatal("probe changed active engine")
 	}
+	a.state.Groups[0].Servers[0].Outbound = json.RawMessage(`{"protocol":"invalid"}`)
+	expect(t, localProbeCall(a, "POST", "/api/servers/test/probe", owner, nil), 503)
 
 	hanging := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { <-r.Context().Done() }))
 	defer hanging.Close()

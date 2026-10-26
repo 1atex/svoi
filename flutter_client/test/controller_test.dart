@@ -198,14 +198,14 @@ void main() {
     await controller.close();
   });
   testWidgets(
-    'stalled probes are cancelled and release the queue after six seconds',
+    'stalled probes are cancelled and release the queue after startup allowance and six seconds',
     (tester) async {
       final backend = StalledProbeBackend();
       final c = SvoiController(backend);
       await c.initialize();
       final pending = c.probe(c.servers.value.take(5).toList());
       expect(backend.stalled.length, 4);
-      await tester.pump(const Duration(seconds: 6));
+      await tester.pump(const Duration(seconds: 11));
       expect(backend.cancellations.every((request) => request.cancelled), true);
       await tester.pump(const Duration(milliseconds: 20));
       await pending;

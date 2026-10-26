@@ -51,6 +51,9 @@ type Engine struct {
 	redactions    []string
 	checkURL      string
 	checkTimeout  time.Duration
+	ipURL         string
+	ipCancel      context.CancelFunc
+	ipRevision    uint64
 	checkCancel   context.CancelFunc
 	checkID       uint64
 	coreStarted   bool
@@ -362,6 +365,11 @@ func (e *Engine) startContext(parent context.Context, server ServerConfig, mode 
 func (e *Engine) Stop() error { e.op.Lock(); defer e.op.Unlock(); return e.stopLocked() }
 func (e *Engine) stopLocked() error {
 	e.mu.Lock()
+	if e.ipCancel != nil {
+		e.ipCancel()
+		e.ipCancel = nil
+	}
+	e.ipRevision++
 	if e.checkCancel != nil {
 		e.checkCancel()
 		e.checkCancel = nil
@@ -503,11 +511,18 @@ func (a *App) engineAPI(w http.ResponseWriter, r *http.Request) error {
 		servers = append([]ServerConfig{}, g.Servers...)
 	}
 	a.mu.Unlock()
-	if r.URL.Path != "/api/connection" && r.URL.Path != "/api/connection/check" {
+	if r.URL.Path != "/api/connection" && r.URL.Path != "/api/connection/check" && r.URL.Path != "/api/connection/ip" {
 		a.networkOp.Lock()
 		defer a.networkOp.Unlock()
 	}
 	switch {
+	case r.Method == "POST" && r.URL.Path == "/api/connection/ip":
+		result, err := a.engine.PublicIP(r.Context())
+		if err != nil {
+			return err
+		}
+		writeJSON(w, 200, result)
+		return nil
 	case r.Method == "GET" && r.URL.Path == "/api/connection/preflight":
 		writeJSON(w, 200, map[string]any{"conflict": vpnConflict(a.companion(), externalZapretRunning), "paused": a.handoff.paused != nil})
 		return nil

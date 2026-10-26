@@ -45,8 +45,10 @@ class ProbeState {
     this.error,
     this.checkedAt,
     this.url,
+    this.setupError = false,
   });
   final bool busy;
+  final bool setupError;
   final int? latency;
   final String? error;
   final String? url;
@@ -58,24 +60,111 @@ class ProbeState {
     error: error,
     checkedAt: checkedAt,
     url: url,
+    setupError: setupError,
   );
   Map<String, dynamic> toJson() => {
     'latency': latency,
     'error': error,
     'checkedAt': checkedAt?.toIso8601String(),
     'url': url,
+    'setupError': setupError,
   };
   static ProbeState fromJson(Map value) => ProbeState(
     latency: value['latency'] as int?,
     error: value['error'] as String?,
     checkedAt: DateTime.tryParse(value['checkedAt']?.toString() ?? ''),
     url: value['url'] as String?,
+    setupError: value['setupError'] == true,
   );
 }
 
 class SvoiController {
-  SvoiController(this.api, {this.sessionFile});
+  SvoiController(this.api, {this.sessionFile}) {
+    connection.addListener(_syncPublicIP);
+    connectionPhase.addListener(_syncPublicIP);
+  }
   final Backend api;
+  final publicIP = ValueNotifier<Map<String, dynamic>>({});
+  String _ipKey = '', _previousIP = '';
+  DateTime? _previousIPAt;
+  int _ipGeneration = 0;
+  RequestCancellation? _ipRequest;
+  bool _ipEnabled = false;
+
+  void enablePublicIP() {
+    _ipEnabled = true;
+    _syncPublicIP();
+  }
+
+  void _syncPublicIP() {
+    if (_closed || !_ipEnabled || connection.value['state'] == null) return;
+    if (connectionPhase.value.isNotEmpty ||
+        ['starting', 'stopping'].contains(connection.value['state'])) {
+      _ipGeneration++;
+      _ipRequest?.cancel();
+      _ipKey = '';
+      if (publicIP.value.isNotEmpty) publicIP.value = {};
+      return;
+    }
+    final state = connection.value;
+    final key = state['state'] == 'running'
+        ? '${state['serverId']}/${state['mode']}/${state['startedAt']}'
+        : 'network';
+    if (key == _ipKey) return;
+    _ipKey = key;
+    _ipGeneration++;
+    _ipRequest?.cancel();
+    publicIP.value = {};
+    unawaited(refreshPublicIP());
+  }
+
+  Future<void> refreshPublicIP() async {
+    if (_closed ||
+        connectionPhase.value.isNotEmpty ||
+        publicIP.value['busy'] == true) {
+      return;
+    }
+    final generation = ++_ipGeneration;
+    _ipRequest?.cancel();
+    final request = RequestCancellation();
+    _ipRequest = request;
+    publicIP.value = {'busy': true};
+    try {
+      final result = await api
+          .request('connection/ip', method: 'POST', cancellation: request)
+          .timeout(
+            const Duration(seconds: 7),
+            onTimeout: () {
+              request.cancel();
+              throw ApiException('Не удалось определить IP');
+            },
+          );
+      if (_closed || generation != _ipGeneration) return;
+      final ip = result['ip']?.toString() ?? '';
+      if (InternetAddress.tryParse(ip) == null) {
+        throw ApiException('Некорректный ответ сервиса IP');
+      }
+      final previous =
+          _previousIPAt != null &&
+              DateTime.now().difference(_previousIPAt!).inMinutes < 5
+          ? _previousIP
+          : '';
+      if (result['via'] == 'network') {
+        _previousIP = ip;
+        _previousIPAt = DateTime.now();
+      }
+      publicIP.value = {
+        ...result,
+        if (result['via'] != 'network' && previous.isNotEmpty)
+          'previousIP': previous,
+      };
+    } catch (_) {
+      if (!_closed && generation == _ipGeneration) {
+        publicIP.value = {'error': 'IP не определён'};
+      }
+    }
+  }
+
   Future<String> Function()? approveZapretPause;
   final group = ValueNotifier<Map<String, dynamic>>({});
   final sessions = ValueNotifier<List<Map<String, dynamic>>>([]);
@@ -627,7 +716,7 @@ class SvoiController {
                 cancellation: cancellation,
               )
               .timeout(
-                Duration(seconds: timeout + 2),
+                Duration(seconds: timeout + 7),
                 onTimeout: () {
                   cancellation.cancel();
                   throw ApiException(
@@ -646,6 +735,7 @@ class SvoiController {
           if (generation == _probeGeneration) {
             result.value = ProbeState(
               error: e.toString(),
+              setupError: e is ApiException && e.status == 503,
               checkedAt: DateTime.now(),
               url: url,
             );
@@ -678,6 +768,10 @@ class SvoiController {
   Future<void> close() async {
     if (_closed) return;
     _closed = true;
+    connection.removeListener(_syncPublicIP);
+    connectionPhase.removeListener(_syncPublicIP);
+    _ipGeneration++;
+    _ipRequest?.cancel();
     _timer?.cancel();
     cancelProbes();
     await _saveQueue.catchError((_) {});

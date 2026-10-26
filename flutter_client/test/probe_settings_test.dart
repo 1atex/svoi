@@ -1,12 +1,49 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:svoi_flutter/controller.dart';
+import 'package:svoi_flutter/backend.dart';
 import 'package:svoi_flutter/main.dart';
 
 import 'features_test.dart' show FeatureBackend;
 import 'controller_test.dart' show ProbeBackend, StalledProbeBackend;
 
+class UnavailableCoreBackend extends ProbeBackend {
+  @override
+  Future<Map<String, dynamic>> request(
+    String path, {
+    String method = 'GET',
+    Object? body,
+    RequestCancellation? cancellation,
+  }) {
+    if (path.endsWith('/probe')) {
+      return Future.error(ApiException('Не удалось подготовить Xray', 503));
+    }
+    return super.request(
+      path,
+      method: method,
+      body: body,
+      cancellation: cancellation,
+    );
+  }
+}
+
 void main() {
+  test(
+    'preparation failure is distinct from server timeout and persists',
+    () async {
+      final c = SvoiController(UnavailableCoreBackend());
+      await c.initialize();
+      await c.probe(c.servers.value.take(1).toList());
+      final result = c.probes['0']!.value;
+      expect(result.setupError, true);
+      expect(result.latency, isNull);
+      expect(
+        ProbeState.fromJson(result.toJson()).withBusy(true).setupError,
+        true,
+      );
+      await c.close();
+    },
+  );
   testWidgets(
     'probe form validates and saves without changing other preferences',
     (tester) async {
@@ -91,7 +128,7 @@ void main() {
       },
     };
     final pending = c.probe(c.servers.value.take(1).toList());
-    await tester.pump(const Duration(seconds: 3));
+    await tester.pump(const Duration(seconds: 8));
     await pending;
     expect(backend.cancellations.single.cancelled, true);
     expect(c.probing.value, false);

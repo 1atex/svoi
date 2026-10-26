@@ -409,7 +409,9 @@ class ServerRow extends StatelessWidget {
                           result.busy
                               ? 'Проверка…'
                               : result.error != null
-                              ? 'Нет ответа'
+                              ? result.setupError
+                                    ? 'Ошибка ядра'
+                                    : 'Нет ответа'
                               : result.latency != null
                               ? '${result.latency} мс'
                               : 'Проверить',
