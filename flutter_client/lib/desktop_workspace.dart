@@ -336,93 +336,32 @@ class _DesktopLibraryState extends State<DesktopLibrary> {
                                     List<ServerEntry>,
                                     Map<String, dynamic>?,
                                   );
-                          return Padding(
-                            padding: const EdgeInsets.only(top: 8, bottom: 6),
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  child: InkWell(
-                                    borderRadius: BorderRadius.circular(8),
-                                    onTap: () => setState(() {
-                                      if (!collapsed.add(group.$1)) {
-                                        collapsed.remove(group.$1);
-                                      }
-                                    }),
-                                    child: Padding(
-                                      padding: const EdgeInsets.symmetric(
-                                        vertical: 12,
-                                      ),
-                                      child: Row(
-                                        children: [
-                                          Icon(
-                                            collapsed.contains(group.$1) &&
-                                                    query.isEmpty
-                                                ? LucideIcons.chevronRight
-                                                : LucideIcons.chevronDown,
-                                            size: 15,
-                                            color: muted,
-                                          ),
-                                          const SizedBox(width: 8),
-                                          Expanded(
-                                            child: Column(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
-                                              children: [
-                                                Text(
-                                                  group.$2,
-                                                  maxLines: 1,
-                                                  overflow:
-                                                      TextOverflow.ellipsis,
-                                                  style: const TextStyle(
-                                                    fontSize: 12,
-                                                    fontWeight: FontWeight.w600,
-                                                  ),
-                                                ),
-                                                if (group.$4 != null)
-                                                  SubscriptionSummary(
-                                                    source: group.$4!,
-                                                  ),
-                                              ],
-                                            ),
-                                          ),
-                                          const SizedBox(width: 8),
-                                          Text(
-                                            '${group.$3.length}',
-                                            style: const TextStyle(
-                                              fontSize: 12,
-                                              color: muted,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                if (group.$4?['remote'] == true)
-                                  IconButton(
-                                    tooltip: 'Обновить ${group.$2}',
-                                    icon: const Icon(
-                                      LucideIcons.refreshCw,
-                                      size: 16,
-                                    ),
-                                    onPressed: c.busy.value
-                                        ? null
-                                        : () => c.refreshSource(
-                                            group.$4!['id'].toString(),
-                                          ),
-                                  ),
-                                if (group.$4 != null)
-                                  IconButton(
-                                    tooltip: 'Настройки подписки',
-                                    icon: const Icon(
-                                      LucideIcons.ellipsis,
-                                      size: 17,
-                                    ),
-                                    onPressed: () =>
-                                        editSource(context, c, group.$4!),
-                                  ),
-                              ],
-                            ),
+                          return SubscriptionHeader(
+                            name: group.$2,
+                            source: group.$4,
+                            count: group.$3.length,
+                            collapsed:
+                                collapsed.contains(group.$1) && query.isEmpty,
+                            onToggle: () => setState(() {
+                              if (!collapsed.add(group.$1)) {
+                                collapsed.remove(group.$1);
+                              }
+                            }),
+                            onRefresh:
+                                group.$4?['remote'] == true && !c.busy.value
+                                ? () => c.refreshSource(
+                                    group.$4!['id'].toString(),
+                                  )
+                                : null,
+                            onProbe:
+                                group.$3.isNotEmpty &&
+                                    !c.probing.value &&
+                                    c.connection.value['available'] == true
+                                ? () => c.probe(group.$3)
+                                : null,
+                            onDetails: group.$4 == null
+                                ? null
+                                : () => editSource(context, c, group.$4!),
                           );
                         },
                       ),

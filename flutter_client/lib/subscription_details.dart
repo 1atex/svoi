@@ -89,41 +89,356 @@ class SubscriptionLink extends StatelessWidget {
   }
 }
 
+String subscriptionUpdated(Map<String, dynamic> source) {
+  final fetched = DateTime.tryParse(
+    source['report']?['fetchedAt']?.toString() ?? '',
+  )?.toLocal();
+  if (fetched == null) return '';
+  String two(int n) => n.toString().padLeft(2, '0');
+  return 'Обновлено ${two(fetched.day)}.${two(fetched.month)} · ${two(fetched.hour)}:${two(fetched.minute)}';
+}
+
+class SubscriptionHeader extends StatelessWidget {
+  const SubscriptionHeader({
+    super.key,
+    required this.name,
+    required this.source,
+    required this.count,
+    required this.collapsed,
+    required this.onToggle,
+    this.onRefresh,
+    this.onProbe,
+    this.onDetails,
+  });
+  final String name;
+  final Map<String, dynamic>? source;
+  final int count;
+  final bool collapsed;
+  final VoidCallback onToggle;
+  final VoidCallback? onRefresh, onProbe, onDetails;
+
+  @override
+  Widget build(BuildContext context) {
+    final updated = source == null ? '' : subscriptionUpdated(source!);
+    final m = source == null
+        ? <String, dynamic>{}
+        : subscriptionMetadata(source!);
+    final caption = [
+      updated,
+      if (m['updateHours'] != null)
+        'Интервал провайдера: ${m['updateHours']} ч',
+    ].where((s) => s.isNotEmpty).join(' · ');
+    final title = InkWell(
+      onTap: onToggle,
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 4),
+        child: Row(
+          children: [
+            Icon(
+              collapsed ? LucideIcons.chevronRight : LucideIcons.chevronDown,
+              size: 15,
+              color: muted,
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  if (caption.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 3),
+                      child: Tooltip(
+                        message: caption,
+                        child: Text(
+                          caption,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontSize: 12, color: muted),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+    final actions = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Tooltip(
+          message: 'Серверов в списке: $count',
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: Text(
+              '$count',
+              style: const TextStyle(fontSize: 12, color: muted),
+            ),
+          ),
+        ),
+        if (source?['remote'] == true)
+          IconButton(
+            tooltip: 'Обновить $name',
+            onPressed: onRefresh,
+            icon: const Icon(LucideIcons.refreshCw, size: 16),
+          ),
+        if (source != null)
+          IconButton(
+            tooltip: 'Проверить задержку подписки',
+            onPressed: onProbe,
+            icon: const Icon(LucideIcons.activity, size: 16),
+          ),
+        if (source != null)
+          IconButton(
+            tooltip: 'Настройки подписки',
+            onPressed: onDetails,
+            icon: const Icon(LucideIcons.ellipsis, size: 18),
+          ),
+      ],
+    );
+    return Padding(
+      padding: const EdgeInsets.only(top: 4, bottom: 4),
+      child: Material(
+        color: source == null ? Colors.transparent : surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: source == null
+              ? BorderSide.none
+              : const BorderSide(color: edge),
+        ),
+        child: Padding(
+          padding: EdgeInsets.all(source == null ? 0 : 8),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              LayoutBuilder(
+                builder: (context, bounds) =>
+                    bounds.maxWidth < 400 ||
+                        MediaQuery.textScalerOf(context).scale(14) > 19
+                    ? Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          title,
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: actions,
+                          ),
+                        ],
+                      )
+                    : Row(
+                        children: [
+                          Expanded(child: title),
+                          actions,
+                        ],
+                      ),
+              ),
+              if (source != null)
+                SubscriptionSummary(source: source!, onDetails: onDetails),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class SubscriptionTrafficBar extends StatelessWidget {
+  const SubscriptionTrafficBar({super.key, required this.metadata});
+  final Map<String, dynamic> metadata;
+  @override
+  Widget build(BuildContext context) {
+    final m = metadata;
+    final total = m['total'] as num?;
+    final hasUsage = m['upload'] != null || m['download'] != null;
+    final used = (m['upload'] as num? ?? 0) + (m['download'] as num? ?? 0);
+    final text =
+        '${hasUsage ? subscriptionBytes(used) : 'Расход не указан'} / ${total == null
+            ? '?'
+            : total == 0
+            ? '∞'
+            : subscriptionBytes(total)}';
+    final exhausted = total != null && total > 0 && hasUsage && used >= total;
+    final full =
+        '${subscriptionTraffic(m)}${exhausted ? ' · Лимит исчерпан' : ''}';
+    return Tooltip(
+      message: full,
+      child: Semantics(
+        label: 'Трафик подписки',
+        value: full,
+        child: ExcludeSemantics(
+          child: SizedBox(
+            height: MediaQuery.textScalerOf(context).scale(12) + 14,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                Positioned.fill(
+                  child: LinearProgressIndicator(
+                    value: hasUsage && total != null && total > 0
+                        ? (used / total).clamp(0.0, 1.0)
+                        : 0,
+                    borderRadius: BorderRadius.circular(7),
+                    backgroundColor: canvas,
+                    color:
+                        (exhausted
+                                ? Theme.of(context).colorScheme.error
+                                : accent)
+                            .withValues(alpha: .25),
+                  ),
+                ),
+                Positioned.fill(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(7),
+                      border: Border.all(
+                        color: exhausted
+                            ? Theme.of(context).colorScheme.error
+                            : edge,
+                      ),
+                    ),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  child: Text(
+                    text,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 12),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class SubscriptionSummary extends StatelessWidget {
-  const SubscriptionSummary({super.key, required this.source});
+  const SubscriptionSummary({super.key, required this.source, this.onDetails});
   final Map<String, dynamic> source;
+  final VoidCallback? onDetails;
   @override
   Widget build(BuildContext context) {
     final m = subscriptionMetadata(source);
-    final parts = [
-      subscriptionTraffic(m),
-      subscriptionExpiry(m),
-    ].where((v) => v.isNotEmpty).toList();
+    final expiry = subscriptionExpiry(m);
+    final hasTraffic = subscriptionTraffic(m).isNotEmpty;
     final announcement = m['announcement']?.toString() ?? '';
-    if (parts.isEmpty && announcement.isEmpty && m['routingStatus'] == null) {
+    if (!hasTraffic &&
+        expiry.isEmpty &&
+        announcement.isEmpty &&
+        m['routingStatus'] == null) {
       return const SizedBox.shrink();
     }
+    final date = Text(
+      expiry,
+      style: TextStyle(
+        fontSize: 12,
+        color: expiry.startsWith('Истекла')
+            ? Theme.of(context).colorScheme.error
+            : muted,
+      ),
+    );
     return Padding(
-      padding: const EdgeInsets.only(top: 5),
+      padding: const EdgeInsets.only(top: 2),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (parts.isNotEmpty)
-            Text(
-              parts.join(' · '),
-              style: const TextStyle(fontSize: 11, color: muted),
+          if (hasTraffic || expiry.isNotEmpty || m['routingStatus'] != null)
+            Row(
+              children: [
+                if (m['routingStatus'] != null)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 6),
+                    child: IconButton(
+                      tooltip: 'Маршрутизация Happ не применена. Открыть сведения о подписке',
+                      onPressed: onDetails,
+                      style: IconButton.styleFrom(
+                        minimumSize: const Size(32, 32),
+                        padding: EdgeInsets.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                      icon: const Icon(
+                        LucideIcons.info,
+                        size: 16,
+                        color: accent,
+                      ),
+                    ),
+                  ),
+                Expanded(
+                  child: LayoutBuilder(
+                    builder: (context, bounds) {
+                      final bar = SubscriptionTrafficBar(metadata: m);
+                      if (!hasTraffic) return date;
+                      if (expiry.isEmpty) return bar;
+                      return bounds.maxWidth < 470 ||
+                              MediaQuery.textScalerOf(context).scale(12) > 15
+                          ? Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [bar, const SizedBox(height: 6), date],
+                            )
+                          : Row(
+                              children: [
+                                Expanded(child: bar),
+                                const SizedBox(width: 12),
+                                date,
+                              ],
+                            );
+                    },
+                  ),
+                ),
+              ],
             ),
           if (announcement.isNotEmpty)
-            Text(
-              'От провайдера: $announcement',
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 11, color: muted),
-            ),
-          if (m['routingStatus'] != null)
-            const Text(
-              'Маршрутизация Happ не применена',
-              style: TextStyle(fontSize: 11, color: accent),
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Tooltip(
+                message: 'Сообщение провайдера: $announcement',
+                child: InkWell(
+                  onTap: onDetails,
+                  borderRadius: BorderRadius.circular(7),
+                  child: Ink(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: accent.withValues(alpha: .06),
+                      borderRadius: BorderRadius.circular(7),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          LucideIcons.messageSquare,
+                          size: 14,
+                          color: muted,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            announcement,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontSize: 12, color: muted),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
             ),
         ],
       ),

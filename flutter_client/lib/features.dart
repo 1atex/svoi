@@ -1,6 +1,6 @@
 part of 'main.dart';
 
-const clientVersion = '0.5.0-beta.11';
+const clientVersion = '0.5.0-beta.12';
 
 class ConfigPane extends StatelessWidget {
   const ConfigPane({

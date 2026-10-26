@@ -400,6 +400,7 @@ class _SvoiShellState extends State<SvoiShell> {
                           for (final (index, label, icon) in [
                             (0, 'Подключение', LucideIcons.power),
                             (4, 'zapret', LucideIcons.shield),
+                            (6, 'DNS', LucideIcons.network),
                             (5, 'Настройки', LucideIcons.settings2),
                           ])
                             Padding(
@@ -483,6 +484,7 @@ class _SvoiShellState extends State<SvoiShell> {
             child: switch (page) {
               4 => ZapretPage(c: c),
               5 => PreferencesPage(c: c),
+              6 => DnsTools(c: c),
               _ => DesktopWorkspace(c: c),
             },
           ),
