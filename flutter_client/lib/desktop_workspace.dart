@@ -664,9 +664,9 @@ class DesktopConnection extends StatelessWidget {
               onPressed: locked || !ready ? null : c.toggleConnection,
               child: const Text('Переключиться'),
             ),
-          if (pending)
+          if (compact && pending)
             OutlinedButton(onPressed: toggle, child: Text(action))
-          else
+          else if (compact)
             FilledButton(
               key: const ValueKey('desktop-connect'),
               onPressed: toggle,
@@ -804,8 +804,7 @@ class DesktopConnection extends StatelessWidget {
                   style: const TextStyle(fontSize: 12, color: accent),
                 ),
               ),
-            const SizedBox(height: 16),
-            controls,
+            if (pending) ...[const SizedBox(height: 16), controls],
             const SizedBox(height: 20),
             const Divider(),
             Expanded(
