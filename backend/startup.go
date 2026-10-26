@@ -116,6 +116,8 @@ func (a *App) rememberZapretStrategy(folder, strategy string) error {
 }
 
 func (a *App) startSavedZapret() error {
+	a.networkOp.Lock()
+	defer a.networkOp.Unlock()
 	s := a.localSettings()
 	if !s.StartupZapret {
 		return nil

@@ -96,3 +96,35 @@ func BenchmarkZapretPolling(b *testing.B) {
 		b.ReportMetric(float64(w.Body.Len()), "bytes/response")
 	}
 }
+
+func TestZapretUnchangedResultsAreNotResent(t *testing.T) {
+	z := &Zapret{}
+	z.addResult(CheckResult{Target: "first"})
+	first := z.snapshot("", true)
+	next := z.snapshotSince("", true, first["resultsRevision"].(string))
+	if next["resultsUnchanged"] != true || len(next["job"].(ZapretJob).Results) != 0 {
+		t.Fatal("unchanged results copied")
+	}
+	z.addResult(CheckResult{Target: "second"})
+	next = z.snapshotSince("", true, first["resultsRevision"].(string))
+	if next["resultsUnchanged"] != false || len(next["job"].(ZapretJob).Results) != 2 {
+		t.Fatal("new results lost")
+	}
+}
+func BenchmarkZapretUnchangedPolling(b *testing.B) {
+	z := &Zapret{}
+	for i := 0; i < 4000; i++ {
+		z.addResult(CheckResult{Target: "example.com", Detail: strings.Repeat("x", 100)})
+	}
+	revision := z.snapshot("", true)["resultsRevision"].(string)
+	r := httptest.NewRequest("GET", "/api/zapret?summary=1&since="+revision, nil)
+	b.ReportAllocs()
+	b.ResetTimer()
+	for b.Loop() {
+		w := httptest.NewRecorder()
+		if err := z.API(w, r, ""); err != nil {
+			b.Fatal(err)
+		}
+		b.ReportMetric(float64(w.Body.Len()), "bytes/response")
+	}
+}

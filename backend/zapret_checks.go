@@ -148,9 +148,14 @@ func (z *Zapret) checkNetwork(ctx context.Context, folder, kind string, strategi
 	z.mu.Unlock()
 	testFolder := folder
 	if sweep {
-		z.stopProcess()
+		if e := z.stopProcess(); e != nil {
+			return e
+		}
 		defer func() {
-			z.stopProcess()
+			if e := z.stopProcess(); e != nil {
+				err = e
+				return
+			}
 			if testFolder != folder {
 				os.RemoveAll(testFolder)
 			}
@@ -221,7 +226,9 @@ func (z *Zapret) checkNetwork(ctx context.Context, folder, kind string, strategi
 		close(jobs)
 		wg.Wait()
 		if sweep {
-			z.stopProcess()
+			if e := z.stopProcess(); e != nil {
+				return e
+			}
 		}
 	}
 	z.message("Проверка завершена. HTTP-ответ подтверждает соединение, но не доступность всех функций сервиса.")

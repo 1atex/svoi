@@ -498,28 +498,53 @@ func (a *App) engineAPI(w http.ResponseWriter, r *http.Request) error {
 		servers = append([]ServerConfig{}, g.Servers...)
 	}
 	a.mu.Unlock()
+	if r.URL.Path != "/api/connection" && r.URL.Path != "/api/connection/check" {
+		a.networkOp.Lock()
+		defer a.networkOp.Unlock()
+	}
 	switch {
+	case r.Method == "GET" && r.URL.Path == "/api/connection/preflight":
+		writeJSON(w, 200, map[string]any{"conflict": vpnConflict(a.companion(), externalZapretRunning), "paused": a.handoff.paused != nil})
+		return nil
 	case r.Method == "GET" && r.URL.Path == "/api/connection":
 		status := a.engine.snapshot(r.URL.Query().Get("logs") == "1")
 		writeJSON(w, 200, status)
 		return nil
 	case r.Method == "POST" && r.URL.Path == "/api/connection/start":
 		var in struct {
-			ServerID string `json:"serverId"`
-			Mode     string `json:"mode"`
+			ServerID    string `json:"serverId"`
+			Mode        string `json:"mode"`
+			PauseZapret bool   `json:"pauseZapret"`
 		}
 		if json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096)).Decode(&in) != nil {
 			return fail(400, "Некорректный запрос подключения")
 		}
 		for _, server := range servers {
 			if server.ID == in.ServerID {
-				if a.zapret != nil && a.zapret.blocksVPN(in.Mode) {
-					return fail(409, "Дождитесь окончания перебора стратегий; перед TUN остановите zapret")
-				}
 				settings := a.localSettings()
+				if in.Mode == "tun" {
+					if err = a.handoff.prepare(a.companion(), in.PauseZapret || settings.AutoPauseZapret, externalZapretRunning); err != nil {
+						if restoreErr := a.handoff.restore(a.companion()); restoreErr != nil {
+							return fmt.Errorf("%v; %w", err, restoreErr)
+						}
+						return err
+					}
+				} else if a.zapret != nil && a.zapret.blocksVPN(in.Mode) {
+					return fail(409, "Дождитесь окончания перебора стратегий zapret")
+				}
 				server.RuntimeApps = &settings.Routing
 				if err = a.engine.Start(server, in.Mode); err != nil {
+					if a.engine.snapshot(false).State != "running" {
+						if restoreErr := a.handoff.restore(a.companion()); restoreErr != nil {
+							return fmt.Errorf("%v; %w", err, restoreErr)
+						}
+					}
 					return err
+				}
+				if in.Mode != "tun" {
+					if err = a.handoff.restore(a.companion()); err != nil {
+						return err
+					}
 				}
 				writeJSON(w, 200, a.engine.Status())
 				return nil
@@ -528,6 +553,9 @@ func (a *App) engineAPI(w http.ResponseWriter, r *http.Request) error {
 		return fail(404, "Сервер не найден. Обновите подписку.")
 	case r.Method == "POST" && r.URL.Path == "/api/connection/stop":
 		if err = a.engine.Stop(); err != nil {
+			return err
+		}
+		if err = a.handoff.restore(a.companion()); err != nil {
 			return err
 		}
 		writeJSON(w, 200, a.engine.Status())

@@ -22,6 +22,7 @@ type LocalSettings struct {
 	ZapretAutoUpdate bool       `json:"zapretAutoUpdate"`
 	StartupZapret    bool       `json:"startupZapret"`
 	ZapretStrategy   string     `json:"zapretStrategy"`
+	AutoPauseZapret  bool       `json:"autoPauseZapret"`
 }
 
 func (a *App) loadSettings() error {
@@ -102,10 +103,15 @@ func (a *App) desktopAPI(w http.ResponseWriter, r *http.Request) error {
 		return a.startupAPI(w, r)
 	}
 	if strings.HasPrefix(r.URL.Path, "/api/zapret") {
+		a.networkOp.Lock()
+		defer a.networkOp.Unlock()
 		if a.zapret == nil {
 			return fail(503, "zapret доступен в приложении Windows")
 		}
 		return a.zapret.API(w, r, a.localSettings().ZapretFolder)
+	}
+	if strings.HasPrefix(r.URL.Path, "/api/dns") {
+		return a.dnsAPI(w, r)
 	}
 	switch r.Method {
 	case "GET":

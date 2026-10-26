@@ -28,7 +28,8 @@ class _ZapretPageState extends State<ZapretPage> {
               : strategies.firstOrNull;
           final job = Map<String, dynamic>.from(z['job'] ?? {});
           final running = z['running'] == true,
-              working = acting || job['busy'] == true;
+              working =
+                  acting || job['busy'] == true || z['pausedForVPN'] == true;
           final installed = strategies.isNotEmpty;
           final results = (job['results'] as List? ?? [])
               .map((r) => Map<String, dynamic>.from(r))
@@ -73,6 +74,8 @@ class _ZapretPageState extends State<ZapretPage> {
                   StatusPill(
                     running
                         ? 'Работает'
+                        : z['pausedForVPN'] == true
+                        ? 'Пауза на время VPN'
                         : installed
                         ? 'Остановлен'
                         : 'Не установлен',
@@ -81,6 +84,37 @@ class _ZapretPageState extends State<ZapretPage> {
                 ],
               ),
               const SizedBox(height: 20),
+              if (z['pausedForVPN'] == true)
+                Padding(
+                  padding: EdgeInsets.only(bottom: 16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'SVOI вернёт прежнюю стратегию после отключения VPN.',
+                        style: TextStyle(color: accent),
+                      ),
+                      Wrap(
+                        spacing: 8,
+                        children: [
+                          TextButton(
+                            onPressed:
+                                acting ||
+                                    widget.c.connection.value['state'] ==
+                                        'running'
+                                ? null
+                                : () => act('resume', null),
+                            child: const Text('Вернуть zapret'),
+                          ),
+                          TextButton(
+                            onPressed: acting ? null : () => act('stop', null),
+                            child: const Text('Отменить возврат'),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
               Wrap(
                 spacing: 8,
                 runSpacing: 6,

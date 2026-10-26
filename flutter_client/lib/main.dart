@@ -24,6 +24,7 @@ part 'servers.dart';
 part 'zapret_page.dart';
 part 'tray.dart';
 part 'startup_panel.dart';
+part 'network_tools.dart';
 
 const windowChannel = MethodChannel('dev.svoi/window');
 const canvas = Color(0xff101013),
@@ -245,6 +246,14 @@ class _BootstrapState extends State<Bootstrap> with WidgetsBindingObserver {
     debugShowCheckedModeBanner: false,
     title: 'SVOI',
     theme: svoiTheme(),
+    builder: (context, child) => _controller == null
+        ? child!
+        : ValueListenableBuilder(
+            valueListenable: _controller!.foreground,
+            child: child,
+            builder: (context, visible, child) =>
+                TickerMode(enabled: visible, child: child!),
+          ),
     home: _closing
         ? const Scaffold(body: Center(child: Text('Завершаем соединение…')))
         : _ready
@@ -311,6 +320,34 @@ class _SvoiShellState extends State<SvoiShell> {
   void initState() {
     super.initState();
     _tray = TrayBridge(widget.controller, open: _openTrayAction)..attach();
+    widget.controller.approveZapretPause = () async {
+      await windowChannel.invokeMethod('show');
+      if (!mounted) return 'cancel';
+      return await showDialog<String>(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Text('Приостановить zapret?'),
+              content: const Text(
+                'Для подключения TUN SVOI остановит свою стратегию zapret и вернёт её после отключения VPN. Если VPN не запустится, zapret тоже будет восстановлен.',
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context, 'cancel'),
+                  child: const Text('Отмена'),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.pop(context, 'always'),
+                  child: const Text('Всегда переключать'),
+                ),
+                FilledButton(
+                  onPressed: () => Navigator.pop(context, 'once'),
+                  child: const Text('Продолжить'),
+                ),
+              ],
+            ),
+          ) ??
+          'cancel';
+    };
   }
 
   Future<void> _openTrayAction(String action) async {
@@ -336,6 +373,7 @@ class _SvoiShellState extends State<SvoiShell> {
   @override
   void dispose() {
     _tray.dispose();
+    widget.controller.approveZapretPause = null;
     super.dispose();
   }
 

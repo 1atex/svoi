@@ -546,7 +546,7 @@ class DesktopServerRow extends StatelessWidget {
                       ),
                       builder: (context, probe, _) => Tooltip(
                         message:
-                            '${probe.error ?? 'Проверить HTTPS-запрос через сервер'}\n${clockLabel(probe.checkedAt)}',
+                            '${probe.error ?? 'Задержка HTTPS через профиль, не ICMP-пинг'}\n${clockLabel(probe.checkedAt)}${probe.busy && probe.latency != null ? '\nПредыдущий результат: ${probe.latency} мс' : ''}',
                         child: TextButton(
                           onPressed:
                               probe.busy ||
@@ -584,11 +584,18 @@ class DesktopServerRow extends StatelessWidget {
                       onSelected: (value) {
                         if (value == 'config') {
                           showConfig(context, c, server);
+                        } else if (value == 'tcp') {
+                          showTCPCheck(context, c, server);
                         } else {
                           c.toggleFavorite(server.id);
                         }
                       },
                       itemBuilder: (context) => [
+                        if (server.json['fullProfile'] != true)
+                          const PopupMenuItem(
+                            value: 'tcp',
+                            child: Text('Проверить адрес · TCP'),
+                          ),
                         const PopupMenuItem(
                           value: 'config',
                           child: Text('Конфигурация'),

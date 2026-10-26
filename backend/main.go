@@ -26,7 +26,7 @@ import (
 )
 
 var appVersion = "0.4.0-prebeta.3"
-var nativeVersion = "0.5.0-beta.8"
+var nativeVersion = "0.5.0-beta.9"
 
 //go:embed web/*
 var assets embed.FS
@@ -86,6 +86,9 @@ type App struct {
 	settings   LocalSettings
 	updates    *Updater
 	zapret     *Zapret
+	networkOp  sync.Mutex
+	handoff    vpnHandoff
+	dnsHost    dnsHost
 }
 type input struct {
 	Name       string   `json:"name"`
@@ -253,7 +256,7 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 	_ = json.NewEncoder(w).Encode(v)
 }
 func (a *App) dispatch(w http.ResponseWriter, r *http.Request) error {
-	if r.URL.Path == "/api/settings" || r.URL.Path == "/api/startup" || strings.HasPrefix(r.URL.Path, "/api/updates") || strings.HasPrefix(r.URL.Path, "/api/zapret") {
+	if r.URL.Path == "/api/settings" || r.URL.Path == "/api/startup" || strings.HasPrefix(r.URL.Path, "/api/updates") || strings.HasPrefix(r.URL.Path, "/api/zapret") || strings.HasPrefix(r.URL.Path, "/api/dns") {
 		return a.desktopAPI(w, r)
 	}
 	if strings.HasPrefix(r.URL.Path, "/api/transfer/") {

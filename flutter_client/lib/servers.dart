@@ -180,7 +180,7 @@ class _ServerPageState extends State<ServerPage> {
                       size: 16,
                     ),
                     label: Text(
-                      c.probing.value ? 'Остановить' : 'Проверить пинг',
+                      c.probing.value ? 'Остановить' : 'Проверить задержку',
                     ),
                   ),
                 ],
@@ -412,7 +412,7 @@ class ServerRow extends StatelessWidget {
                               ? 'Нет ответа'
                               : result.latency != null
                               ? '${result.latency} мс'
-                              : 'Пинг',
+                              : 'Проверить',
                           style: TextStyle(
                             fontSize: 12,
                             color: result.error != null

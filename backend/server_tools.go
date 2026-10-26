@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -63,7 +64,7 @@ func (a *App) serverToolsAPI(w http.ResponseWriter, r *http.Request) error {
 		writeJSON(w, 200, map[string]any{"server": server.ServerInfo, "original": original, "effective": json.RawMessage(config), "mode": mode, "rules": len(rules), "balancers": len(balancers)})
 		return nil
 	}
-	if parts[1] != "probe" || r.Method != "POST" {
+	if (parts[1] != "probe" && parts[1] != "tcp") || r.Method != "POST" {
 		return fail(404, "Метод сервера не найден")
 	}
 	host, _, _ := net.SplitHostPort(r.RemoteAddr)
@@ -78,6 +79,21 @@ func (a *App) serverToolsAPI(w http.ResponseWriter, r *http.Request) error {
 		return r.Context().Err()
 	default:
 		return fail(429, "Все четыре слота проверки заняты")
+	}
+	if parts[1] == "tcp" {
+		if server.FullProfile || server.Address == "" || server.Port < 1 || server.Port > 65535 {
+			return fail(400, "У полного профиля может быть несколько узлов. Используйте HTTPS-проверку профиля.")
+		}
+		ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
+		defer cancel()
+		start := time.Now()
+		conn, err := (&net.Dialer{}).DialContext(ctx, "tcp", net.JoinHostPort(server.Address, strconv.Itoa(server.Port)))
+		if err != nil {
+			return fail(502, "TCP-соединение не установлено за 2 секунды или адрес недоступен")
+		}
+		conn.Close()
+		writeJSON(w, 200, map[string]any{"latency": time.Since(start).Milliseconds(), "method": "TCP", "checkedAt": time.Now().UTC()})
+		return nil
 	}
 	if !a.engine.Status().Available {
 		return fail(503, "Ядро Xray не найдено")
