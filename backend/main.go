@@ -26,7 +26,7 @@ import (
 )
 
 var appVersion = "0.4.0-prebeta.3"
-var nativeVersion = "0.5.0-beta.13"
+var nativeVersion = "0.5.0-beta.14"
 
 //go:embed web/*
 var assets embed.FS
@@ -115,7 +115,7 @@ func secret() string {
 func digest(s string) string { h := sha256.Sum256([]byte(s)); return hex.EncodeToString(h[:]) }
 
 func openApp(path string) (*App, error) {
-	a := &App{path: path, client: subscriptionClient(), limits: map[string][]time.Time{}, probeSlots: make(chan struct{}, 4)}
+	a := &App{path: path, client: subscriptionClient(), limits: map[string][]time.Time{}, probeSlots: make(chan struct{}, 10)}
 	if err := a.loadSettings(); err != nil {
 		return nil, err
 	}

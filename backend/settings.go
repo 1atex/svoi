@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -14,19 +15,56 @@ type AppRouting struct {
 	Processes []string `json:"processes"`
 }
 type LocalSettings struct {
-	AutoRefresh      bool       `json:"autoRefresh"`
-	AutoUpdate       bool       `json:"autoUpdate"`
-	AutoDownload     bool       `json:"autoDownload"`
-	Routing          AppRouting `json:"routing"`
-	ZapretFolder     string     `json:"zapretFolder"`
-	ZapretAutoUpdate bool       `json:"zapretAutoUpdate"`
-	StartupZapret    bool       `json:"startupZapret"`
-	ZapretStrategy   string     `json:"zapretStrategy"`
-	AutoPauseZapret  bool       `json:"autoPauseZapret"`
+	Probe            ProbeSettings `json:"probe"`
+	AutoRefresh      bool          `json:"autoRefresh"`
+	AutoUpdate       bool          `json:"autoUpdate"`
+	AutoDownload     bool          `json:"autoDownload"`
+	Routing          AppRouting    `json:"routing"`
+	ZapretFolder     string        `json:"zapretFolder"`
+	ZapretAutoUpdate bool          `json:"zapretAutoUpdate"`
+	StartupZapret    bool          `json:"startupZapret"`
+	ZapretStrategy   string        `json:"zapretStrategy"`
+	AutoPauseZapret  bool          `json:"autoPauseZapret"`
+}
+
+const defaultProbeURL = "https://www.gstatic.com/generate_204"
+
+type ProbeSettings struct {
+	URL            string `json:"url"`
+	TimeoutSeconds int    `json:"timeoutSeconds"`
+	Parallel       int    `json:"parallel"`
+}
+
+func (s *ProbeSettings) defaults() {
+	if s.URL == "" {
+		s.URL = defaultProbeURL
+	}
+	if s.TimeoutSeconds == 0 {
+		s.TimeoutSeconds = 4
+	}
+	if s.Parallel == 0 {
+		s.Parallel = 4
+	}
+}
+
+func validateProbeSettings(s *ProbeSettings) error {
+	s.defaults()
+	u, err := url.Parse(s.URL)
+	if err != nil || len(s.URL) > 2048 || strings.ContainsAny(s.URL, "\r\n\t \\") || u == nil || (u.Scheme != "http" && u.Scheme != "https") || u.Hostname() == "" || u.User != nil || u.Fragment != "" {
+		return fail(400, "Укажите HTTP(S)-адрес проверки без логина, пароля и фрагмента")
+	}
+	if s.TimeoutSeconds < 1 || s.TimeoutSeconds > 15 {
+		return fail(400, "Тайм-аут проверки: от 1 до 15 секунд")
+	}
+	if s.Parallel < 1 || s.Parallel > 10 {
+		return fail(400, "Одновременных проверок: от 1 до 10")
+	}
+	return nil
 }
 
 func (a *App) loadSettings() error {
 	a.settings = LocalSettings{AutoRefresh: true, AutoUpdate: true, AutoDownload: true, ZapretAutoUpdate: true, Routing: AppRouting{Mode: "all", Processes: []string{}}}
+	a.settings.Probe.defaults()
 	b, err := os.ReadFile(a.path + ".settings.json")
 	if os.IsNotExist(err) {
 		return nil
@@ -34,7 +72,10 @@ func (a *App) loadSettings() error {
 	if err != nil {
 		return err
 	}
-	return json.Unmarshal(b, &a.settings)
+	if err := json.Unmarshal(b, &a.settings); err != nil {
+		return err
+	}
+	return validateProbeSettings(&a.settings.Probe)
 }
 func (a *App) localSettings() LocalSettings {
 	a.settingsMu.Lock()
@@ -44,6 +85,9 @@ func (a *App) localSettings() LocalSettings {
 	return s
 }
 func validateSettings(s *LocalSettings) error {
+	if err := validateProbeSettings(&s.Probe); err != nil {
+		return err
+	}
 	if s.Routing.Mode != "all" && s.Routing.Mode != "include" && s.Routing.Mode != "exclude" {
 		return fail(400, "Неизвестный режим приложений")
 	}

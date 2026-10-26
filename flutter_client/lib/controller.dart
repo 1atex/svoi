@@ -7,6 +7,8 @@ import 'package:flutter/foundation.dart';
 import 'backend.dart';
 import 'countries.dart';
 
+const defaultProbeUrl = 'https://www.gstatic.com/generate_204';
+
 class ServerEntry {
   ServerEntry(this.json)
     : id = json['id'] as String,
@@ -42,10 +44,12 @@ class ProbeState {
     this.latency,
     this.error,
     this.checkedAt,
+    this.url,
   });
   final bool busy;
   final int? latency;
   final String? error;
+  final String? url;
   final DateTime? checkedAt;
 
   ProbeState withBusy(bool value) => ProbeState(
@@ -53,16 +57,19 @@ class ProbeState {
     latency: latency,
     error: error,
     checkedAt: checkedAt,
+    url: url,
   );
   Map<String, dynamic> toJson() => {
     'latency': latency,
     'error': error,
     'checkedAt': checkedAt?.toIso8601String(),
+    'url': url,
   };
   static ProbeState fromJson(Map value) => ProbeState(
     latency: value['latency'] as int?,
     error: value['error'] as String?,
     checkedAt: DateTime.tryParse(value['checkedAt']?.toString() ?? ''),
+    url: value['url'] as String?,
   );
 }
 
@@ -561,6 +568,7 @@ class SvoiController {
       method: 'PUT',
       body: {...preferences.value, ...patch},
     );
+    if (patch.containsKey('probe')) cancelProbes();
   });
   Future<Map<String, dynamic>> config(ServerEntry server) => api.request(
     'servers/${Uri.encodeComponent(server.id)}/config?mode=${mode.value}',
@@ -588,8 +596,19 @@ class SvoiController {
       return;
     }
     final generation = ++_probeGeneration;
+    final settings = preferences.value['probe'] as Map? ?? {};
+    final parallel = ((settings['parallel'] as num?)?.toInt() ?? 4).clamp(
+      1,
+      10,
+    );
+    final timeout = ((settings['timeoutSeconds'] as num?)?.toInt() ?? 4).clamp(
+      1,
+      15,
+    );
+    final url = settings['url'] as String? ?? defaultProbeUrl;
     probing.value = true;
-    probeProgress.value = '0 из ${list.length} · до 4 одновременно · лимит 4 с';
+    probeProgress.value =
+        '0 из ${list.length} · до $parallel одновременно · лимит $timeout с';
     var next = 0, done = 0;
     Future<void> worker() async {
       while (next < list.length && generation == _probeGeneration && !_closed) {
@@ -608,7 +627,7 @@ class SvoiController {
                 cancellation: cancellation,
               )
               .timeout(
-                const Duration(seconds: 6),
+                Duration(seconds: timeout + 2),
                 onTimeout: () {
                   cancellation.cancel();
                   throw ApiException(
@@ -620,6 +639,7 @@ class SvoiController {
             result.value = ProbeState(
               latency: response['latency'],
               checkedAt: DateTime.now(),
+              url: response['url'] as String? ?? url,
             );
           }
         } catch (e) {
@@ -627,6 +647,7 @@ class SvoiController {
             result.value = ProbeState(
               error: e.toString(),
               checkedAt: DateTime.now(),
+              url: url,
             );
           }
         } finally {
@@ -635,14 +656,17 @@ class SvoiController {
         if (generation == _probeGeneration) {
           done++;
           probeProgress.value =
-              '$done из ${list.length} · HTTPS · до 4 одновременно · лимит 4 с';
+              '$done из ${list.length} · GET через профиль · до $parallel одновременно · лимит $timeout с';
         }
       }
     }
 
     try {
       await Future.wait(
-        List.generate(list.length < 4 ? list.length : 4, (_) => worker()),
+        List.generate(
+          list.length < parallel ? list.length : parallel,
+          (_) => worker(),
+        ),
       );
     } finally {
       if (generation == _probeGeneration) probing.value = false;

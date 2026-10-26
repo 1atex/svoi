@@ -392,7 +392,7 @@ class ServerRow extends StatelessWidget {
               ),
               builder: (context, result, _) => Tooltip(
                 message:
-                    '${result.error ?? 'HTTPS-проверка через профиль, лимит 4 секунды'}\n${clockLabel(result.checkedAt)}. Ошибка не запрещает подключение.',
+                    '${result.error ?? 'GET через профиль · доступность только тестового адреса'}\n${result.url ?? defaultProbeUrl}\n${clockLabel(result.checkedAt)}. Ошибка не запрещает подключение.',
                 child: SizedBox(
                   width: 96,
                   child: TextButton(

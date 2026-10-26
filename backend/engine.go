@@ -50,6 +50,7 @@ type Engine struct {
 	restoreProxy  func() error
 	redactions    []string
 	checkURL      string
+	checkTimeout  time.Duration
 	checkCancel   context.CancelFunc
 	checkID       uint64
 	coreStarted   bool
@@ -449,7 +450,11 @@ func (e *Engine) Check(ctx context.Context) (int64, error) {
 		transport.Proxy = nil
 	}
 	defer transport.CloseIdleConnections()
-	client := &http.Client{Transport: transport, Timeout: 12 * time.Second, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
+	timeout := e.checkTimeout
+	if timeout == 0 {
+		timeout = 12 * time.Second
+	}
+	client := &http.Client{Transport: transport, Timeout: timeout, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
 	req, _ := http.NewRequestWithContext(ctx, "GET", e.checkURL, nil)
 	start := time.Now()
 	resp, err := client.Do(req)

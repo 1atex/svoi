@@ -1,6 +1,6 @@
 part of 'main.dart';
 
-const clientVersion = '0.5.0-beta.13';
+const clientVersion = '0.5.0-beta.14';
 
 class ConfigPane extends StatelessWidget {
   const ConfigPane({
@@ -886,6 +886,7 @@ class PreferencesPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) => FeatureBody(
     children: [
+      ProbeSettingsPanel(c: c),
       Section(
         'Автоматизация',
         children: [

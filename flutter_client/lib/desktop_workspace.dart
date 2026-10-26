@@ -496,7 +496,7 @@ class DesktopServerRow extends StatelessWidget {
                       ),
                       builder: (context, probe, _) => Tooltip(
                         message:
-                            '${probe.error ?? 'Задержка HTTPS через профиль, не ICMP-пинг'}\n${clockLabel(probe.checkedAt)}${probe.busy && probe.latency != null ? '\nПредыдущий результат: ${probe.latency} мс' : ''}',
+                            '${probe.error ?? 'GET через профиль · доступность только тестового адреса'}\n${probe.url ?? defaultProbeUrl}\n${clockLabel(probe.checkedAt)}${probe.busy && probe.latency != null ? '\nПредыдущий результат: ${probe.latency} мс' : ''}',
                         child: TextButton(
                           onPressed:
                               probe.busy ||

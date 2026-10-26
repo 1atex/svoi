@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net"
 	"net/http"
 	"os"
@@ -12,7 +13,21 @@ import (
 	"time"
 )
 
-const serverProbeTimeout = 4 * time.Second
+func (a *App) acquireProbeSlot() (ProbeSettings, bool) {
+	a.settingsMu.Lock()
+	defer a.settingsMu.Unlock()
+	settings := a.settings.Probe
+	settings.defaults()
+	if len(a.probeSlots) >= settings.Parallel {
+		return settings, false
+	}
+	select {
+	case a.probeSlots <- struct{}{}:
+		return settings, true
+	default:
+		return settings, false
+	}
+}
 
 func (a *App) serverToolsAPI(w http.ResponseWriter, r *http.Request) error {
 	parts := strings.Split(strings.TrimPrefix(r.URL.Path, "/api/servers/"), "/")
@@ -72,20 +87,20 @@ func (a *App) serverToolsAPI(w http.ResponseWriter, r *http.Request) error {
 	if a.engine == nil || ip == nil || !ip.IsLoopback() {
 		return fail(403, "Проверка доступна только в локальном приложении")
 	}
-	select {
-	case a.probeSlots <- struct{}{}:
-		defer func() { <-a.probeSlots }()
-	case <-r.Context().Done():
-		return r.Context().Err()
-	default:
-		return fail(429, "Все четыре слота проверки заняты")
+	if err := r.Context().Err(); err != nil {
+		return err
 	}
+	settings, acquired := a.acquireProbeSlot()
+	if !acquired {
+		return fail(429, fmt.Sprintf("Все %d слотов проверки заняты", settings.Parallel))
+	}
+	defer func() { <-a.probeSlots }()
 	if parts[1] == "tcp" {
 		if isHysteriaServer(server.ServerInfo) {
 			return fail(400, "Hysteria2 работает через UDP. Используйте проверку задержки через профиль вместо TCP-теста.")
 		}
 		if server.FullProfile || server.Address == "" || server.Port < 1 || server.Port > 65535 {
-			return fail(400, "У полного профиля может быть несколько узлов. Используйте HTTPS-проверку профиля.")
+			return fail(400, "У полного профиля может быть несколько узлов. Используйте GET-проверку через профиль.")
 		}
 		ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
 		defer cancel()
@@ -101,19 +116,26 @@ func (a *App) serverToolsAPI(w http.ResponseWriter, r *http.Request) error {
 	if !a.engine.Status().Available {
 		return fail(503, "Ядро Xray не найдено")
 	}
-	latency, err := probeServer(r.Context(), a.engine, server)
+	latency, err := probeServer(r.Context(), a.engine, server, settings)
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
-			return fail(502, "Нет ответа за 4 секунды. Можно повторить проверку или подключиться вручную.")
+			return fail(502, fmt.Sprintf("Нет ответа за %d с. Можно повторить проверку или подключиться вручную.", settings.TimeoutSeconds))
 		}
-		return fail(502, "Профиль не прошёл HTTPS-проверку. Сервер, маршрут или адрес проверки недоступен.")
+		return fail(502, "GET-запрос через профиль не прошёл. Сервер, маршрут или адрес проверки недоступен.")
 	}
-	writeJSON(w, 200, map[string]any{"latency": latency, "checkedAt": time.Now().UTC(), "method": "HTTPS", "url": a.engine.checkURL})
+	writeJSON(w, 200, map[string]any{"latency": latency, "checkedAt": time.Now().UTC(), "method": "GET", "url": settings.URL})
 	return nil
 }
 
-func probeServer(ctx context.Context, base *Engine, server ServerConfig) (int64, error) {
-	ctx, cancel := context.WithTimeout(ctx, serverProbeTimeout)
+func probeServer(ctx context.Context, base *Engine, server ServerConfig, options ...ProbeSettings) (int64, error) {
+	settings := ProbeSettings{URL: base.checkURL}
+	if len(options) > 0 {
+		settings = options[0]
+	}
+	if err := validateProbeSettings(&settings); err != nil {
+		return 0, err
+	}
+	ctx, cancel := context.WithTimeout(ctx, time.Duration(settings.TimeoutSeconds)*time.Second)
 	defer cancel()
 	if err := ctx.Err(); err != nil {
 		return 0, err
@@ -123,7 +145,7 @@ func probeServer(ctx context.Context, base *Engine, server ServerConfig) (int64,
 		return 0, err
 	}
 	defer os.RemoveAll(dir)
-	probe := &Engine{binary: base.binary, dir: dir, checkURL: base.checkURL, status: EngineStatus{State: "stopped", Available: true, Logs: []string{}}}
+	probe := &Engine{binary: base.binary, dir: dir, checkURL: settings.URL, checkTimeout: time.Duration(settings.TimeoutSeconds) * time.Second, status: EngineStatus{State: "stopped", Available: true, Logs: []string{}}}
 	defer probe.Stop()
 	if err = probe.startContext(ctx, server, "local"); err != nil {
 		if ctx.Err() != nil {

@@ -26,6 +26,7 @@ part 'tray.dart';
 part 'startup_panel.dart';
 part 'network_tools.dart';
 part 'subscription_details.dart';
+part 'probe_settings.dart';
 
 const windowChannel = MethodChannel('dev.svoi/window');
 const canvas = Color(0xff101013),
