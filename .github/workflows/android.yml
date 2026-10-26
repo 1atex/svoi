@@ -107,10 +107,11 @@ jobs:
       - name: Verify Android tunnel and reconnects
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 29
+          api-level: 35
           arch: x86_64
           profile: pixel_2
           disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -camera-back none
           script: |
             python3 scripts/android-emulator-check.py
             python3 scripts/android-signed-upgrade-check.py
