@@ -162,7 +162,7 @@ class _DesktopLibraryState extends State<DesktopLibrary> {
               for (final source in c.subscriptions.value)
                 (
                   'source:${source['id']}',
-                  source['name']?.toString() ?? 'Подписка',
+                  subscriptionDisplayName(source),
                   filtered
                       .where((s) => s.json['subscriptionId'] == source['id'])
                       .toList(),
@@ -336,82 +336,32 @@ class _DesktopLibraryState extends State<DesktopLibrary> {
                                     List<ServerEntry>,
                                     Map<String, dynamic>?,
                                   );
-                          return Padding(
-                            padding: const EdgeInsets.only(top: 8, bottom: 6),
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  child: InkWell(
-                                    borderRadius: BorderRadius.circular(8),
-                                    onTap: () => setState(() {
-                                      if (!collapsed.add(group.$1)) {
-                                        collapsed.remove(group.$1);
-                                      }
-                                    }),
-                                    child: Padding(
-                                      padding: const EdgeInsets.symmetric(
-                                        vertical: 12,
-                                      ),
-                                      child: Row(
-                                        children: [
-                                          Icon(
-                                            collapsed.contains(group.$1) &&
-                                                    query.isEmpty
-                                                ? LucideIcons.chevronRight
-                                                : LucideIcons.chevronDown,
-                                            size: 15,
-                                            color: muted,
-                                          ),
-                                          const SizedBox(width: 8),
-                                          Expanded(
-                                            child: Text(
-                                              group.$2,
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                              style: const TextStyle(
-                                                fontSize: 12,
-                                                fontWeight: FontWeight.w600,
-                                              ),
-                                            ),
-                                          ),
-                                          const SizedBox(width: 8),
-                                          Text(
-                                            '${group.$3.length}',
-                                            style: const TextStyle(
-                                              fontSize: 12,
-                                              color: muted,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                if (group.$4?['remote'] == true)
-                                  IconButton(
-                                    tooltip: 'Обновить ${group.$2}',
-                                    icon: const Icon(
-                                      LucideIcons.refreshCw,
-                                      size: 16,
-                                    ),
-                                    onPressed: c.busy.value
-                                        ? null
-                                        : () => c.refreshSource(
-                                            group.$4!['id'].toString(),
-                                          ),
-                                  ),
-                                if (group.$4 != null)
-                                  IconButton(
-                                    tooltip: 'Настройки подписки',
-                                    icon: const Icon(
-                                      LucideIcons.ellipsis,
-                                      size: 17,
-                                    ),
-                                    onPressed: () =>
-                                        editSource(context, c, group.$4!),
-                                  ),
-                              ],
-                            ),
+                          return SubscriptionHeader(
+                            name: group.$2,
+                            source: group.$4,
+                            count: group.$3.length,
+                            collapsed:
+                                collapsed.contains(group.$1) && query.isEmpty,
+                            onToggle: () => setState(() {
+                              if (!collapsed.add(group.$1)) {
+                                collapsed.remove(group.$1);
+                              }
+                            }),
+                            onRefresh:
+                                group.$4?['remote'] == true && !c.busy.value
+                                ? () => c.refreshSource(
+                                    group.$4!['id'].toString(),
+                                  )
+                                : null,
+                            onProbe:
+                                group.$3.isNotEmpty &&
+                                    !c.probing.value &&
+                                    c.connection.value['available'] == true
+                                ? () => c.probe(group.$3)
+                                : null,
+                            onDetails: group.$4 == null
+                                ? null
+                                : () => editSource(context, c, group.$4!),
                           );
                         },
                       ),
@@ -546,7 +496,7 @@ class DesktopServerRow extends StatelessWidget {
                       ),
                       builder: (context, probe, _) => Tooltip(
                         message:
-                            '${probe.error ?? 'Проверить HTTPS-запрос через сервер'}\n${clockLabel(probe.checkedAt)}',
+                            '${probe.error ?? 'GET через профиль · доступность только тестового адреса'}\n${probe.url ?? defaultProbeUrl}\n${clockLabel(probe.checkedAt)}${probe.busy && probe.latency != null ? '\nПредыдущий результат: ${probe.latency} мс' : ''}',
                         child: TextButton(
                           onPressed:
                               probe.busy ||
@@ -558,7 +508,9 @@ class DesktopServerRow extends StatelessWidget {
                             probe.busy
                                 ? 'Проверяется'
                                 : probe.error != null
-                                ? 'Нет ответа'
+                                ? probe.setupError
+                                      ? 'Ошибка ядра'
+                                      : 'Нет ответа'
                                 : probe.latency != null
                                 ? '${probe.latency} мс'
                                 : 'Не проверен',
@@ -584,11 +536,19 @@ class DesktopServerRow extends StatelessWidget {
                       onSelected: (value) {
                         if (value == 'config') {
                           showConfig(context, c, server);
+                        } else if (value == 'tcp') {
+                          showTCPCheck(context, c, server);
                         } else {
                           c.toggleFavorite(server.id);
                         }
                       },
                       itemBuilder: (context) => [
+                        if (server.json['fullProfile'] != true &&
+                            !server.usesQuic)
+                          const PopupMenuItem(
+                            value: 'tcp',
+                            child: Text('Проверить адрес · TCP'),
+                          ),
                         const PopupMenuItem(
                           value: 'config',
                           child: Text('Конфигурация'),
@@ -706,9 +666,9 @@ class DesktopConnection extends StatelessWidget {
               onPressed: locked || !ready ? null : c.toggleConnection,
               child: const Text('Переключиться'),
             ),
-          if (pending)
+          if (compact && pending)
             OutlinedButton(onPressed: toggle, child: Text(action))
-          else
+          else if (compact)
             FilledButton(
               key: const ValueKey('desktop-connect'),
               onPressed: toggle,
@@ -795,6 +755,7 @@ class DesktopConnection extends StatelessWidget {
                     ),
                   ],
                 ),
+                PublicIPLine(c: c),
                 if (view.error.isNotEmpty)
                   Text(
                     detail,
@@ -846,8 +807,7 @@ class DesktopConnection extends StatelessWidget {
                   style: const TextStyle(fontSize: 12, color: accent),
                 ),
               ),
-            const SizedBox(height: 16),
-            controls,
+            if (pending) ...[const SizedBox(height: 16), controls],
             const SizedBox(height: 20),
             const Divider(),
             Expanded(
@@ -855,6 +815,8 @@ class DesktopConnection extends StatelessWidget {
                 padding: const EdgeInsets.only(top: 24),
                 child: Column(
                   children: [
+                    PublicIPLine(c: c),
+                    const SizedBox(height: 12),
                     ModePicker(c: c),
                     const SizedBox(height: 12),
                     if (view.running)

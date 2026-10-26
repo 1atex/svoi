@@ -67,6 +67,10 @@ func protect(_ string, _ string, conn syscall.RawConn) error {
 func Start(config string, fd int32, assets string, callback Protector) error {
 	lifecycle.Lock()
 	defer lifecycle.Unlock()
+	if ipCancel != nil {
+		ipCancel()
+		ipCancel = nil
+	}
 	if instance != nil {
 		return errors.New("VPN already running")
 	}
@@ -119,6 +123,10 @@ func clearProtector() { socketMu.Lock(); protector = nil; socketMu.Unlock() }
 func Stop() error {
 	lifecycle.Lock()
 	defer lifecycle.Unlock()
+	if ipCancel != nil {
+		ipCancel()
+		ipCancel = nil
+	}
 	var err error
 	if instance != nil {
 		err = instance.Close()

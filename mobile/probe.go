@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net"
 	"net/http"
 	"strings"
@@ -16,6 +17,7 @@ import (
 )
 
 var probeSlots = make(chan struct{}, 2)
+var setupSlots = make(chan struct{}, 2)
 
 type ProbeRequest struct {
 	ctx             context.Context
@@ -54,30 +56,34 @@ func (p *ProbeRequest) run() (int64, error) {
 	default:
 		return 0, errors.New("Оба слота проверки заняты. Повторите через несколько секунд.")
 	}
-	ctx, cancel := context.WithTimeout(p.ctx, 4*time.Second)
-	defer cancel()
+	options := p.session.app.ProbeOptions()
 	config, err := p.session.app.ProbeConfig(p.token, p.serverID)
 	if err != nil {
 		return 0, err
 	}
-	latency, err := probeConfig(ctx, config, "https://www.gstatic.com/generate_204")
+	latency, err := probeConfigWithTimeout(p.ctx, config, options.URL, time.Duration(options.TimeoutSeconds)*time.Second)
 	if err := p.ctx.Err(); err != nil {
 		return 0, err
 	}
-	if ctx.Err() != nil {
-		return 0, errors.New("Нет ответа за 4 секунды. Подключение вручную доступно.")
+	if errors.Is(err, context.DeadlineExceeded) {
+		return 0, fmt.Errorf("Нет ответа за %d с. Подключение вручную доступно.", options.TimeoutSeconds)
 	}
 	if err != nil {
-		return 0, errors.New("Профиль не прошёл HTTPS-проверку. Сервер, маршрут или адрес проверки недоступен.")
+		return 0, err
 	}
 	return latency, nil
 }
 
 func probeConfig(ctx context.Context, raw, target string) (int64, error) {
+	return probeConfigWithTimeout(ctx, raw, target, 4*time.Second)
+}
+
+func probeConfigWithTimeout(parent context.Context, raw, target string, timeout time.Duration) (int64, error) {
+	ctx, cancelSetup := context.WithTimeout(parent, 5*time.Second)
+	defer cancelSetup()
 	if err := ctx.Err(); err != nil {
 		return 0, err
 	}
-	started := time.Now()
 	var config map[string]any
 	if err := json.Unmarshal([]byte(raw), &config); err != nil {
 		return 0, err
@@ -97,24 +103,15 @@ func probeConfig(ctx context.Context, raw, target string) (int64, error) {
 	if err != nil {
 		return 0, err
 	}
-	loaded, err := core.LoadConfig("json", strings.NewReader(string(data)))
+	x, err := startProbeCore(ctx, string(data))
 	if err != nil {
-		return 0, err
-	}
-	if err = ctx.Err(); err != nil {
-		return 0, err
-	}
-	x, err := core.New(loaded)
-	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("Подготовка ядра: %v", err)
 	}
 	defer x.Close()
-	if err = x.Start(); err != nil {
-		return 0, err
-	}
-	if err = ctx.Err(); err != nil {
-		return 0, err
-	}
+	cancelSetup()
+	ctx, cancel := context.WithTimeout(parent, timeout)
+	defer cancel()
+	started := time.Now()
 	transport := &http.Transport{
 		Proxy: nil, DisableKeepAlives: true,
 		DialContext: func(_ context.Context, network, address string) (net.Conn, error) {
@@ -143,8 +140,49 @@ func probeConfig(ctx context.Context, raw, target string) (int64, error) {
 	if err != nil {
 		return 0, err
 	}
-	if response.StatusCode != http.StatusNoContent {
+	if response.StatusCode < 200 || response.StatusCode >= 300 {
 		return 0, errors.New("неожиданный ответ проверки")
 	}
 	return time.Since(started).Milliseconds(), nil
+}
+
+func startProbeCore(ctx context.Context, raw string) (*core.Instance, error) {
+	select {
+	case setupSlots <- struct{}{}:
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
+	type result struct {
+		core *core.Instance
+		err  error
+	}
+	ready := make(chan result)
+	go func() {
+		defer func() { <-setupSlots }()
+		loaded, err := core.LoadConfig("json", strings.NewReader(raw))
+		var x *core.Instance
+		if err == nil {
+			x, err = core.New(loaded)
+		}
+		if err == nil {
+			err = x.Start()
+		}
+		if err != nil && x != nil {
+			x.Close()
+			x = nil
+		}
+		select {
+		case ready <- result{x, err}:
+		case <-ctx.Done():
+			if x != nil {
+				x.Close()
+			}
+		}
+	}()
+	select {
+	case r := <-ready:
+		return r.core, r.err
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
 }

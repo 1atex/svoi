@@ -7,6 +7,8 @@ import 'package:flutter/foundation.dart';
 import 'backend.dart';
 import 'countries.dart';
 
+const defaultProbeUrl = 'https://www.gstatic.com/generate_204';
+
 class ServerEntry {
   ServerEntry(this.json)
     : id = json['id'] as String,
@@ -23,11 +25,16 @@ class ServerEntry {
   final String id, name;
   late final String search;
   late final ServerCountry country;
+  bool get isHysteria =>
+      json['protocol'] == 'hysteria' || json['protocol'] == 'hysteria2';
+  bool get usesQuic => isHysteria || json['network'] == 'hysteria';
   String get details => json['fullProfile'] == true
       ? '${json['nodeCount']} узлов · маршрутизация из подписки'
-      : '${json['address']}:${json['port']} · ${json['network'] ?? 'tcp'} · ${json['security'] ?? ''}';
+      : '${json['address']}:${json['port']} · ${usesQuic ? 'QUIC / UDP' : json['network'] ?? 'tcp'} · ${json['security'] ?? ''}';
   String get protocol => json['fullProfile'] == true
       ? 'Профиль'
+      : isHysteria
+      ? 'HYSTERIA2'
       : (json['protocol'] as String).toUpperCase();
 }
 
@@ -37,19 +44,133 @@ class ProbeState {
     this.latency,
     this.error,
     this.checkedAt,
+    this.url,
+    this.setupError = false,
   });
   final bool busy;
+  final bool setupError;
   final int? latency;
   final String? error;
+  final String? url;
   final DateTime? checkedAt;
+
+  ProbeState withBusy(bool value) => ProbeState(
+    busy: value,
+    latency: latency,
+    error: error,
+    checkedAt: checkedAt,
+    url: url,
+    setupError: setupError,
+  );
+  Map<String, dynamic> toJson() => {
+    'latency': latency,
+    'error': error,
+    'checkedAt': checkedAt?.toIso8601String(),
+    'url': url,
+    'setupError': setupError,
+  };
+  static ProbeState fromJson(Map value) => ProbeState(
+    latency: value['latency'] as int?,
+    error: value['error'] as String?,
+    checkedAt: DateTime.tryParse(value['checkedAt']?.toString() ?? ''),
+    url: value['url'] as String?,
+    setupError: value['setupError'] == true,
+  );
 }
 
 class SvoiController {
-  SvoiController(this.api, {this.sessionFile});
+  SvoiController(this.api, {this.sessionFile}) {
+    connection.addListener(_syncPublicIP);
+    connectionPhase.addListener(_syncPublicIP);
+  }
   final Backend api;
+  final publicIP = ValueNotifier<Map<String, dynamic>>({});
+  String _ipKey = '', _previousIP = '';
+  DateTime? _previousIPAt;
+  int _ipGeneration = 0;
+  RequestCancellation? _ipRequest;
+  bool _ipEnabled = false;
+
+  void enablePublicIP() {
+    _ipEnabled = true;
+    _syncPublicIP();
+  }
+
+  void _syncPublicIP() {
+    if (_closed || !_ipEnabled || connection.value['state'] == null) return;
+    if (api.mobile && !_visible) return;
+    if (connectionPhase.value.isNotEmpty ||
+        ['starting', 'stopping'].contains(connection.value['state'])) {
+      _ipGeneration++;
+      _ipRequest?.cancel();
+      _ipKey = '';
+      if (publicIP.value.isNotEmpty) publicIP.value = {};
+      return;
+    }
+    final state = connection.value;
+    final key = state['state'] == 'running'
+        ? '${state['serverId']}/${state['mode']}/${state['startedAt']}'
+        : 'network';
+    if (key == _ipKey) return;
+    _ipKey = key;
+    _ipGeneration++;
+    _ipRequest?.cancel();
+    publicIP.value = {};
+    unawaited(refreshPublicIP());
+  }
+
+  Future<void> refreshPublicIP() async {
+    if (_closed ||
+        connectionPhase.value.isNotEmpty ||
+        publicIP.value['busy'] == true) {
+      return;
+    }
+    final generation = ++_ipGeneration;
+    _ipRequest?.cancel();
+    final request = RequestCancellation();
+    _ipRequest = request;
+    publicIP.value = {'busy': true};
+    try {
+      final result = await api
+          .request('connection/ip', method: 'POST', cancellation: request)
+          .timeout(
+            const Duration(seconds: 7),
+            onTimeout: () {
+              request.cancel();
+              throw ApiException('Не удалось определить IP');
+            },
+          );
+      if (_closed || generation != _ipGeneration) return;
+      final ip = result['ip']?.toString() ?? '';
+      if (InternetAddress.tryParse(ip) == null) {
+        throw ApiException('Некорректный ответ сервиса IP');
+      }
+      final previous =
+          _previousIPAt != null &&
+              DateTime.now().difference(_previousIPAt!).inMinutes < 5
+          ? _previousIP
+          : '';
+      if (result['via'] == 'network') {
+        _previousIP = ip;
+        _previousIPAt = DateTime.now();
+      }
+      publicIP.value = {
+        ...result,
+        if (result['via'] != 'network' && previous.isNotEmpty)
+          'previousIP': previous,
+      };
+    } catch (_) {
+      if (!_closed && generation == _ipGeneration) {
+        publicIP.value = {'error': 'IP не определён'};
+      }
+    }
+  }
+
+  Future<String> Function()? approveZapretPause;
   final group = ValueNotifier<Map<String, dynamic>>({});
   final sessions = ValueNotifier<List<Map<String, dynamic>>>([]);
   bool get visible => _visible;
+  final foreground = ValueNotifier<bool>(true);
   final File? sessionFile;
   final servers = ValueNotifier<List<ServerEntry>>([]);
   final subscriptions = ValueNotifier<List<Map<String, dynamic>>>([]);
@@ -138,9 +259,21 @@ class SvoiController {
 
   void _acceptGroup(Map<String, dynamic> group) {
     if (this.group.value['id'] != group['id']) {
+      cancelProbes();
+      probes.clear();
       final saved = _libraries[group['id']?.toString()] as Map? ?? {};
       favorites.value = Set<String>.from(saved['favorites'] ?? []);
       lastUsed.value = saved['lastUsed']?.toString() ?? '';
+      final history = saved['probes'] as Map? ?? {};
+      for (final entry in history.entries) {
+        if (entry.value is Map) {
+          final result = ProbeState.fromJson(entry.value);
+          if (result.checkedAt != null &&
+              DateTime.now().difference(result.checkedAt!).inHours < 24) {
+            probes[entry.key.toString()] = ValueNotifier(result);
+          }
+        }
+      }
     }
     this.group.value = group;
     _rememberProfile(group);
@@ -221,6 +354,11 @@ class SvoiController {
     _libraries[group.value['id']?.toString() ?? 'default'] = {
       'favorites': favorites.value.toList(),
       'lastUsed': lastUsed.value,
+      'probes': {
+        for (final entry in probes.entries)
+          if (entry.value.value.checkedAt != null)
+            entry.key: entry.value.value.toJson(),
+      },
     };
     try {
       await saveSession();
@@ -283,8 +421,18 @@ class SvoiController {
 
   void visibility(bool visible) {
     _visible = visible;
+    foreground.value = visible;
     _timer?.cancel();
-    if (!visible && api.mobile) cancelProbes();
+    if (!visible && api.mobile) {
+      cancelProbes();
+      _ipGeneration++;
+      _ipRequest?.cancel();
+      if (publicIP.value['busy'] == true) {
+        _ipKey = '';
+        publicIP.value = {};
+      }
+    }
+    if (visible) _syncPublicIP();
     if (visible) unawaited(poll());
     if (!visible) _schedule();
   }
@@ -368,10 +516,43 @@ class SvoiController {
       return;
     }
     if (selected.value.isEmpty) throw ApiException('Выберите сервер.');
+    cancelProbes();
+    var pauseZapret = false;
+    if (mode.value == 'tun') {
+      final preflight = await api.request('connection/preflight');
+      final conflict = preflight['conflict'];
+      if (conflict == 'external') {
+        throw ApiException(
+          'Обнаружен сторонний zapret. Остановите его через лаунчер или службу, затем повторите подключение.',
+        );
+      }
+      if (conflict == 'busy') {
+        throw ApiException(
+          'Дождитесь завершения задачи во вкладке zapret или остановите её.',
+        );
+      }
+      if (conflict == 'managed' &&
+          preferences.value['autoPauseZapret'] != true) {
+        final decision = await approveZapretPause?.call() ?? 'cancel';
+        if (decision == 'cancel') return;
+        pauseZapret = true;
+        if (decision == 'always') {
+          preferences.value = await api.request(
+            'settings',
+            method: 'PUT',
+            body: {...preferences.value, 'autoPauseZapret': true},
+          );
+        }
+      }
+    }
     connection.value = await api.request(
       'connection/start',
       method: 'POST',
-      body: {'serverId': selected.value, 'mode': mode.value},
+      body: {
+        'serverId': selected.value,
+        'mode': mode.value,
+        'pauseZapret': pauseZapret,
+      },
     );
     if (connection.value['state'] != 'running') return;
     lastUsed.value = connection.value['serverId']?.toString() ?? selected.value;
@@ -530,6 +711,7 @@ class SvoiController {
       method: 'PUT',
       body: {...preferences.value, ...patch},
     );
+    if (patch.containsKey('probe')) cancelProbes();
   });
   Future<Map<String, dynamic>> config(ServerEntry server) => api.request(
     'servers/${Uri.encodeComponent(server.id)}/config?mode=${mode.value}',
@@ -544,10 +726,10 @@ class SvoiController {
     }
     _requests.clear();
     for (final value in probes.values) {
-      if (value.value.busy) value.value = const ProbeState();
+      if (value.value.busy) value.value = value.value.withBusy(false);
     }
     probing.value = false;
-    probeProgress.value = wasProbing ? 'Проверка остановлена' : '';
+    if (wasProbing) probeProgress.value = 'Проверка остановлена';
   }
 
   Future<void> probe(List<ServerEntry> list) async {
@@ -557,10 +739,19 @@ class SvoiController {
       return;
     }
     final generation = ++_probeGeneration;
-    final concurrency = api.probeConcurrency;
+    final settings = preferences.value['probe'] as Map? ?? {};
+    final parallel = ((settings['parallel'] as num?)?.toInt() ?? 4).clamp(
+      1,
+      api.mobile ? api.probeConcurrency : 10,
+    );
+    final timeout = ((settings['timeoutSeconds'] as num?)?.toInt() ?? 4).clamp(
+      1,
+      15,
+    );
+    final url = settings['url'] as String? ?? defaultProbeUrl;
     probing.value = true;
     probeProgress.value =
-        '0 из ${list.length} · до $concurrency одновременно · лимит 4 с';
+        '0 из ${list.length} · до $parallel одновременно · лимит $timeout с';
     var next = 0, done = 0;
     Future<void> worker() async {
       while (next < list.length && generation == _probeGeneration && !_closed) {
@@ -570,7 +761,7 @@ class SvoiController {
           () => ValueNotifier(const ProbeState()),
         );
         _requests.add(cancellation);
-        result.value = const ProbeState(busy: true);
+        result.value = result.value.withBusy(true);
         try {
           final response = await api
               .request(
@@ -579,7 +770,7 @@ class SvoiController {
                 cancellation: cancellation,
               )
               .timeout(
-                const Duration(seconds: 6),
+                Duration(seconds: timeout + 7),
                 onTimeout: () {
                   cancellation.cancel();
                   throw ApiException(
@@ -591,13 +782,16 @@ class SvoiController {
             result.value = ProbeState(
               latency: response['latency'],
               checkedAt: DateTime.now(),
+              url: response['url'] as String? ?? url,
             );
           }
         } catch (e) {
           if (generation == _probeGeneration) {
             result.value = ProbeState(
               error: e.toString(),
+              setupError: e is ApiException && e.status == 503,
               checkedAt: DateTime.now(),
+              url: url,
             );
           }
         } finally {
@@ -606,7 +800,7 @@ class SvoiController {
         if (generation == _probeGeneration) {
           done++;
           probeProgress.value =
-              '$done из ${list.length} · HTTPS · до $concurrency одновременно · лимит 4 с';
+              '$done из ${list.length} · GET через профиль · до $parallel одновременно · лимит $timeout с';
         }
       }
     }
@@ -614,19 +808,24 @@ class SvoiController {
     try {
       await Future.wait(
         List.generate(
-          list.length < concurrency ? list.length : concurrency,
+          list.length < parallel ? list.length : parallel,
           (_) => worker(),
         ),
       );
     } finally {
       if (generation == _probeGeneration) probing.value = false;
       probeRevision.value++;
+      await _saveLibrary();
     }
   }
 
   Future<void> close() async {
     if (_closed) return;
     _closed = true;
+    connection.removeListener(_syncPublicIP);
+    connectionPhase.removeListener(_syncPublicIP);
+    _ipGeneration++;
+    _ipRequest?.cancel();
     _timer?.cancel();
     cancelProbes();
     await _saveQueue.catchError((_) {});

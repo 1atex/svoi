@@ -349,7 +349,7 @@ func TestXrayUnexpectedExitCleanup(t *testing.T) {
 func TestImportedServersAndRedaction(t *testing.T) {
 	a := newTestApp(t)
 	owner := create(t, a)
-	raw := "vless://private-credential@example.com:443?security=tls#Primary\nhy2://unsupported@example.com:443#Unsupported\nvless://private-credential@example.com:443?security=tls#Duplicate"
+	raw := "vless://private-credential@example.com:443?security=tls#Primary\nunsupported://credential@example.com:443#Unsupported\nvless://private-credential@example.com:443?security=tls#Duplicate"
 	v := expect(t, call(a, "POST", "/api/subscription/import", owner, map[string]string{"content": raw}), 200)
 	servers := v["servers"].([]any)
 	if len(servers) != 1 {

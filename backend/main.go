@@ -26,7 +26,7 @@ import (
 )
 
 var appVersion = "0.4.0-prebeta.3"
-var nativeVersion = "0.5.0-beta.7"
+var nativeVersion = "0.5.0-beta.15"
 
 //go:embed web/*
 var assets embed.FS
@@ -87,6 +87,9 @@ type App struct {
 	settings   LocalSettings
 	updates    *Updater
 	zapret     *Zapret
+	networkOp  sync.Mutex
+	handoff    vpnHandoff
+	dnsHost    dnsHost
 }
 type input struct {
 	Name       string   `json:"name"`
@@ -113,7 +116,7 @@ func secret() string {
 func digest(s string) string { h := sha256.Sum256([]byte(s)); return hex.EncodeToString(h[:]) }
 
 func openApp(path string) (*App, error) {
-	a := &App{path: path, client: subscriptionClient(), limits: map[string][]time.Time{}, probeSlots: make(chan struct{}, 4)}
+	a := &App{path: path, client: subscriptionClient(), limits: map[string][]time.Time{}, probeSlots: make(chan struct{}, 10)}
 	if err := a.loadSettings(); err != nil {
 		return nil, err
 	}
@@ -254,7 +257,7 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 	_ = json.NewEncoder(w).Encode(v)
 }
 func (a *App) dispatch(w http.ResponseWriter, r *http.Request) error {
-	if r.URL.Path == "/api/settings" || r.URL.Path == "/api/startup" || strings.HasPrefix(r.URL.Path, "/api/updates") || strings.HasPrefix(r.URL.Path, "/api/zapret") {
+	if r.URL.Path == "/api/settings" || r.URL.Path == "/api/startup" || strings.HasPrefix(r.URL.Path, "/api/updates") || strings.HasPrefix(r.URL.Path, "/api/zapret") || strings.HasPrefix(r.URL.Path, "/api/dns") {
 		return a.desktopAPI(w, r)
 	}
 	if strings.HasPrefix(r.URL.Path, "/api/transfer/") {
@@ -409,7 +412,7 @@ func (a *App) dispatch(w http.ResponseWriter, r *http.Request) error {
 			return fail(409, "В группе уже 32 источника")
 		}
 		if err = a.transaction(func() error {
-			g.Subscriptions = append(g.Subscriptions, Subscription{ID: secret(), Name: fmt.Sprintf("Импорт %d", len(g.Subscriptions)+1)})
+			g.Subscriptions = append(g.Subscriptions, Subscription{ID: secret(), Name: fmt.Sprintf("Импорт %d", len(g.Subscriptions)+1), Metadata: parseSubscriptionMetadata(parsed.MetadataHeaders)})
 			replaceSubscriptionServers(g, &g.Subscriptions[len(g.Subscriptions)-1], parsed.Servers, &report)
 			return nil
 		}); err != nil {
@@ -634,7 +637,12 @@ func (a *App) fetch(w http.ResponseWriter, r *http.Request) error {
 	if g.ID != gid || d.Device.ID != did || sub == nil || sub.URL != raw || g.Identity != identity {
 		return fail(409, "Настройки группы изменились. Повторите запрос.")
 	}
-	if err = a.transaction(func() error { replaceSubscriptionServers(g, sub, parsed.Servers, &report); return nil }); err != nil {
+	metadata := mergeSubscriptionMetadata(parsed.MetadataHeaders, resp.Header)
+	if err = a.transaction(func() error {
+		sub.Metadata = metadata
+		replaceSubscriptionServers(g, sub, parsed.Servers, &report)
+		return nil
+	}); err != nil {
 		return err
 	}
 	if strings.HasSuffix(r.URL.Path, "/export") {

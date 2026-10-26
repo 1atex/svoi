@@ -48,6 +48,10 @@ func (m *MobileApp) ProbeConfig(token, serverID string) (string, error) {
 	return m.serverConfig(token, serverID, "local")
 }
 
+func (m *MobileApp) ProbeOptions() ProbeSettings {
+	return m.app.localSettings().Probe
+}
+
 func (m *MobileApp) serverConfig(token, serverID, mode string) (string, error) {
 	req := httptest.NewRequest("GET", "/api/me", nil)
 	req.Header.Set("Authorization", "Bearer "+token)

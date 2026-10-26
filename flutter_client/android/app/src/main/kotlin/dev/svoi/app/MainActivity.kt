@@ -82,6 +82,12 @@ class MainActivity : FlutterActivity() {
                 "ready", "show", "updateTray" -> result.success(null)
                 "tray" -> { moveTaskToBack(true); result.success(null) }
                 "close" -> { finish(); result.success(null) }
+                "openExternal" -> {
+                    val uri = android.net.Uri.parse(call.arguments as? String ?: "")
+                    if (uri.scheme != "https" || uri.host.isNullOrBlank() || uri.userInfo != null) result.error("url", "Некорректная ссылка", null)
+                    else try { startActivity(Intent(Intent.ACTION_VIEW, uri)); result.success(null) }
+                    catch (e: Exception) { result.error("url", "Не удалось открыть ссылку", null) }
+                }
                 "openFile" -> {
                     if (fileResult != null) result.error("busy", "Выбор файла уже открыт", null)
                     else { fileResult = result; startActivityForResult(Intent(Intent.ACTION_OPEN_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("*/*"), 42) }

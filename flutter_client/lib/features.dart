@@ -1,6 +1,6 @@
 part of 'main.dart';
 
-const clientVersion = '0.5.0-beta.7';
+const clientVersion = '0.5.0-beta.15';
 
 class ConfigPane extends StatelessWidget {
   const ConfigPane({
@@ -194,7 +194,7 @@ Future<void> editSource(
   await showDialog<void>(
     context: context,
     builder: (dialog) => AlertDialog(
-      title: Text(source['name']),
+      title: Text(subscriptionDisplayName(source)),
       content: SizedBox(
         width: 480,
         child: SingleChildScrollView(
@@ -208,6 +208,7 @@ Future<void> editSource(
               const SizedBox(height: 12),
               if (source['report'] != null)
                 Text('Обновлено: ${source['report']['fetchedAt']}'),
+              SubscriptionDetails(source: source),
               for (final warning in source['report']?['warnings'] ?? [])
                 Padding(
                   padding: const EdgeInsets.only(top: 8),
@@ -780,7 +781,13 @@ class _RemotePanelState extends State<RemotePanel> {
   @override
   void initState() {
     super.initState();
+    widget.c.foreground.addListener(visibilityChanged);
     unawaited(refresh());
+  }
+
+  void visibilityChanged() {
+    timer?.cancel();
+    if (widget.c.visible) unawaited(refresh());
   }
 
   Future<void> refresh() async {
@@ -789,10 +796,25 @@ class _RemotePanelState extends State<RemotePanel> {
     try {
       if (widget.c.visible) {
         final result = await widget.c.api.request(
-          widget.path == 'zapret' ? 'zapret?summary=1' : widget.path,
+          widget.path == 'zapret'
+              ? 'zapret?summary=1${data['resultsRevision'] != null ? '&since=${data['resultsRevision']}' : ''}'
+              : widget.path,
         );
-        if (mounted &&
-            (jsonEncode(data) != jsonEncode(result) || error.isNotEmpty)) {
+        final sameResults = result.remove('resultsUnchanged') == true;
+        final previous = sameResults
+            ? {
+                ...data,
+                'job': {
+                  ...Map<String, dynamic>.from(data['job'] ?? {}),
+                  'results': [],
+                },
+              }
+            : data;
+        final changed = jsonEncode(previous) != jsonEncode(result);
+        if (widget.path == 'zapret' && sameResults) {
+          result['job']['results'] = data['job']?['results'] ?? [];
+        }
+        if (mounted && (changed || error.isNotEmpty)) {
           setState(() {
             data = result;
             error = '';
@@ -804,7 +826,7 @@ class _RemotePanelState extends State<RemotePanel> {
     } finally {
       loading = false;
       timer?.cancel();
-      if (mounted) {
+      if (mounted && widget.c.visible) {
         timer = Timer(
           Duration(
             seconds:
@@ -844,6 +866,7 @@ class _RemotePanelState extends State<RemotePanel> {
   @override
   void dispose() {
     timer?.cancel();
+    widget.c.foreground.removeListener(visibilityChanged);
     super.dispose();
   }
 
@@ -872,6 +895,7 @@ class PreferencesPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) => FeatureBody(
     children: [
+      ProbeSettingsPanel(c: c),
       Section(
         'Автоматизация',
         children: [
@@ -885,12 +909,17 @@ class PreferencesPage extends StatelessWidget {
                   'autoRefresh': 'Обновлять при запуске',
                   'autoUpdate': 'Проверять обновления приложения',
                   'autoDownload': 'Скачивать обновления автоматически',
+                  'autoPauseZapret': 'Переключать zapret и VPN автоматически',
                 }.entries)
                   SwitchListTile(
                     contentPadding: EdgeInsets.zero,
                     title: Text(entry.value),
                     subtitle: entry.key == 'autoRefresh'
                         ? const Text('Подписки загрузятся в фоне.')
+                        : entry.key == 'autoPauseZapret'
+                        ? const Text(
+                            'Приостанавливать zapret из SVOI перед TUN и возвращать после отключения VPN.',
+                          )
                         : null,
                     value: c.preferences.value[entry.key] == true,
                     onChanged: c.busy.value
@@ -1008,6 +1037,28 @@ class PreferencesPage extends StatelessWidget {
                 ],
               );
             },
+          ),
+        ],
+      ),
+      Section(
+        'Сетевые инструменты',
+        children: [
+          const Text(
+            'Сравните текущий DNS с альтернативами и сохраните возможность вернуть прежние настройки.',
+            style: TextStyle(color: muted, height: 1.5),
+          ),
+          const SizedBox(height: 12),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: OutlinedButton.icon(
+              onPressed: () => showDesktopSheet(
+                context,
+                'Сетевые инструменты',
+                DnsTools(c: c),
+              ),
+              icon: const Icon(Icons.dns_outlined),
+              label: const Text('Подобрать DNS'),
+            ),
           ),
         ],
       ),

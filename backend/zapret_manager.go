@@ -189,6 +189,7 @@ func (z *Zapret) launchJob(kind string, strategies []string, sweep bool) error {
 	done := make(chan struct{})
 	z.jobDone = done
 	z.job = ZapretJob{Busy: true, Kind: kind, Sweep: sweep, State: "running", Message: "Подготовка…", Results: []CheckResult{}}
+	z.resultsRevision++
 	go func() {
 		defer cancel()
 		var err error
@@ -227,6 +228,7 @@ func (z *Zapret) addResult(r CheckResult) {
 	z.mu.Lock()
 	defer z.mu.Unlock()
 	z.job.Results = append(z.job.Results, r)
+	z.resultsRevision++
 	z.job.ResultCount++
 	if r.State == "ok" {
 		z.job.Successful++

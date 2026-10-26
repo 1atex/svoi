@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
@@ -30,9 +31,10 @@ type ServerConfig struct {
 	Profile     json.RawMessage `json:"profile,omitempty"`
 }
 type ParsedSubscription struct {
-	Servers  []ServerConfig
-	Format   string
-	Warnings []string
+	MetadataHeaders http.Header
+	Servers         []ServerConfig
+	Format          string
+	Warnings        []string
 }
 type object = map[string]any
 
@@ -48,12 +50,15 @@ func decodeBase64(s string) ([]byte, error) {
 func parseSubscription(data []byte) (ParsedSubscription, error) {
 	p := ParsedSubscription{Format: "URI list", Warnings: []string{}, Servers: []ServerConfig{}}
 	s := strings.TrimSpace(strings.TrimPrefix(string(data), "\ufeff"))
+	p.MetadataHeaders = http.Header{}
+	s = stripSubscriptionMetadata(s, p.MetadataHeaders)
 	if !strings.HasPrefix(s, "{") && !strings.HasPrefix(s, "[") && !strings.Contains(s, "://") {
 		b, err := decodeBase64(s)
 		if err != nil {
 			return p, fail(422, "Не удалось прочитать подписку: ожидается список ссылок, Base64 или Xray JSON")
 		}
 		s = strings.TrimSpace(string(b))
+		s = stripSubscriptionMetadata(s, p.MetadataHeaders)
 		p.Format = "Base64"
 	}
 	seen := map[string]bool{}
@@ -187,6 +192,9 @@ func serverFromOutbound(name string, out object) (ServerConfig, error) {
 		return ServerConfig{}, errors.New("цепочки proxySettings/sendThrough требуют отдельного профиля маршрутизации")
 	}
 	settings := obj(out["settings"])
+	if protocol == "hysteria" && number(settings["version"]) != 2 {
+		return ServerConfig{}, errors.New("поддерживается только Hysteria версии 2")
+	}
 	endpoint := settings
 	if settings["vnext"] != nil {
 		endpoint = firstObject(settings["vnext"])
@@ -199,9 +207,9 @@ func serverFromOutbound(name string, out object) (ServerConfig, error) {
 		return ServerConfig{}, errors.New("не указан адрес сервера или неверный порт")
 	}
 	stream := obj(out["streamSettings"])
-	network := str(stream["network"])
+	network := str(stream["method"])
 	if network == "" {
-		network = str(stream["method"])
+		network = str(stream["network"])
 	}
 	if network == "" {
 		network = "tcp"
@@ -209,6 +217,12 @@ func serverFromOutbound(name string, out object) (ServerConfig, error) {
 	security := str(stream["security"])
 	if security == "" {
 		security = "none"
+	}
+	if protocol == "hysteria" {
+		protocol = "hysteria2"
+		if network != "hysteria" || number(obj(stream["hysteriaSettings"])["version"]) != 2 || security != "tls" {
+			return ServerConfig{}, errors.New("Hysteria2 требует транспорт hysteria версии 2 и TLS")
+		}
 	}
 	if name == "" {
 		name = net.JoinHostPort(address, strconv.Itoa(port))
@@ -222,6 +236,9 @@ func serverFromOutbound(name string, out object) (ServerConfig, error) {
 	return ServerConfig{ServerInfo: ServerInfo{ID: digest(string(b))[:24], Name: name, Protocol: protocol, Address: address, Port: port, Network: network, Security: security}, Outbound: b}, nil
 }
 func parseServerURI(raw string) (ServerConfig, error) {
+	if scheme, _, ok := strings.Cut(raw, "://"); ok && (strings.EqualFold(scheme, "hysteria2") || strings.EqualFold(scheme, "hy2")) {
+		return parseHysteria2(raw)
+	}
 	if strings.HasPrefix(raw, "vmess://") {
 		return parseVMess(raw)
 	}

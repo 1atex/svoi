@@ -16,9 +16,9 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/1atex/svoi/releases/download/v0.5.0-beta.7/SVOI-0.5.0-beta.7-windows-x64-setup.exe"><b>↓ Скачать для Windows</b></a>
+  <a href="https://github.com/1atex/svoi/releases/download/v0.5.0-beta.8/SVOI-0.5.0-beta.8-windows-x64-setup.exe"><b>↓ Скачать для Windows</b></a>
   &nbsp; · &nbsp;
-  <a href="https://github.com/1atex/svoi/releases/download/android-v0.1.0-preview.6/SVOI-Android-0.1.0-preview.6-arm64.apk"><b>↓ Android APK · Preview</b></a>
+  <a href="https://github.com/1atex/svoi/releases/download/android-v0.1.0-preview.7/SVOI-Android-0.1.0-preview.7-arm64.apk"><b>↓ Android APK · Preview</b></a>
   &nbsp; · &nbsp;
   <a href="https://github.com/1atex/svoi/releases/latest">Последний релиз Windows</a>
   &nbsp; · &nbsp;
@@ -29,11 +29,11 @@
 
 ## Подключение без лишних экранов
 
-Выберите сервер и нажмите на кнопку включения. Режим подключения, подписки и быстрый доступ к избранному находятся рядом.
+Выберите сервер слева и подключитесь справа. В небольшом окне управление закреплено снизу. Подписки, избранное и проверка задержки доступны на одном экране; смена работающего сервера применяется кнопкой «Переключиться».
 
 <img src="docs/assets/overview.png" alt="Главный экран SVOI: кнопка подключения, режим TUN и подписки" width="100%">
 
-<sub>Настоящие компоненты интерфейса 0.5.0-beta.2 с демонстрационными данными. Адреса заменены на example.com; подключения и замеры на этих кадрах не выполнялись.</sub>
+<sub>Интерфейс 0.5.0-beta.8 с демонстрационными профилями и задержками; реальные подключения и замеры на этих кадрах не выполнялись.</sub>
 
 ## Всё необходимое — внутри
 
@@ -45,11 +45,13 @@
 | **Трафик выбранных приложений** — включения и исключения для TUN. | **Перенос профиля** — кодом или файлом, с предпросмотром перед импортом. |
 | **zapret в интерфейсе** — загрузка и обновление релизов Flowseal, стратегии и проверки. | **Обновления SVOI** — проверка, скачивание, SHA-256 и запуск установки из приложения. |
 
-**Протоколы:** VLESS · VMess · Trojan · Shadowsocks. Также поддерживается импорт полных профилей Xray; доступность конкретного транспорта зависит от конфигурации и версии ядра.
+**Протоколы:** VLESS · VMess · Trojan · Shadowsocks · Hysteria2 (Windows, начиная с beta.11). Также поддерживается импорт полных профилей Xray; доступность конкретного транспорта зависит от конфигурации и версии ядра.
+
+Hysteria2: ссылки `hy2://` и `hysteria2://`, TLS, Salamander и переключение портов. Текущий Xray не поддерживает `insecure=1`; ссылки с `pinSHA256`, Gecko, Realm и неподдерживаемыми расширениями отклоняются при импорте с объяснением. Полные Xray JSON-профили позволяют задавать дополнительные параметры ядра.
 
 <table>
   <tr>
-    <td width="50%"><img src="docs/assets/servers.png" alt="Поиск, избранное и проверка серверов"><br><b>Нужный сервер — в пару действий</b></td>
+    <td width="50%"><img src="docs/assets/servers.png" alt="Компактный экран с закреплённым подключением"><br><b>Управление всегда на виду</b></td>
     <td width="50%"><img src="docs/assets/applications.png" alt="Выбор приложений для TUN"><br><b>Решайте, какой трафик подключать</b></td>
   </tr>
 </table>
@@ -73,11 +75,11 @@
 
 ## Первый запуск
 
-1. **Установите SVOI.** [Установщик Windows x64](https://github.com/1atex/svoi/releases/download/v0.5.0-beta.7/SVOI-0.5.0-beta.7-windows-x64-setup.exe) уже содержит Xray, Wintun и необходимые библиотеки. WebView2 не нужен.
+1. **Установите SVOI.** [Установщик Windows x64](https://github.com/1atex/svoi/releases/download/v0.5.0-beta.8/SVOI-0.5.0-beta.8-windows-x64-setup.exe) уже содержит Xray, Wintun и необходимые библиотеки. WebView2 не нужен.
 2. **Добавьте свою подписку.** Вставьте ссылку или импортируйте конфигурацию из файла / текста.
-3. **Выберите сервер и режим.** Для TUN нужны права администратора. Нажмите на кнопку включения.
+3. **Выберите сервер и подключитесь.** На новой установке выбран TUN («Все приложения»); для него нужны права администратора. Сохранённый выбор режима при обновлении не меняется.
 
-Предпочитаете без установки? [Скачайте portable ZIP](https://github.com/1atex/svoi/releases/download/v0.5.0-beta.7/SVOI-0.5.0-beta.7-windows-x64.zip), распакуйте **весь архив** и запустите `svoi.exe`.
+Предпочитаете без установки? [Скачайте portable ZIP](https://github.com/1atex/svoi/releases/download/v0.5.0-beta.8/SVOI-0.5.0-beta.8-windows-x64.zip), распакуйте **весь архив** и запустите `svoi.exe`.
 
 Установщик предлагает запуск после установки. Ярлык на рабочем столе и запуск от имени администратора включены по умолчанию; флажки можно снять. При запуске с повышенными правами Windows покажет запрос UAC.
 
@@ -98,9 +100,9 @@
 
 ## Статус проекта
 
-**Windows: 0.5.0-beta.7 · x64. Android: 0.1.0-preview.6 · ARM64 и x86_64.** iOS пока не выпускается. SVOI использует ваши подписки; VPN-серверы в комплект не входят.
+**Windows: 0.5.0-beta.15 · x64. Android: 0.1.0-preview.7 · ARM64 и x86_64.** iOS пока не выпускается. SVOI использует ваши подписки; VPN-серверы в комплект не входят.
 
-Android — отдельная экспериментальная сборка: [APK для ARM64-телефонов](https://github.com/1atex/svoi/releases/download/android-v0.1.0-preview.6/SVOI-Android-0.1.0-preview.6-arm64.apk), [APK для эмулятора x86_64](https://github.com/1atex/svoi/releases/download/android-v0.1.0-preview.6/SVOI-Android-0.1.0-preview.6-x64.apk), [инструкция и исходники Android](https://github.com/1atex/svoi/blob/android-preview/docs/ANDROID.md). Обновления проверяются и скачиваются из приложения; установку подтверждает пользователь. При переходе с Preview 5 сохраните коды профилей и переустановите приложение: начиная с Preview 6 используется постоянная подпись.
+Android — отдельная экспериментальная сборка: [APK для ARM64-телефонов](https://github.com/1atex/svoi/releases/download/android-v0.1.0-preview.7/SVOI-Android-0.1.0-preview.7-arm64.apk), [APK для эмулятора x86_64](https://github.com/1atex/svoi/releases/download/android-v0.1.0-preview.7/SVOI-Android-0.1.0-preview.7-x64.apk), [инструкция и исходники Android](https://github.com/1atex/svoi/blob/android-preview/docs/ANDROID.md). Обновления проверяются и скачиваются из приложения; установку подтверждает пользователь. При переходе с Preview 5 сохраните коды профилей и переустановите приложение: начиная с Preview 6 используется постоянная подпись.
 
 - Проверка одного HTTPS-адреса не гарантирует доступность всех сайтов. «Нет ответа» не блокирует подключение.
 - Совместимость TUN и zapret зависит от стратегии и сети. Kill switch пока отсутствует.

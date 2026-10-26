@@ -76,7 +76,7 @@ void main() {
     expect(find.byType(DesktopServerRow), findsOneWidget);
     expect(find.text('1 из 1000 серверов'), findsOneWidget);
     expect(
-      find.byKey(const ValueKey('desktop-connect')).hitTestable(),
+      find.byKey(const ValueKey('connection-power')).hitTestable(),
       findsOneWidget,
     );
     expect(tester.takeException(), isNull);

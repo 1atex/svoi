@@ -50,6 +50,10 @@ type Engine struct {
 	restoreProxy  func() error
 	redactions    []string
 	checkURL      string
+	checkTimeout  time.Duration
+	ipURL         string
+	ipCancel      context.CancelFunc
+	ipRevision    uint64
 	checkCancel   context.CancelFunc
 	checkID       uint64
 	coreStarted   bool
@@ -361,6 +365,11 @@ func (e *Engine) startContext(parent context.Context, server ServerConfig, mode 
 func (e *Engine) Stop() error { e.op.Lock(); defer e.op.Unlock(); return e.stopLocked() }
 func (e *Engine) stopLocked() error {
 	e.mu.Lock()
+	if e.ipCancel != nil {
+		e.ipCancel()
+		e.ipCancel = nil
+	}
+	e.ipRevision++
 	if e.checkCancel != nil {
 		e.checkCancel()
 		e.checkCancel = nil
@@ -449,7 +458,11 @@ func (e *Engine) Check(ctx context.Context) (int64, error) {
 		transport.Proxy = nil
 	}
 	defer transport.CloseIdleConnections()
-	client := &http.Client{Transport: transport, Timeout: 12 * time.Second, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
+	timeout := e.checkTimeout
+	if timeout == 0 {
+		timeout = 12 * time.Second
+	}
+	client := &http.Client{Transport: transport, Timeout: timeout, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
 	req, _ := http.NewRequestWithContext(ctx, "GET", e.checkURL, nil)
 	start := time.Now()
 	resp, err := client.Do(req)
@@ -498,28 +511,60 @@ func (a *App) engineAPI(w http.ResponseWriter, r *http.Request) error {
 		servers = append([]ServerConfig{}, g.Servers...)
 	}
 	a.mu.Unlock()
+	if r.URL.Path != "/api/connection" && r.URL.Path != "/api/connection/check" && r.URL.Path != "/api/connection/ip" {
+		a.networkOp.Lock()
+		defer a.networkOp.Unlock()
+	}
 	switch {
+	case r.Method == "POST" && r.URL.Path == "/api/connection/ip":
+		result, err := a.engine.PublicIP(r.Context())
+		if err != nil {
+			return err
+		}
+		writeJSON(w, 200, result)
+		return nil
+	case r.Method == "GET" && r.URL.Path == "/api/connection/preflight":
+		writeJSON(w, 200, map[string]any{"conflict": vpnConflict(a.companion(), externalZapretRunning), "paused": a.handoff.paused != nil})
+		return nil
 	case r.Method == "GET" && r.URL.Path == "/api/connection":
 		status := a.engine.snapshot(r.URL.Query().Get("logs") == "1")
 		writeJSON(w, 200, status)
 		return nil
 	case r.Method == "POST" && r.URL.Path == "/api/connection/start":
 		var in struct {
-			ServerID string `json:"serverId"`
-			Mode     string `json:"mode"`
+			ServerID    string `json:"serverId"`
+			Mode        string `json:"mode"`
+			PauseZapret bool   `json:"pauseZapret"`
 		}
 		if json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096)).Decode(&in) != nil {
 			return fail(400, "Некорректный запрос подключения")
 		}
 		for _, server := range servers {
 			if server.ID == in.ServerID {
-				if a.zapret != nil && a.zapret.blocksVPN(in.Mode) {
-					return fail(409, "Дождитесь окончания перебора стратегий; перед TUN остановите zapret")
-				}
 				settings := a.localSettings()
+				if in.Mode == "tun" {
+					if err = a.handoff.prepare(a.companion(), in.PauseZapret || settings.AutoPauseZapret, externalZapretRunning); err != nil {
+						if restoreErr := a.handoff.restore(a.companion()); restoreErr != nil {
+							return fmt.Errorf("%v; %w", err, restoreErr)
+						}
+						return err
+					}
+				} else if a.zapret != nil && a.zapret.blocksVPN(in.Mode) {
+					return fail(409, "Дождитесь окончания перебора стратегий zapret")
+				}
 				server.RuntimeApps = &settings.Routing
 				if err = a.engine.Start(server, in.Mode); err != nil {
+					if a.engine.snapshot(false).State != "running" {
+						if restoreErr := a.handoff.restore(a.companion()); restoreErr != nil {
+							return fmt.Errorf("%v; %w", err, restoreErr)
+						}
+					}
 					return err
+				}
+				if in.Mode != "tun" {
+					if err = a.handoff.restore(a.companion()); err != nil {
+						return err
+					}
 				}
 				writeJSON(w, 200, a.engine.Status())
 				return nil
@@ -528,6 +573,9 @@ func (a *App) engineAPI(w http.ResponseWriter, r *http.Request) error {
 		return fail(404, "Сервер не найден. Обновите подписку.")
 	case r.Method == "POST" && r.URL.Path == "/api/connection/stop":
 		if err = a.engine.Stop(); err != nil {
+			return err
+		}
+		if err = a.handoff.restore(a.companion()); err != nil {
 			return err
 		}
 		writeJSON(w, 200, a.engine.Status())

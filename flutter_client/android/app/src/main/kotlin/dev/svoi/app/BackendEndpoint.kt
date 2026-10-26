@@ -8,6 +8,7 @@ import android.os.IBinder
 import android.os.Process
 import mobile.Mobile
 import mobile.ProbeRequest
+import mobile.PublicIPRequest
 import org.json.JSONObject
 import java.io.File
 import java.util.concurrent.CountDownLatch
@@ -18,6 +19,7 @@ class BackendEndpoint(private val service: SvoiVpnService) : IBackendService.Stu
     private val clients = HashMap<IBinder, Client>()
     private class Client(val binder: IBinder, val death: IBinder.DeathRecipient) {
         val probes = HashMap<String, ProbeRequest>()
+        val ips = HashMap<String, PublicIPRequest>()
         val cancelled = LinkedHashSet<String>()
         var dead = false
     }
@@ -33,7 +35,7 @@ class BackendEndpoint(private val service: SvoiVpnService) : IBackendService.Stu
     private fun detach(binder: IBinder) {
         val client = synchronized(clients) { clients.remove(binder) } ?: return
         synchronized(client) {
-            client.dead = true; client.probes.values.forEach { it.cancel() }; client.cancelled.clear()
+            client.dead = true; client.probes.values.forEach { it.cancel() }; client.ips.values.forEach { it.cancel() }; client.cancelled.clear()
         }
         runCatching { binder.unlinkToDeath(client.death, 0) }
     }
@@ -50,7 +52,7 @@ class BackendEndpoint(private val service: SvoiVpnService) : IBackendService.Stu
                 "android/detach" -> { detach(owner); response(JSONObject()) }
                 "android/cancel-probe" -> {
                     synchronized(client) {
-                        client.probes[id]?.cancel()
+                        client.probes[id]?.cancel(); client.ips[id]?.cancel()
                         client.cancelled.add(id)
                         if (client.cancelled.size > 128) client.cancelled.remove(client.cancelled.first())
                     }
@@ -70,6 +72,15 @@ class BackendEndpoint(private val service: SvoiVpnService) : IBackendService.Stu
                         }
                         path == "connection/stop" -> { await { VpnRuntime.stop(it) }; response(VpnRuntime.status()) }
                         path == "connection/check" -> { await { VpnRuntime.check(it) }; response(VpnRuntime.status()) }
+                        path == "connection/ip" -> {
+                            check(VpnRuntime.status().optString("state") !in listOf("starting", "stopping")) { "Дождитесь переключения VPN" }
+                            val ip = synchronized(client) {
+                                check(!client.dead && !client.cancelled.remove(id)) { "Проверка отменена" }
+                                Mobile.newPublicIPRequest().also { client.ips[id] = it }
+                            }
+                            try { response(JSONObject(ip.run())) }
+                            finally { ip.cancel(); synchronized(client) { client.ips.remove(id); client.cancelled.remove(id) } }
+                        }
                         path.startsWith("connection") -> response(VpnRuntime.status())
                         path == "android/apps" -> response(VpnRuntime.apps(service))
                         path == "android/routing" -> {
@@ -86,7 +97,7 @@ class BackendEndpoint(private val service: SvoiVpnService) : IBackendService.Stu
                                 check(!client.probes.containsKey(id)) { "Проверка уже запущена" }
                                 VpnRuntime.session!!.newProbe(token, serverID).also { client.probes[id] = it }
                             }
-                            try { response(JSONObject().put("latency", probe.run()).put("method", "HTTPS").put("checkedAt", java.time.Instant.now().toString())) }
+                            try { response(JSONObject().put("latency", probe.run()).put("method", "GET").put("checkedAt", java.time.Instant.now().toString())) }
                             finally { probe.cancel(); synchronized(client) { client.probes.remove(id); client.cancelled.remove(id) } }
                         }
                         else -> parcels.reply(VpnRuntime.session!!.request(method, "/api/$path", token, body))
@@ -94,7 +105,7 @@ class BackendEndpoint(private val service: SvoiVpnService) : IBackendService.Stu
                 }
             }
         } catch (e: Exception) {
-            parcels.reply(JSONObject().put("status", 400).put("body", JSONObject().put("error", e.message ?: "Ошибка службы VPN")).toString())
+            parcels.reply(JSONObject().put("status", if (e.message?.startsWith("Подготовка ядра:") == true) 503 else 400).put("body", JSONObject().put("error", e.message ?: "Ошибка службы VPN")).toString())
         }
     }
 

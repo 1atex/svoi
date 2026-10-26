@@ -16,7 +16,8 @@ func externalZapretRunning() bool {
 	defer windows.CloseHandle(handle)
 	entry := windows.ProcessEntry32{Size: uint32(unsafe.Sizeof(windows.ProcessEntry32{}))}
 	for err = windows.Process32First(handle, &entry); err == nil; err = windows.Process32Next(handle, &entry) {
-		if strings.EqualFold(windows.UTF16ToString(entry.ExeFile[:]), "winws.exe") {
+		name := windows.UTF16ToString(entry.ExeFile[:])
+		if strings.EqualFold(name, "winws.exe") || strings.EqualFold(name, "winws2.exe") {
 			return true
 		}
 	}

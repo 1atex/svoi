@@ -7,6 +7,10 @@ import 'package:svoi_flutter/main.dart';
 
 class MobileFeaturesBackend extends DemoBackend {
   Map<String, dynamic>? savedIdentity;
+  @override
+  bool get mobile => true;
+  @override
+  int get probeConcurrency => 2;
   MobileFeaturesBackend() {
     group['servers'] = (group['servers'] as List).take(3).toList();
     group['identity'] = {
@@ -24,6 +28,7 @@ class MobileFeaturesBackend extends DemoBackend {
     Object? body,
     RequestCancellation? cancellation,
   }) async {
+    if (path == 'connection/ip') return {'ip': '203.0.113.7', 'via': 'network'};
     if (path == 'connection') return {'state': 'stopped', 'available': true};
     if (path.endsWith('/probe')) {
       if (path.contains('/0/')) throw ApiException('Нет ответа за 4 секунды');
@@ -73,6 +78,8 @@ void main() {
         findsOneWidget,
       );
       expect(find.text('Android · экспериментальная сборка'), findsNothing);
+      await tester.pumpAndSettle();
+      expect(find.text('IP · 203.0.113.7'), findsOneWidget);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(app(1.6));
       await tester.pumpAndSettle();
@@ -121,6 +128,31 @@ void main() {
       await c.close();
     },
   );
+  testWidgets('mobile probe settings use the device concurrency limit', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(360, 740);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final c = SvoiController(MobileFeaturesBackend());
+    await c.initialize();
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: mobileTheme(svoiTheme()),
+        home: MobileShell(c: c),
+      ),
+    );
+    await tester.tap(find.text('Настройки').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Проверка задержки'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('probe-url')), findsOneWidget);
+    expect(find.byKey(const ValueKey('probe-parallel-2')), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox.shrink());
+    await c.close();
+  });
   testWidgets(
     'mobile identity edits and header opt-out are saved to the active profile',
     (tester) async {

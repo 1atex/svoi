@@ -29,6 +29,10 @@ part 'mobile_shell.dart';
 part 'mobile_updates.dart';
 part 'mobile_identity.dart';
 part 'mobile_design.dart';
+part 'network_tools.dart';
+part 'subscription_details.dart';
+part 'probe_settings.dart';
+part 'public_ip.dart';
 
 const windowChannel = MethodChannel('dev.svoi/window');
 const canvas = Color(0xff101013),
@@ -279,6 +283,14 @@ class _BootstrapState extends State<Bootstrap> with WidgetsBindingObserver {
     theme: _controller?.api.mobile == true
         ? mobileTheme(svoiTheme())
         : svoiTheme(),
+    builder: (context, child) => _controller == null
+        ? child!
+        : ValueListenableBuilder(
+            valueListenable: _controller!.foreground,
+            child: child,
+            builder: (context, visible, child) =>
+                TickerMode(enabled: visible, child: child!),
+          ),
     home: _closing
         ? const Scaffold(body: Center(child: Text('Завершаем соединение…')))
         : _ready
@@ -351,6 +363,34 @@ class _SvoiShellState extends State<SvoiShell> {
   void initState() {
     super.initState();
     _tray = TrayBridge(widget.controller, open: _openTrayAction)..attach();
+    widget.controller.approveZapretPause = () async {
+      await windowChannel.invokeMethod('show');
+      if (!mounted) return 'cancel';
+      return await showDialog<String>(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Text('Приостановить zapret?'),
+              content: const Text(
+                'Для подключения TUN SVOI остановит свою стратегию zapret и вернёт её после отключения VPN. Если VPN не запустится, zapret тоже будет восстановлен.',
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context, 'cancel'),
+                  child: const Text('Отмена'),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.pop(context, 'always'),
+                  child: const Text('Всегда переключать'),
+                ),
+                FilledButton(
+                  onPressed: () => Navigator.pop(context, 'once'),
+                  child: const Text('Продолжить'),
+                ),
+              ],
+            ),
+          ) ??
+          'cancel';
+    };
   }
 
   Future<void> _openTrayAction(String action) async {
@@ -376,6 +416,7 @@ class _SvoiShellState extends State<SvoiShell> {
   @override
   void dispose() {
     _tray.dispose();
+    widget.controller.approveZapretPause = null;
     super.dispose();
   }
 
@@ -401,6 +442,7 @@ class _SvoiShellState extends State<SvoiShell> {
                           for (final (index, label, icon) in [
                             (0, 'Подключение', LucideIcons.power),
                             (4, 'zapret', LucideIcons.shield),
+                            (6, 'DNS', LucideIcons.network),
                             (5, 'Настройки', LucideIcons.settings2),
                           ])
                             Padding(
@@ -484,6 +526,7 @@ class _SvoiShellState extends State<SvoiShell> {
             child: switch (page) {
               4 => ZapretPage(c: c),
               5 => PreferencesPage(c: c),
+              6 => DnsTools(c: c),
               _ => DesktopWorkspace(c: c),
             },
           ),
@@ -521,7 +564,7 @@ Future<void> importDialog(BuildContext context, SvoiController c) async {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'HTTPS-ссылка, VLESS / VMess / Trojan / SS, JSON или код SVOI1. Перед переносом профиля будет показан его состав.',
+              'HTTPS-ссылка, VLESS / VMess / Trojan / SS / Hysteria2, JSON или код SVOI1. Перед переносом профиля будет показан его состав.',
               style: TextStyle(color: muted, fontSize: 13),
             ),
             const SizedBox(height: 18),

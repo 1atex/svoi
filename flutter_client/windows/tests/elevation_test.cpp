@@ -1,4 +1,5 @@
 #include "../runner/elevation.h"
+#include "../runner/external_url.h"
 #include <iostream>
 
 int wmain() {
@@ -14,6 +15,10 @@ int wmain() {
     if (!ok) { std::cerr << label << "\n"; ++failed; }
   };
   expect(!WantsAdminLaunch(executable), "portable without launch.ini must remain unelevated");
+  expect(IsExternalHttpsUrl("https://t.me/Support_bot"), "public HTTPS link");
+  for (const auto* url : {"file:///C:/Windows", "https://", "https://user:pass@host", "https://host\\bad", "https://host\n", "javascript:alert(1)"}) {
+    expect(!IsExternalHttpsUrl(url), "reject non-public external link");
+  }
   expect(WritePrivateProfileStringW(L"Launch", L"RunAsAdmin", L"1", ini.c_str()) != FALSE, "write enabled fixture");
   expect(WantsAdminLaunch(executable), "installer opt-in must work with unicode and spaces");
   expect(!WantsAdminLaunch(directory + L"\\other\\svoi_flutter.exe"), "preference must be scoped to executable directory");

@@ -180,7 +180,7 @@ class _ServerPageState extends State<ServerPage> {
                       size: 16,
                     ),
                     label: Text(
-                      c.probing.value ? 'Остановить' : 'Проверить пинг',
+                      c.probing.value ? 'Остановить' : 'Проверить задержку',
                     ),
                   ),
                 ],
@@ -392,7 +392,7 @@ class ServerRow extends StatelessWidget {
               ),
               builder: (context, result, _) => Tooltip(
                 message:
-                    '${result.error ?? 'HTTPS-проверка через профиль, лимит 4 секунды'}\n${clockLabel(result.checkedAt)}. Ошибка не запрещает подключение.',
+                    '${result.error ?? 'GET через профиль · доступность только тестового адреса'}\n${result.url ?? defaultProbeUrl}\n${clockLabel(result.checkedAt)}. Ошибка не запрещает подключение.',
                 child: SizedBox(
                   width: 96,
                   child: TextButton(
@@ -409,10 +409,12 @@ class ServerRow extends StatelessWidget {
                           result.busy
                               ? 'Проверка…'
                               : result.error != null
-                              ? 'Нет ответа'
+                              ? result.setupError
+                                    ? 'Ошибка ядра'
+                                    : 'Нет ответа'
                               : result.latency != null
                               ? '${result.latency} мс'
-                              : 'Пинг',
+                              : 'Проверить',
                           style: TextStyle(
                             fontSize: 12,
                             color: result.error != null

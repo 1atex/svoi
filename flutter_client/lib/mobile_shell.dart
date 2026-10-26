@@ -158,28 +158,6 @@ class _MobileShellState extends State<MobileShell> {
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
       children: [
-        TextButton(
-          style: TextButton.styleFrom(
-            foregroundColor: ink,
-            padding: EdgeInsets.zero,
-          ),
-          onPressed: () => setState(() => page = 2),
-          child: Row(
-            children: [
-              const Icon(Icons.people_outline_rounded, size: 18, color: accent),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  c.group.value['name']?.toString() ?? 'Моя сеть',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              const Icon(Icons.expand_more, size: 18, color: muted),
-            ],
-          ),
-        ),
-        const SizedBox(height: 10),
         if (server == null)
           MobilePanel(
             hero: true,
@@ -230,7 +208,7 @@ class _MobileShellState extends State<MobileShell> {
             server: server,
             onServer: () => setState(() => page = 1),
           ),
-        const SizedBox(height: 24),
+        const SizedBox(height: 12),
         Row(
           children: [
             const Expanded(
@@ -266,11 +244,29 @@ class _MobileShellState extends State<MobileShell> {
                 child: const Icon(Icons.link_rounded, color: accent, size: 22),
               ),
               title: Text(
-                source['name']?.toString() ?? 'Подписка',
+                subscriptionDisplayName(source),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
-              subtitle: Text('${source['count'] ?? 0} серверов'),
+              subtitle: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('${source['count'] ?? 0} серверов'),
+                  if (subscriptionTraffic(subscriptionMetadata(source))
+                      .isNotEmpty)
+                    Text(subscriptionTraffic(subscriptionMetadata(source))),
+                  if (subscriptionExpiry(subscriptionMetadata(source))
+                      .isNotEmpty)
+                    Text(subscriptionExpiry(subscriptionMetadata(source))),
+                  if (subscriptionMetadata(source)['announcement'] != null)
+                    Text(
+                      subscriptionMetadata(source)['announcement'].toString(),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(color: accent),
+                    ),
+                ],
+              ),
               trailing: const Icon(Icons.chevron_right_rounded, size: 20),
               onTap: () => editSource(context, c, source),
             ),
@@ -348,7 +344,7 @@ class _MobileShellState extends State<MobileShell> {
           padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
           child: Text(
             c.probeProgress.value.isEmpty
-                ? 'HTTPS через профиль · до ${c.api.probeConcurrency} одновременно · лимит 4 с'
+                ? 'GET через профиль · до ${c.api.probeConcurrency} одновременно · ${(c.preferences.value['probe'] as Map?)?['timeoutSeconds'] ?? 4} с'
                 : c.probeProgress.value,
             style: const TextStyle(color: muted, fontSize: 12),
           ),
@@ -554,11 +550,32 @@ class _MobileShellState extends State<MobileShell> {
           MaterialPageRoute<void>(builder: (_) => AndroidAppsPage(c: c)),
         ),
       ),
+      ListTile(
+        contentPadding: EdgeInsets.zero,
+        leading: const Icon(Icons.network_check),
+        title: const Text('Проверка задержки'),
+        subtitle: const Text('Адрес, тайм-аут и число проверок'),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute<void>(
+            builder: (_) => Scaffold(
+              appBar: AppBar(title: const Text('Проверка задержки')),
+              body: SafeArea(
+                child: ListView(
+                  padding: const EdgeInsets.all(16),
+                  children: [ProbeSettingsPanel(c: c)],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
       const Divider(),
       if (updates != null)
         MobileUpdatesPanel(model: updates!)
       else
-        const Text('SVOI · Android Preview 6'),
+        const Text('SVOI · Android Preview 7'),
       const SizedBox(height: 12),
       const Text(
         'Новая версия устанавливается через системное окно Android. Профили и подписки сохраняются.',

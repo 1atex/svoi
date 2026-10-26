@@ -75,6 +75,16 @@ class TunnelTest {
                         } }
                         checks.forEach { assertTrue("HTTP-only fixture must fail HTTPS", it.get(10, java.util.concurrent.TimeUnit.SECONDS)) }
                     } finally { pool.shutdownNow() }
+                    request("settings", "PUT", token, JSONObject().put("probe", JSONObject()
+                        .put("url", "http://198.18.0.42:18080/probe").put("timeoutSeconds", 1).put("parallel", 2)))
+                    val measured = request("servers/$id/probe", "POST", token, probeId = "configured-url")
+                    assertTrue("Configured HTTP URL must work through profile", measured.getLong("latency") >= 0)
+                    assertEquals("GET", measured.getString("method"))
+                    client.cancelProbe("cancel-ip")
+                    try { request("connection/ip", "POST", token, probeId = "cancel-ip"); fail("Cancelled IP check must not start") }
+                    catch(e: BackendClient.Failure) { assertTrue(e.message.orEmpty().contains("отменена")) }
+                    try { request("connection/ip", "POST", token, probeId = "ip-through-fixture"); fail("HTTP-only VPN must not fall back to direct HTTPS IP check") }
+                    catch(e: BackendClient.Failure) { assertTrue(e.message.orEmpty().contains("IP")) }
                 }
                 traffic()
                 if (cycle == 3) {

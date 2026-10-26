@@ -22,7 +22,7 @@ ThemeData mobileTheme(ThemeData base) => base.copyWith(
     surfaceTintColor: Colors.transparent,
     centerTitle: false,
     titleSpacing: 20,
-    toolbarHeight: 72,
+    toolbarHeight: 64,
     titleTextStyle: TextStyle(
       fontSize: 25,
       fontWeight: FontWeight.w700,
@@ -144,7 +144,7 @@ class MobileConnectionCard extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 12),
           LayoutBuilder(
             builder: (context, constraints) {
               final stacked =
@@ -203,8 +203,8 @@ class MobileConnectionCard extends StatelessWidget {
                   border: Border.all(color: color.withValues(alpha: .18)),
                 ),
                 child: Container(
-                  width: 104,
-                  height: 104,
+                  width: 88,
+                  height: 88,
                   padding: const EdgeInsets.all(6),
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
@@ -290,6 +290,8 @@ class MobileConnectionCard extends StatelessWidget {
               onTap: onServer,
             ),
           ),
+          const SizedBox(height: 12),
+          PublicIPLine(c: c),
           if (view.running)
             TextButton.icon(
               onPressed: busy ? null : c.check,

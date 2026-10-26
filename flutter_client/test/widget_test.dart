@@ -95,6 +95,17 @@ void main() {
     expect(tester.takeException(), isNull);
     await tester.tap(find.text('Настройки').first);
     await tester.pumpAndSettle();
+    expect(find.text('Проверка задержки'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('Обновлять при запуске'),
+      300,
+      scrollable: find
+          .descendant(
+            of: find.byType(PreferencesPage),
+            matching: find.byType(Scrollable),
+          )
+          .first,
+    );
     expect(find.text('Обновлять при запуске'), findsOneWidget);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());

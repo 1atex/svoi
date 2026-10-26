@@ -72,23 +72,6 @@ jobs:
           cp build/app/outputs/flutter-apk/app-debug.apk ../.tools/android-debug.apk
           "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --print-certs android/app/src/androidTest/assets/update.apk
           "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --print-certs ../.tools/android-debug.apk
-      - name: Enable KVM
-        run: |
-          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
-          sudo udevadm control --reload-rules
-          sudo udevadm trigger --name-match=kvm
-      - name: Start isolated VPN fixture
-        run: |
-          nohup .tools/android-core/xray run -config mobile/test-server.json > /tmp/svoi-xray-test.log 2>&1 &
-          nohup python3 scripts/android-test-server.py > /tmp/svoi-http-test.log 2>&1 &
-      - name: Verify Android tunnel and reconnects
-        uses: reactivecircus/android-emulator-runner@v2
-        with:
-          api-level: 29
-          arch: x86_64
-          profile: pixel_2
-          disable-animations: true
-          script: python3 scripts/android-emulator-check.py
       - name: Restore permanent signing key
         env:
           KEYSTORE_BASE64: ${{ secrets.SVOI_ANDROID_KEYSTORE_BASE64 }}
@@ -109,6 +92,25 @@ jobs:
         run: |
           flutter build apk --release --split-per-abi --target-platform android-arm64,android-x64 --build-name "$ANDROID_VERSION" --build-number "$ANDROID_CODE"
           python3 ../scripts/android-release.py prepare
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Start isolated VPN fixture
+        run: |
+          nohup .tools/android-core/xray run -config mobile/test-server.json > /tmp/svoi-xray-test.log 2>&1 &
+          nohup python3 scripts/android-test-server.py > /tmp/svoi-http-test.log 2>&1 &
+      - name: Verify Android tunnel and reconnects
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 29
+          arch: x86_64
+          profile: pixel_2
+          disable-animations: true
+          script: |
+            python3 scripts/android-emulator-check.py
+            python3 scripts/android-signed-upgrade-check.py
       - name: Remove signing key from runner
         if: always()
         run: rm -f "$RUNNER_TEMP/svoi-android-release.p12" "$RUNNER_TEMP/test-key.p12" "$RUNNER_TEMP/svoi-test-debug.p12"
@@ -124,6 +126,8 @@ jobs:
             /tmp/svoi-http-test.log
             /tmp/svoi-android-resources.log
             /tmp/svoi-instrumentation.log
+            /tmp/svoi-release-smoke.log
+            /tmp/svoi-release-screen.png
       - uses: actions/upload-artifact@v4
         with:
           name: SVOI-Android-preview-release

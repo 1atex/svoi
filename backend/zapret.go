@@ -3,24 +3,28 @@ package backend
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
+	"time"
 )
 
 type Zapret struct {
-	app       *App
-	root      string
-	client    *http.Client
-	installed zapretInstall
-	job       ZapretJob
-	cancel    context.CancelFunc
-	jobDone   chan struct{}
+	app             *App
+	root            string
+	client          *http.Client
+	installed       zapretInstall
+	job             ZapretJob
+	cancel          context.CancelFunc
+	jobDone         chan struct{}
+	resultsRevision uint64
 
 	op        sync.Mutex
 	mu        sync.Mutex
@@ -70,20 +74,31 @@ func (z *Zapret) status(folder string) map[string]any {
 }
 
 func (z *Zapret) snapshot(folder string, summary bool) map[string]any {
+	return z.snapshotSince(folder, summary, "")
+}
+
+func (z *Zapret) snapshotSince(folder string, summary bool, since string) map[string]any {
 	z.mu.Lock()
 	folder = z.effectiveFolderLocked(folder)
 	job := z.job
 	results := z.job.Results
+	unchanged := summary && since != "" && since == strconv.FormatUint(z.resultsRevision, 10)
+	if unchanged {
+		results = nil
+	}
 	if summary && len(results) > 400 {
 		results = results[len(results)-400:]
 	}
 	job.Results = append([]CheckResult{}, results...)
 	status := map[string]any{"running": z.cmd != nil, "strategy": z.strategy, "error": z.lastError, "logs": append([]string{}, z.logs...), "folder": folder, "managed": folder != "" && folder == z.managedFolderLocked(), "version": z.installed.Version, "pendingVersion": z.installed.PendingVersion, "job": job}
+	status["resultsRevision"] = strconv.FormatUint(z.resultsRevision, 10)
+	status["resultsUnchanged"] = unchanged
 	z.mu.Unlock()
 
 	status["strategies"] = zapretStrategies(folder)
 	if z.app != nil {
 		status["savedStrategy"] = z.app.localSettings().ZapretStrategy
+		status["pausedForVPN"] = z.app.handoff.paused != nil
 	}
 	status["elevated"] = isElevated()
 	return status
@@ -241,19 +256,28 @@ func (z *Zapret) start(folder, name string, internal bool) error {
 	}()
 	return nil
 }
-func (z *Zapret) stopProcess() {
+func (z *Zapret) stopProcess() error {
 	z.op.Lock()
 	defer z.op.Unlock()
 	z.mu.Lock()
 	cmd, done := z.cmd, z.done
-	z.cmd = nil
 	z.mu.Unlock()
 	if cmd != nil {
-		cmd.Process.Kill()
-		<-done
+		if err := cmd.Process.Kill(); err != nil && !errors.Is(err, os.ErrProcessDone) {
+			return fmt.Errorf("Не удалось остановить zapret: %w", err)
+		}
+		select {
+		case <-done:
+		case <-time.After(5 * time.Second):
+			return fmt.Errorf("zapret не завершился за 5 секунд. VPN не будет запущен")
+		}
+		z.mu.Lock()
+		z.lastError = ""
+		z.mu.Unlock()
 	}
+	return nil
 }
-func (z *Zapret) Stop() {
+func (z *Zapret) Stop() error {
 	z.mu.Lock()
 	cancel, done := z.cancel, z.jobDone
 	z.mu.Unlock()
@@ -263,17 +287,29 @@ func (z *Zapret) Stop() {
 			<-done
 		}
 	}
-	z.stopProcess()
+	if err := z.stopProcess(); err != nil {
+		return err
+	}
 	z.op.Lock()
 	defer z.op.Unlock()
-	z.activatePending()
+	return z.activatePending()
 }
 func (z *Zapret) API(w http.ResponseWriter, r *http.Request, folder string) error {
+	if z.app != nil && z.app.handoff.paused != nil && r.Method == "POST" && (r.URL.Path == "/api/zapret/job" || r.URL.Path == "/api/zapret/select") {
+		return fail(409, "zapret приостановлен на время VPN. Сначала отключите VPN или отмените возврат стратегии.")
+	}
 	z.mu.Lock()
 	folder = z.effectiveFolderLocked(folder)
 	z.mu.Unlock()
 	switch {
 	case r.Method == "GET" && r.URL.Path == "/api/zapret":
+	case r.Method == "POST" && r.URL.Path == "/api/zapret/resume":
+		if z.app == nil {
+			return fail(409, "Нет приостановленной стратегии")
+		}
+		if err := z.app.handoff.restore(z); err != nil {
+			return err
+		}
 	case r.Method == "POST" && r.URL.Path == "/api/zapret/select":
 		var in struct {
 			Strategy string `json:"strategy"`
@@ -294,6 +330,7 @@ func (z *Zapret) API(w http.ResponseWriter, r *http.Request, folder string) erro
 		if err := z.Start(folder, in.Strategy); err != nil {
 			return err
 		}
+		z.app.handoff.paused = nil
 		if err := z.app.rememberZapretStrategy(folder, in.Strategy); err != nil {
 			return err
 		}
@@ -304,7 +341,12 @@ func (z *Zapret) API(w http.ResponseWriter, r *http.Request, folder string) erro
 		if busy {
 			return fail(409, "Сначала остановите текущую задачу")
 		}
-		z.Stop()
+		if err := z.Stop(); err != nil {
+			return err
+		}
+		if z.app != nil {
+			z.app.handoff.paused = nil
+		}
 	case r.Method == "POST" && r.URL.Path == "/api/zapret/cancel":
 		z.mu.Lock()
 		if z.cancel != nil {
@@ -326,6 +368,6 @@ func (z *Zapret) API(w http.ResponseWriter, r *http.Request, folder string) erro
 	default:
 		return fail(404, "Метод zapret не найден")
 	}
-	writeJSON(w, 200, z.snapshot(folder, r.URL.Query().Get("summary") == "1"))
+	writeJSON(w, 200, z.snapshotSince(folder, r.URL.Query().Get("summary") == "1", r.URL.Query().Get("since")))
 	return nil
 }

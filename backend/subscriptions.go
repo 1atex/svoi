@@ -7,10 +7,11 @@ import (
 )
 
 type Subscription struct {
-	ID     string  `json:"id"`
-	Name   string  `json:"name"`
-	URL    string  `json:"url,omitempty"`
-	Report *Report `json:"report,omitempty"`
+	Metadata *SubscriptionMetadata `json:"metadata,omitempty"`
+	ID       string                `json:"id"`
+	Name     string                `json:"name"`
+	URL      string                `json:"url,omitempty"`
+	Report   *Report               `json:"report,omitempty"`
 }
 
 func migrateSubscriptions(g *Group) {
@@ -75,7 +76,7 @@ func publicSubscriptions(g *Group) []map[string]any {
 				count++
 			}
 		}
-		result = append(result, map[string]any{"id": s.ID, "name": s.Name, "host": host, "remote": s.URL != "", "report": s.Report, "count": count})
+		result = append(result, map[string]any{"id": s.ID, "name": s.Name, "host": host, "remote": s.URL != "", "report": s.Report, "count": count, "metadata": s.Metadata})
 	}
 	return result
 }
@@ -158,6 +159,7 @@ func (a *App) subscriptionsAPI(w http.ResponseWriter, r *http.Request, g *Group,
 			s.Name = strings.TrimSpace(in.Name)
 			if in.URL != "" && in.URL != s.URL {
 				s.URL = in.URL
+				s.Metadata = nil
 				replaceSubscriptionServers(g, s, nil, nil)
 			}
 			syncLegacySubscription(g)
