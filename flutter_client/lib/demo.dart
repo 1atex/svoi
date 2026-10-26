@@ -7,6 +7,7 @@ class DemoBackend extends Backend {
       1000,
       (i) => {
         'id': '$i',
+        'subscriptionId': 'demo',
         'name':
             '${['NL Нидерланды', 'DE Германия', 'FI Финляндия', 'FR Франция'][i % 4]} · ${i + 1}',
         'protocol': 'vless',

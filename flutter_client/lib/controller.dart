@@ -56,7 +56,7 @@ class SvoiController {
   final connection = ValueNotifier<Map<String, dynamic>>({});
   final preferences = ValueNotifier<Map<String, dynamic>>({});
   final selected = ValueNotifier<String>('');
-  final mode = ValueNotifier<String>('local');
+  final mode = ValueNotifier<String>('tun');
   final busy = ValueNotifier<bool>(false);
   final connectionPhase = ValueNotifier<String>('');
   final connectionIssue = ValueNotifier<String>('');
