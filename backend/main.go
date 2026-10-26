@@ -26,7 +26,7 @@ import (
 )
 
 var appVersion = "0.4.0-prebeta.3"
-var nativeVersion = "0.5.0-beta.9"
+var nativeVersion = "0.5.0-beta.10"
 
 //go:embed web/*
 var assets embed.FS
@@ -407,7 +407,7 @@ func (a *App) dispatch(w http.ResponseWriter, r *http.Request) error {
 			return fail(409, "В группе уже 32 источника")
 		}
 		if err = a.transaction(func() error {
-			g.Subscriptions = append(g.Subscriptions, Subscription{ID: secret(), Name: fmt.Sprintf("Импорт %d", len(g.Subscriptions)+1)})
+			g.Subscriptions = append(g.Subscriptions, Subscription{ID: secret(), Name: fmt.Sprintf("Импорт %d", len(g.Subscriptions)+1), Metadata: parseSubscriptionMetadata(parsed.MetadataHeaders)})
 			replaceSubscriptionServers(g, &g.Subscriptions[len(g.Subscriptions)-1], parsed.Servers, &report)
 			return nil
 		}); err != nil {
@@ -629,7 +629,12 @@ func (a *App) fetch(w http.ResponseWriter, r *http.Request) error {
 	if g.ID != gid || d.Device.ID != did || sub == nil || sub.URL != raw || g.Identity != identity {
 		return fail(409, "Настройки группы изменились. Повторите запрос.")
 	}
-	if err = a.transaction(func() error { replaceSubscriptionServers(g, sub, parsed.Servers, &report); return nil }); err != nil {
+	metadata := mergeSubscriptionMetadata(parsed.MetadataHeaders, resp.Header)
+	if err = a.transaction(func() error {
+		sub.Metadata = metadata
+		replaceSubscriptionServers(g, sub, parsed.Servers, &report)
+		return nil
+	}); err != nil {
 		return err
 	}
 	if strings.HasSuffix(r.URL.Path, "/export") {

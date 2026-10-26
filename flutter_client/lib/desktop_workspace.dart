@@ -162,7 +162,7 @@ class _DesktopLibraryState extends State<DesktopLibrary> {
               for (final source in c.subscriptions.value)
                 (
                   'source:${source['id']}',
-                  source['name']?.toString() ?? 'Подписка',
+                  subscriptionDisplayName(source),
                   filtered
                       .where((s) => s.json['subscriptionId'] == source['id'])
                       .toList(),
@@ -364,14 +364,25 @@ class _DesktopLibraryState extends State<DesktopLibrary> {
                                           ),
                                           const SizedBox(width: 8),
                                           Expanded(
-                                            child: Text(
-                                              group.$2,
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                              style: const TextStyle(
-                                                fontSize: 12,
-                                                fontWeight: FontWeight.w600,
-                                              ),
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                Text(
+                                                  group.$2,
+                                                  maxLines: 1,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                  style: const TextStyle(
+                                                    fontSize: 12,
+                                                    fontWeight: FontWeight.w600,
+                                                  ),
+                                                ),
+                                                if (group.$4 != null)
+                                                  SubscriptionSummary(
+                                                    source: group.$4!,
+                                                  ),
+                                              ],
                                             ),
                                           ),
                                           const SizedBox(width: 8),

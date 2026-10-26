@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
@@ -30,9 +31,10 @@ type ServerConfig struct {
 	Profile     json.RawMessage `json:"profile,omitempty"`
 }
 type ParsedSubscription struct {
-	Servers  []ServerConfig
-	Format   string
-	Warnings []string
+	MetadataHeaders http.Header
+	Servers         []ServerConfig
+	Format          string
+	Warnings        []string
 }
 type object = map[string]any
 
@@ -48,12 +50,15 @@ func decodeBase64(s string) ([]byte, error) {
 func parseSubscription(data []byte) (ParsedSubscription, error) {
 	p := ParsedSubscription{Format: "URI list", Warnings: []string{}, Servers: []ServerConfig{}}
 	s := strings.TrimSpace(strings.TrimPrefix(string(data), "\ufeff"))
+	p.MetadataHeaders = http.Header{}
+	s = stripSubscriptionMetadata(s, p.MetadataHeaders)
 	if !strings.HasPrefix(s, "{") && !strings.HasPrefix(s, "[") && !strings.Contains(s, "://") {
 		b, err := decodeBase64(s)
 		if err != nil {
 			return p, fail(422, "Не удалось прочитать подписку: ожидается список ссылок, Base64 или Xray JSON")
 		}
 		s = strings.TrimSpace(string(b))
+		s = stripSubscriptionMetadata(s, p.MetadataHeaders)
 		p.Format = "Base64"
 	}
 	seen := map[string]bool{}

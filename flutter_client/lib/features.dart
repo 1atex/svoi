@@ -1,6 +1,6 @@
 part of 'main.dart';
 
-const clientVersion = '0.5.0-beta.9';
+const clientVersion = '0.5.0-beta.10';
 
 class ConfigPane extends StatelessWidget {
   const ConfigPane({
@@ -187,7 +187,7 @@ Future<void> editSource(
   await showDialog<void>(
     context: context,
     builder: (dialog) => AlertDialog(
-      title: Text(source['name']),
+      title: Text(subscriptionDisplayName(source)),
       content: SizedBox(
         width: 480,
         child: SingleChildScrollView(
@@ -201,6 +201,7 @@ Future<void> editSource(
               const SizedBox(height: 12),
               if (source['report'] != null)
                 Text('Обновлено: ${source['report']['fetchedAt']}'),
+              SubscriptionDetails(source: source),
               for (final warning in source['report']?['warnings'] ?? [])
                 Padding(
                   padding: const EdgeInsets.only(top: 8),

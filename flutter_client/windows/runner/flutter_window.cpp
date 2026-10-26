@@ -7,6 +7,7 @@
 #include <shellapi.h>
 #include "utils.h"
 #include "resource.h"
+#include "external_url.h"
 
 #include "flutter/generated_plugin_registrant.h"
 
@@ -127,6 +128,16 @@ bool FlutterWindow::OnCreate() {
     } else if (call.method_name() == "show") {
       RestoreFromTray();
       result->Success();
+    } else if (call.method_name() == "openExternal") {
+      const auto* url = call.arguments() ? std::get_if<std::string>(call.arguments()) : nullptr;
+      if (!url || !IsExternalHttpsUrl(*url)) {
+        result->Error("url", "Недопустимая ссылка");
+        return;
+      }
+      const auto wide = WideText(*url);
+      const auto opened = reinterpret_cast<INT_PTR>(ShellExecuteW(GetHandle(), L"open", wide.c_str(), nullptr, nullptr, SW_SHOWNORMAL));
+      if (opened > 32) result->Success();
+      else result->Error("url", "Не удалось открыть браузер");
     } else if (call.method_name() == "updateTray") {
       const auto* state = call.arguments() ? std::get_if<flutter::EncodableMap>(call.arguments()) : nullptr;
       if (!state) {
