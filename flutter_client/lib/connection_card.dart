@@ -51,6 +51,7 @@ class ConnectionCard extends StatelessWidget {
       c.busy,
       c.connectionPhase,
       c.connectionIssue,
+      c.checking,
       c.preferences,
     ]),
     builder: (context, _) {
@@ -67,7 +68,7 @@ class ConnectionCard extends StatelessWidget {
           state['serverName']?.toString() ??
           'Активный сервер';
       final ready = state['available'] == true;
-      final hint = c.busy.value || view.phase.isNotEmpty
+      final hint = c.busy.value || view.switching
           ? 'Подождите, выполняется операция'
           : view.running
           ? 'Отключить VPN'
@@ -196,8 +197,8 @@ class ConnectionCard extends StatelessWidget {
               child: ConnectionOrbit(
                 running: view.running,
                 verified: view.verified,
-                busy: view.phase.isNotEmpty,
-                onPressed: c.busy.value || view.phase.isNotEmpty
+                busy: view.switching,
+                onPressed: c.busy.value || view.switching
                     ? null
                     : view.running
                     ? c.stop
@@ -241,7 +242,9 @@ class ConnectionCard extends StatelessWidget {
               children: [
                 if (view.running)
                   TextButton.icon(
-                    onPressed: c.busy.value ? null : c.check,
+                    onPressed: c.busy.value || c.checking.value
+                        ? null
+                        : c.check,
                     icon: const Icon(LucideIcons.refreshCw, size: 15),
                     label: Text(
                       view.error.isEmpty

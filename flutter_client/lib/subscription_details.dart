@@ -109,6 +109,9 @@ class SubscriptionHeader extends StatelessWidget {
     this.onRefresh,
     this.onProbe,
     this.onDetails,
+    this.refreshing = false,
+    this.refreshError,
+    this.onCancelRefresh,
   });
   final String name;
   final Map<String, dynamic>? source;
@@ -116,6 +119,9 @@ class SubscriptionHeader extends StatelessWidget {
   final bool collapsed;
   final VoidCallback onToggle;
   final VoidCallback? onRefresh, onProbe, onDetails;
+  final bool refreshing;
+  final String? refreshError;
+  final VoidCallback? onCancelRefresh;
 
   @override
   Widget build(BuildContext context) {
@@ -124,6 +130,7 @@ class SubscriptionHeader extends StatelessWidget {
         ? <String, dynamic>{}
         : subscriptionMetadata(source!);
     final caption = [
+      if (refreshing) 'Обновляем… Сохранённые серверы доступны',
       updated,
       if (m['updateHours'] != null)
         'Интервал провайдера: ${m['updateHours']} ч',
@@ -189,9 +196,14 @@ class SubscriptionHeader extends StatelessWidget {
         ),
         if (source?['remote'] == true)
           IconButton(
-            tooltip: 'Обновить $name',
-            onPressed: onRefresh,
-            icon: const Icon(LucideIcons.refreshCw, size: 16),
+            tooltip: refreshing
+                ? 'Остановить обновление $name'
+                : 'Обновить $name',
+            onPressed: refreshing ? onCancelRefresh : onRefresh,
+            icon: Icon(
+              refreshing ? LucideIcons.square : LucideIcons.refreshCw,
+              size: 16,
+            ),
           ),
         if (source != null)
           IconButton(
@@ -207,45 +219,116 @@ class SubscriptionHeader extends StatelessWidget {
           ),
       ],
     );
-    return Padding(
-      padding: const EdgeInsets.only(top: 4, bottom: 4),
-      child: Material(
-        color: source == null ? Colors.transparent : surface,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-          side: source == null
-              ? BorderSide.none
-              : const BorderSide(color: edge),
+    return Theme(
+      data: Theme.of(context).copyWith(
+        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        iconButtonTheme: IconButtonThemeData(
+          style: IconButton.styleFrom(
+            minimumSize: const Size(32, 32),
+            padding: const EdgeInsets.all(6),
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            foregroundColor: muted,
+          ),
         ),
-        child: Padding(
-          padding: EdgeInsets.all(source == null ? 0 : 8),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              LayoutBuilder(
-                builder: (context, bounds) =>
-                    bounds.maxWidth < 400 ||
-                        MediaQuery.textScalerOf(context).scale(14) > 19
-                    ? Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          title,
-                          Align(
-                            alignment: Alignment.centerRight,
-                            child: actions,
+        textButtonTheme: TextButtonThemeData(
+          style: TextButton.styleFrom(
+            minimumSize: const Size(0, 32),
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          ),
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.only(top: 4, bottom: 4),
+        child: Material(
+          color: source == null ? Colors.transparent : surface,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+            side: source == null
+                ? BorderSide.none
+                : const BorderSide(color: edge),
+          ),
+          child: Padding(
+            padding: EdgeInsets.all(source == null ? 0 : 8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                LayoutBuilder(
+                  builder: (context, bounds) =>
+                      bounds.maxWidth < 400 ||
+                          MediaQuery.textScalerOf(context).scale(14) > 19
+                      ? Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            title,
+                            Align(
+                              alignment: Alignment.centerRight,
+                              child: actions,
+                            ),
+                          ],
+                        )
+                      : Row(
+                          children: [
+                            Expanded(child: title),
+                            actions,
+                          ],
+                        ),
+                ),
+                if (source != null)
+                  SubscriptionSummary(source: source!, onDetails: onDetails),
+                if (refreshing)
+                  const Padding(
+                    padding: EdgeInsets.only(top: 6),
+                    child: LinearProgressIndicator(minHeight: 2),
+                  ),
+                if (refreshError != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 6, left: 4),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            refreshError!.split('. ').first,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color:
+                                  refreshError!.startsWith(
+                                    'Обновление остановлено',
+                                  )
+                                  ? muted
+                                  : const Color(0xffffaaa6),
+                              fontSize: 12,
+                              height: 1.4,
+                            ),
                           ),
-                        ],
-                      )
-                    : Row(
-                        children: [
-                          Expanded(child: title),
-                          actions,
-                        ],
-                      ),
-              ),
-              if (source != null)
-                SubscriptionSummary(source: source!, onDetails: onDetails),
-            ],
+                        ),
+                        IconButton(
+                          tooltip: 'Что делать с обновлением подписки',
+                          onPressed: () => showDialog<void>(
+                            context: context,
+                            builder: (dialog) => AlertDialog(
+                              title: const Text('Обновление подписки'),
+                              content: Text(refreshError!),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.pop(dialog),
+                                  child: const Text('Понятно'),
+                                ),
+                              ],
+                            ),
+                          ),
+                          icon: const Icon(LucideIcons.info, size: 16),
+                        ),
+                        TextButton(
+                          onPressed: onRefresh,
+                          child: const Text('Повторить'),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
           ),
         ),
       ),

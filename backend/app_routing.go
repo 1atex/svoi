@@ -4,15 +4,21 @@ import "encoding/json"
 
 func buildXrayConfig(server ServerConfig, socksPort, httpPort int, mode string) ([]byte, error) {
 	data, err := buildBaseXrayConfig(server, socksPort, httpPort, mode)
-	if err != nil || mode != "tun" || server.RuntimeApps == nil || server.RuntimeApps.Mode == "all" {
+	apps := mode == "tun" && server.RuntimeApps != nil && server.RuntimeApps.Mode != "all"
+	if err != nil || (!apps && len(server.RuntimeDirectDomains) == 0) {
 		return data, err
 	}
 	var config object
 	if err = json.Unmarshal(data, &config); err != nil {
 		return nil, err
 	}
-	if err = applyAppRouting(config, *server.RuntimeApps); err != nil {
+	if err = applyDirectDomains(config, server.RuntimeDirectDomains); err != nil {
 		return nil, err
+	}
+	if apps {
+		if err = applyAppRouting(config, *server.RuntimeApps); err != nil {
+			return nil, err
+		}
 	}
 	return json.MarshalIndent(config, "", "  ")
 }

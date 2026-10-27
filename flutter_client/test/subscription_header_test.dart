@@ -23,13 +23,15 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      expect(find.text('DNS').hitTestable(), findsOneWidget);
+      expect(find.byTooltip('Инструменты').hitTestable(), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('desktop-tab-6')));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('DNS'));
       await tester.pumpAndSettle();
       expect(find.text('Подобрать DNS'), findsOneWidget);
       expect(find.text('Сравнить DNS').hitTestable(), findsOneWidget);
       expect(tester.takeException(), isNull);
-      await tester.tap(find.text('Подключение'));
+      await tester.tap(find.byKey(const ValueKey('desktop-tab-0')));
       await tester.pumpAndSettle();
       expect(find.byType(DnsTools), findsNothing);
       await tester.pumpWidget(const SizedBox.shrink());

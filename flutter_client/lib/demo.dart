@@ -1,6 +1,11 @@
 import 'backend.dart';
 
 class DemoBackend extends Backend {
+  final demoSettings = <String, dynamic>{
+    'autoRefresh': false,
+    'routing': {'mode': 'all', 'processes': <String>[]},
+    'directDomains': <String>[],
+  };
   final group = <String, dynamic>{
     'id': 'demo',
     'servers': List.generate(
@@ -36,7 +41,12 @@ class DemoBackend extends Backend {
   }) async {
     if (path == 'groups') return {'token': 'demo', 'group': group};
     if (path == 'me') return group;
-    if (path == 'settings') return {'autoRefresh': false};
+    if (path == 'settings') {
+      if (method == 'PUT' && body is Map) {
+        demoSettings.addAll(Map<String, dynamic>.from(body));
+      }
+      return Map<String, dynamic>.from(demoSettings);
+    }
     if (path.startsWith('connection')) {
       return {
         'available': false,

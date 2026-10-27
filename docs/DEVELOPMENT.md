@@ -27,3 +27,7 @@ go vet ./...
 ```
 
 Текущая сборка использует `backend/desktop_native_windows.go` и тег `native_core`. Файлы `*_windows.go` и `*_other.go` выбираются Go по платформе: это не дубликаты. Удалять их или тесты ради сокращения списка файлов не требуется.
+
+## Следующее обновление Android
+
+Перенести кнопку «Новости SVOI в Telegram» в мобильный интерфейс. Канал: `@SVOI_client`, диплинк: `tg://resolve?domain=SVOI_client`. Открывать через Android Intent в обработчике `openCommunity`, без автоматического перехода в браузер; при отсутствии Telegram показать подсказку и копирование ссылки. Windows beta.21 реализует этот переход в Windows runner.

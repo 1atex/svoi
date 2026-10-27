@@ -239,36 +239,16 @@ class ModePicker extends StatelessWidget {
             'Для браузеров и приложений, учитывающих настройки прокси Windows.',
           _ => 'Укажите SOCKS5 или HTTP вручную в приложении. Адреса — в диагностике.',
         }, style: const TextStyle(fontSize: 12, color: muted, height: 1.5)),
-        if (c.mode.value == 'tun')
-          Align(
-            alignment: Alignment.centerLeft,
-            child: TextButton.icon(
-              onPressed: () => showDialog<void>(
-                context: context,
-                builder: (dialog) => Dialog(
-                  child: SizedBox(
-                    width: 750,
-                    height: MediaQuery.sizeOf(dialog).height * .8,
-                    child: Column(
-                      children: [
-                        Align(
-                          alignment: Alignment.centerRight,
-                          child: IconButton(
-                            tooltip: 'Закрыть',
-                            onPressed: () => Navigator.pop(dialog),
-                            icon: const Icon(LucideIcons.x),
-                          ),
-                        ),
-                        Expanded(child: RoutingPage(c: c)),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-              icon: const Icon(LucideIcons.appWindow, size: 15),
-              label: const Text('Выбрать приложения и исключения'),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton.icon(
+            onPressed: () => showTrafficRules(context, c),
+            icon: const Icon(LucideIcons.appWindow, size: 15),
+            label: Text(
+              'Правила трафика · ${(c.preferences.value['directDomains'] as List? ?? []).length} сайтов напрямую',
             ),
           ),
+        ),
       ],
     );
   }

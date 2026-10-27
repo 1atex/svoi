@@ -1,5 +1,5 @@
 param(
-    [string]$Version = '0.5.0-beta.15',
+    [string]$Version = '0.5.0-beta.21',
     [string]$FlutterSdk = '',
     [string]$CrtDirectory = '',
     [switch]$SkipChecks
@@ -52,7 +52,13 @@ try {
     $release = Join-Path $root "releases/v$Version"
     $stage = Join-Path $release ('SVOI-' + (Get-Date -Format 'yyyyMMdd-HHmmss'))
     New-Item -ItemType Directory -Path "$stage/backend/core" -Force | Out-Null
-    Copy-Item -Path "$PSScriptRoot/build/windows/x64/runner/Release/*" -Destination $stage -Recurse
+    $runnerPayload = [IO.Path]::GetFullPath("$PSScriptRoot/build/windows/x64/runner/Release")
+    foreach ($file in Get-ChildItem -LiteralPath $runnerPayload -Recurse -File) {
+        $relative = $file.FullName.Substring($runnerPayload.Length).TrimStart('\')
+        $destination = Join-Path $stage $relative
+        New-Item -ItemType Directory -Path (Split-Path $destination -Parent) -Force | Out-Null
+        Copy-Item -LiteralPath $file.FullName -Destination $destination
+    }
     if (Test-Path -LiteralPath "$stage/svoi_flutter.exe") { Remove-Item -LiteralPath "$stage/svoi_flutter.exe" }
     Copy-Item -LiteralPath dist/svoi-backend.exe -Destination "$stage/backend"
     foreach ($name in @('xray.exe','wintun.dll','geoip.dat','geosite.dat','LICENSE','LICENSE-Wintun','SOURCE.txt')) {

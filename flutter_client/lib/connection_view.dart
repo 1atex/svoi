@@ -33,8 +33,9 @@ class ConnectionView {
       : switch (state['state']) {
           'starting' => 'starting',
           'stopping' => 'stopping',
-          _ => '',
+          _ => c.checking.value ? 'checking' : '',
         };
+  bool get switching => phase.isNotEmpty && phase != 'checking';
   String get error => c.connectionIssue.value.isNotEmpty
       ? c.connectionIssue.value
       : state['error']?.toString() ?? '';
@@ -42,9 +43,16 @@ class ConnectionView {
       running && state['checked'] == true && error.isEmpty && phase.isEmpty;
   DateTime? get checkedAt =>
       DateTime.tryParse(state['checkedAt']?.toString() ?? '');
+  UserFailure get failure => connectionFailure(
+    error,
+    running: running,
+    available: state['available'] == true,
+  );
   String get title => switch (phase) {
     'starting' => 'Подключаемся…',
-    'checking' => 'Проверяем интернет…',
+    'switching' => 'Меняем сервер…',
+    'scenario' => 'Применяем сценарий…',
+    'checking' => 'VPN включён',
     'stopping' => 'Отключаемся…',
     _ =>
       verified
@@ -52,14 +60,16 @@ class ConnectionView {
           : running
           ? 'VPN включён'
           : error.isNotEmpty
-          ? 'Не удалось подключиться'
+          ? failure.title
           : state['available'] != true
           ? 'Ядро недоступно'
           : 'VPN выключен',
   };
   String get detail => switch (phase) {
     'starting' => 'Запускаем соединение с выбранными настройками.',
-    'checking' => 'Ожидаем ответ контрольного HTTPS-адреса.',
+    'switching' => 'Готовим новый профиль и переключаем соединение.',
+    'scenario' => c.scenarioApplying.value,
+    'checking' => 'Соединение запущено. Проверяем интернет; VPN можно отключить или переключить.',
     'stopping' => 'Завершаем соединение и восстанавливаем настройки.',
     _ =>
       verified
@@ -67,9 +77,9 @@ class ConnectionView {
           : running
           ? error.isEmpty
                 ? 'Ядро работает. Доступ в интернет ещё не проверен.'
-                : 'Интернет не подтверждён: контрольный адрес не ответил. VPN остаётся включён. Нажмите «Отключить VPN», чтобы завершить соединение.'
+                : failure.text
           : error.isNotEmpty
-          ? 'Откройте диагностику, чтобы посмотреть причину.'
+          ? failure.action
           : 'Нажмите на кнопку включения, чтобы подключиться.',
   };
 }
@@ -172,6 +182,8 @@ Future<void> showDiagnostics(
           c.connection,
           c.connectionPhase,
           c.connectionIssue,
+          c.checking,
+          c.scenarioApplying,
         ]),
         builder: (context, _) {
           final view = ConnectionView(c), state = c.connection.value;
@@ -189,6 +201,19 @@ Future<void> showDiagnostics(
                 ),
                 const SizedBox(height: 8),
                 Text(view.detail, style: const TextStyle(color: muted)),
+                PublicIPLine(c: c),
+                TextButton.icon(
+                  onPressed: () {
+                    Navigator.pop(dialog);
+                    showDesktopSheet(
+                      context,
+                      'Проверить сайт',
+                      SiteCheckPanel(c: c),
+                    );
+                  },
+                  icon: const Icon(LucideIcons.search, size: 16),
+                  label: const Text('Проверить сайт'),
+                ),
                 const SizedBox(height: 18),
                 if (view.error.isNotEmpty) ...[
                   SelectableText(
@@ -226,9 +251,12 @@ Future<void> showDiagnostics(
         child: const Text('Журнал Xray'),
       ),
       ListenableBuilder(
-        listenable: Listenable.merge([c.busy, c.connection]),
+        listenable: Listenable.merge([c.busy, c.connection, c.checking]),
         builder: (context, _) => TextButton(
-          onPressed: c.busy.value || c.connection.value['state'] != 'running'
+          onPressed:
+              c.busy.value ||
+                  c.checking.value ||
+                  c.connection.value['state'] != 'running'
               ? null
               : c.check,
           child: const Text('Повторить проверку'),

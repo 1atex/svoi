@@ -140,12 +140,12 @@ void main() {
         home: SvoiShell(controller: c),
       ),
     );
-    for (final page in ['zapret', 'Настройки', 'Подключение']) {
-      final nav = find.widgetWithText(TextButton, page).first;
+    for (final page in [4, 5, 0]) {
+      final nav = find.byKey(ValueKey('desktop-tab-$page'));
       await tester.ensureVisible(nav);
       await tester.tap(nav);
       await tester.pumpAndSettle();
-      expect(tester.takeException(), isNull, reason: page);
+      expect(tester.takeException(), isNull, reason: 'page $page');
     }
     await tester.tap(find.byTooltip('Профили и перенос'));
     await tester.pumpAndSettle();

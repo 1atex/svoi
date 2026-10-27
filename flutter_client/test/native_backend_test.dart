@@ -7,6 +7,61 @@ import 'package:svoi_flutter/controller.dart';
 
 void main() {
   test(
+    'large subscription responses survive parsing outside the UI isolate',
+    () async {
+      final data = await Directory.systemTemp.createTemp(
+        'svoi-large-response-',
+      );
+      await File('${data.path}/groups.json.settings.json').writeAsString(
+        jsonEncode({
+          'autoRefresh': false,
+          'autoUpdate': false,
+          'autoDownload': false,
+          'zapretAutoUpdate': false,
+          'routing': {'mode': 'all', 'processes': []},
+        }),
+      );
+      NativeBackend? api;
+      try {
+        api = await NativeBackend.launch(data);
+        final created = await api.request(
+          'groups',
+          method: 'POST',
+          body: {
+            'name': 'Large test',
+            'deviceName': 'Test',
+            'platform': 'Windows',
+          },
+        );
+        api.token = created['token'];
+        final content = List.generate(
+          1200,
+          (i) =>
+              'vless://00000000-0000-4000-8000-000000000001@127.0.0.1:${10000 + i}?type=tcp&security=none#Server-$i',
+        ).join('\n');
+        final imported = await api.request(
+          'subscription/import',
+          method: 'POST',
+          body: {'content': content},
+        );
+        expect(
+          utf8.encode(jsonEncode(imported)).length,
+          greaterThan(128 * 1024),
+        );
+        expect(imported['servers'], hasLength(1200));
+        final restored = await api.request('me');
+        expect(restored['servers'].last['name'], 'Server-1199');
+        expect(restored['subscriptions'].single['count'], 1200);
+      } finally {
+        await api?.close();
+        await data.delete(recursive: true);
+      }
+    },
+    skip: Platform.environment['SVOI_BACKEND'] == null,
+    timeout: const Timeout(Duration(seconds: 30)),
+  );
+
+  test(
     'real Go backend imports, renders config, persists session and exits',
     () async {
       final data = await Directory.systemTemp.createTemp('svoi-flutter-test-');

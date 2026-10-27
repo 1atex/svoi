@@ -113,10 +113,12 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(find.text('Отключить VPN').hitTestable(), findsOneWidget);
-    expect(
-      find.text('Проверка интернета не прошла. VPN остаётся включён.'),
-      findsOneWidget,
-    );
+    expect(find.text('Что делать').hitTestable(), findsOneWidget);
+    await tester.tap(find.text('Что делать'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('VPN остаётся включён'), findsOneWidget);
+    await tester.tap(find.text('Закрыть').last);
+    await tester.pumpAndSettle();
     expect(find.text('Добавить подписку').hitTestable(), findsOneWidget);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());

@@ -6,6 +6,8 @@ import 'package:flutter/foundation.dart';
 
 import 'backend.dart';
 import 'countries.dart';
+import 'user_failure.dart';
+part 'scenario_controller.dart';
 
 const defaultProbeUrl = 'https://www.gstatic.com/generate_204';
 
@@ -180,6 +182,17 @@ class SvoiController {
   final busy = ValueNotifier<bool>(false);
   final connectionPhase = ValueNotifier<String>('');
   final connectionIssue = ValueNotifier<String>('');
+  final checking = ValueNotifier<bool>(false);
+  final scenarios = ValueNotifier<List<Map<String, dynamic>>>([]);
+  final scenarioApplying = ValueNotifier<String>('');
+  final lastScenario = ValueNotifier<String>('');
+  final refreshingSources = ValueNotifier<Set<String>>({});
+  final refreshErrors = ValueNotifier<Map<String, String>>({});
+  final refreshProgress = ValueNotifier<String>('');
+  final _refreshRequests = <String, RequestCancellation>{};
+  int _refreshGeneration = 0, _checkGeneration = 0, _reloadRevision = 0;
+  RequestCancellation? _checkRequest;
+  bool _refreshingAll = false;
   final favorites = ValueNotifier<Set<String>>({});
   final lastUsed = ValueNotifier<String>('');
   final probeRevision = ValueNotifier<int>(0);
@@ -204,6 +217,10 @@ class SvoiController {
           .toList();
       selected.value = saved['selected']?.toString() ?? '';
       _libraries = Map<String, dynamic>.from(saved['libraries'] ?? {});
+      scenarios.value = (saved['scenarios'] as List? ?? [])
+          .whereType<Map>()
+          .map((s) => Map<String, dynamic>.from(s))
+          .toList();
       final savedMode = saved['mode'];
       if (['local', 'system', 'tun'].contains(savedMode)) {
         mode.value = savedMode;
@@ -240,6 +257,8 @@ class SvoiController {
 
   void _acceptGroup(Map<String, dynamic> group) {
     if (this.group.value['id'] != group['id']) {
+      lastScenario.value = '';
+      _cancelRefreshes();
       cancelProbes();
       probes.clear();
       final saved = _libraries[group['id']?.toString()] as Map? ?? {};
@@ -282,7 +301,12 @@ class SvoiController {
   }
 
   Future<void> reload() async {
-    _acceptGroup(await api.request('me'));
+    final token = api.token;
+    final revision = ++_reloadRevision;
+    final next = await api.request('me');
+    if (!_closed && api.token == token && revision == _reloadRevision) {
+      _acceptGroup(next);
+    }
   }
 
   Future<void> saveSession() {
@@ -293,6 +317,7 @@ class SvoiController {
       'mode': mode.value,
       'sessions': sessions.value,
       'libraries': _libraries,
+      'scenarios': scenarios.value,
     });
     _saveQueue = _saveQueue.catchError((_) {}).then((_) async {
       final tmp = File('${sessionFile!.path}.tmp');
@@ -337,6 +362,12 @@ class SvoiController {
     if (state['serverId'] != selected.value || state['mode'] != mode.value) {
       return true;
     }
+    final currentDomains = List<String>.from(state['directDomains'] ?? [])
+      ..sort();
+    final wantedDomains = List<String>.from(
+      preferences.value['directDomains'] ?? [],
+    )..sort();
+    if (jsonEncode(currentDomains) != jsonEncode(wantedDomains)) return true;
     if (mode.value != 'tun') return false;
     String normalized(dynamic raw) {
       final route = raw as Map? ?? {};
@@ -387,6 +418,7 @@ class SvoiController {
     _visible = visible;
     foreground.value = visible;
     _timer?.cancel();
+    if (!visible) cancelProbes();
     if (visible) unawaited(poll());
     if (!visible) _schedule();
   }
@@ -449,6 +481,7 @@ class SvoiController {
 
   Future<void> _connectionAction(String phase, Future<void> Function() task) =>
       action(() async {
+        _cancelCheck();
         connectionIssue.value = '';
         connectionPhase.value = phase;
         try {
@@ -460,12 +493,27 @@ class SvoiController {
         }
       });
 
-  Future<void> toggleConnection() => _connectionAction('starting', () async {
-    if (connection.value['state'] == 'running' && !pendingConnectionChoice) {
-      connectionPhase.value = 'stopping';
-      connection.value = await api.request('connection/stop', method: 'POST');
-      return;
-    }
+  Future<void> toggleConnection() async {
+    var started = false;
+    await _connectionAction(
+      pendingConnectionChoice ? 'switching' : 'starting',
+      () async {
+        if (connection.value['state'] == 'running' &&
+            !pendingConnectionChoice) {
+          connectionPhase.value = 'stopping';
+          connection.value = await api.request(
+            'connection/stop',
+            method: 'POST',
+          );
+          return;
+        }
+        started = await _startSelected();
+      },
+    );
+    if (started && !_closed) unawaited(check());
+  }
+
+  Future<bool> _startSelected() async {
     if (selected.value.isEmpty) throw ApiException('Выберите сервер.');
     cancelProbes();
     var pauseZapret = false;
@@ -485,7 +533,7 @@ class SvoiController {
       if (conflict == 'managed' &&
           preferences.value['autoPauseZapret'] != true) {
         final decision = await approveZapretPause?.call() ?? 'cancel';
-        if (decision == 'cancel') return;
+        if (decision == 'cancel') return false;
         pauseZapret = true;
         if (decision == 'always') {
           preferences.value = await api.request(
@@ -505,21 +553,59 @@ class SvoiController {
         'pauseZapret': pauseZapret,
       },
     );
-    if (connection.value['state'] != 'running') return;
+    if (connection.value['state'] != 'running') return false;
     lastUsed.value = connection.value['serverId']?.toString() ?? selected.value;
     await _saveLibrary();
-    connectionPhase.value = 'checking';
+    return true;
+  }
 
-    connection.value = {...connection.value, 'checked': false};
-    connection.value = await api.request('connection/check', method: 'POST');
-  });
   Future<void> stop() => _connectionAction('stopping', () async {
     connection.value = await api.request('connection/stop', method: 'POST');
   });
-  Future<void> check() => _connectionAction('checking', () async {
-    connection.value = {...connection.value, 'checked': false};
-    connection.value = await api.request('connection/check', method: 'POST');
-  });
+  void _cancelCheck() {
+    _checkGeneration++;
+    _checkRequest?.cancel();
+    _checkRequest = null;
+    checking.value = false;
+  }
+
+  Future<void> check() async {
+    if (_closed ||
+        busy.value ||
+        checking.value ||
+        connection.value['state'] != 'running') {
+      return;
+    }
+    final generation = ++_checkGeneration;
+    final request = RequestCancellation();
+    _checkRequest = request;
+    checking.value = true;
+    connectionIssue.value = '';
+    try {
+      final next = await api
+          .request('connection/check', method: 'POST', cancellation: request)
+          .timeout(
+            const Duration(seconds: 15),
+            onTimeout: () {
+              request.cancel();
+              throw ApiException(
+                'Контрольный адрес не ответил. VPN остаётся включён.',
+              );
+            },
+          );
+      if (!_closed && generation == _checkGeneration) connection.value = next;
+    } catch (e) {
+      if (!_closed && generation == _checkGeneration) {
+        connectionIssue.value = e.toString();
+        await poll(force: true);
+      }
+    } finally {
+      if (generation == _checkGeneration) {
+        checking.value = false;
+        _checkRequest = null;
+      }
+    }
+  }
 
   Future<void> importText(String raw) => action(() async {
     final text = raw.trim();
@@ -561,6 +647,8 @@ class SvoiController {
   });
 
   Future<void> createProfile(String name) => action(() async {
+    _cancelRefreshes();
+    _cancelCheck();
     cancelProbes();
     connection.value = await api.request('connection/stop', method: 'POST');
     final result = await api.request(
@@ -574,6 +662,8 @@ class SvoiController {
   });
 
   Future<void> switchProfile(String token) => action(() async {
+    _cancelRefreshes();
+    _cancelCheck();
     cancelProbes();
     connection.value = await api.request('connection/stop', method: 'POST');
     final previous = api.token;
@@ -590,6 +680,8 @@ class SvoiController {
 
   Future<void> receiveProfile(String code, {bool replace = false}) =>
       action(() async {
+        _cancelRefreshes();
+        _cancelCheck();
         cancelProbes();
         connection.value = await api.request('connection/stop', method: 'POST');
         final result = await api.request(
@@ -616,41 +708,111 @@ class SvoiController {
     _acceptGroup(await api.request(path, method: method, body: body));
     await saveSession();
   });
-  Future<void> _refreshAll() async {
+  void cancelRefresh(String id) => _refreshRequests[id]?.cancel();
+
+  void _cancelRefreshes() {
+    _refreshGeneration++;
+    for (final request in _refreshRequests.values) {
+      request.cancel();
+    }
+    _refreshRequests.clear();
+    refreshingSources.value = {};
+    refreshErrors.value = {};
+    refreshProgress.value = '';
+    _refreshingAll = false;
+  }
+
+  Future<void> _refreshAll() => refreshSubscriptions();
+
+  Future<void> refreshSubscriptions() async {
+    if (_closed || _refreshingAll || _refreshRequests.isNotEmpty) return;
+    final generation = _refreshGeneration;
     final sources = subscriptions.value
         .where((s) => s['remote'] == true)
         .toList();
+    if (sources.isEmpty) return;
+    _refreshingAll = true;
     var next = 0;
-    final errors = <String>[];
+    var done = 0;
+    refreshProgress.value = 'Обновляем подписки · 0 из ${sources.length}';
     Future<void> worker() async {
-      while (next < sources.length && !_closed) {
+      while (next < sources.length &&
+          !_closed &&
+          generation == _refreshGeneration) {
         final source = sources[next++];
-        try {
-          await api.request(
-            'subscription/refresh?id=${Uri.encodeComponent(source['id'])}',
-            method: 'POST',
-          );
-        } catch (_) {
-          errors.add(source['name'].toString());
+        await refreshSource(source['id'].toString());
+        if (!_closed && generation == _refreshGeneration) {
+          done++;
+          refreshProgress.value =
+              'Обновляем подписки · $done из ${sources.length}';
         }
       }
     }
 
-    await Future.wait([worker(), worker()]);
-    await reload();
-    if (errors.isNotEmpty) {
-      throw ApiException('Не обновлены: ${errors.join(', ')}');
+    try {
+      await Future.wait([worker(), worker()]);
+    } finally {
+      if (!_closed && generation == _refreshGeneration) {
+        _refreshingAll = false;
+        final failed = sources
+            .where((s) => refreshErrors.value.containsKey(s['id']))
+            .length;
+        refreshProgress.value = failed == 0
+            ? 'Подписки обновлены · $done из ${sources.length}'
+            : 'Не обновлено: $failed · причину смотрите рядом с подпиской';
+      }
     }
   }
 
-  Future<void> refreshSubscriptions() => action(_refreshAll);
-  Future<void> refreshSource(String id) => action(() async {
-    await api.request(
-      'subscription/refresh?id=${Uri.encodeComponent(id)}',
-      method: 'POST',
-    );
-    await reload();
-  });
+  Future<void> refreshSource(String id) async {
+    if (_closed || _refreshRequests.containsKey(id)) return;
+    if (!_refreshingAll) refreshProgress.value = '';
+    final generation = _refreshGeneration;
+    final request = RequestCancellation();
+    var timedOut = false;
+    _refreshRequests[id] = request;
+    refreshingSources.value = {...refreshingSources.value, id};
+    refreshErrors.value = {...refreshErrors.value}..remove(id);
+    try {
+      await api
+          .request(
+            'subscription/refresh?id=${Uri.encodeComponent(id)}',
+            method: 'POST',
+            cancellation: request,
+          )
+          .timeout(
+            const Duration(seconds: 25),
+            onTimeout: () {
+              timedOut = true;
+              request.cancel();
+              throw ApiException('Сервер подписки не ответил вовремя.');
+            },
+          );
+      if (!_closed && generation == _refreshGeneration && !request.cancelled) {
+        await reload();
+      }
+    } catch (e) {
+      if (!_closed &&
+          generation == _refreshGeneration &&
+          (!request.cancelled || timedOut)) {
+        refreshErrors.value = {
+          ...refreshErrors.value,
+          id: subscriptionFailure(e).text,
+        };
+      } else if (!_closed && generation == _refreshGeneration) {
+        refreshErrors.value = {
+          ...refreshErrors.value,
+          id: 'Обновление остановлено. Сохранённые серверы доступны; можно повторить попытку.',
+        };
+      }
+    } finally {
+      if (generation == _refreshGeneration) {
+        _refreshRequests.remove(id);
+        refreshingSources.value = {...refreshingSources.value}..remove(id);
+      }
+    }
+  }
+
   Future<void> settings(Map<String, dynamic> patch) => action(() async {
     preferences.value = await api.request(
       'settings',
@@ -768,6 +930,8 @@ class SvoiController {
   Future<void> close() async {
     if (_closed) return;
     _closed = true;
+    _cancelCheck();
+    _cancelRefreshes();
     connection.removeListener(_syncPublicIP);
     connectionPhase.removeListener(_syncPublicIP);
     _ipGeneration++;

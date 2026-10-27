@@ -50,24 +50,41 @@ class DesktopWorkspace extends StatelessWidget {
     valueListenable: c.servers,
     builder: (context, servers, _) {
       if (servers.isEmpty) {
-        return SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 680),
-              child: Column(
-                children: [
-                  ImportWelcome(c: c),
-                  for (final source in c.subscriptions.value)
-                    ListTile(
-                      title: Text(source['name']?.toString() ?? 'Подписка'),
-                      subtitle: const Text(
-                        'Серверов пока нет · открыть настройки подписки',
+        return ListenableBuilder(
+          listenable: Listenable.merge([
+            c.subscriptions,
+            c.refreshingSources,
+            c.refreshErrors,
+            c.busy,
+          ]),
+          builder: (context, _) => SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 680),
+                child: Column(
+                  children: [
+                    ImportWelcome(c: c),
+                    for (final source in c.subscriptions.value)
+                      SubscriptionHeader(
+                        name: subscriptionDisplayName(source),
+                        source: source,
+                        count: 0,
+                        collapsed: true,
+                        onToggle: () => editSource(context, c, source),
+                        onDetails: () => editSource(context, c, source),
+                        refreshing: c.refreshingSources.value.contains(
+                          source['id'],
+                        ),
+                        refreshError: c.refreshErrors.value[source['id']],
+                        onCancelRefresh: () =>
+                            c.cancelRefresh(source['id'].toString()),
+                        onRefresh: source['remote'] == true && !c.busy.value
+                            ? () => c.refreshSource(source['id'].toString())
+                            : null,
                       ),
-                      trailing: const Icon(LucideIcons.chevronRight),
-                      onTap: () => editSource(context, c, source),
-                    ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
@@ -191,7 +208,7 @@ class _DesktopLibraryState extends State<DesktopLibrary> {
           }
         }
         return Padding(
-          padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -274,7 +291,7 @@ class _DesktopLibraryState extends State<DesktopLibrary> {
                     ),
                   ],
                 ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 6),
               Wrap(
                 spacing: 8,
                 runSpacing: 4,
@@ -292,7 +309,7 @@ class _DesktopLibraryState extends State<DesktopLibrary> {
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 6),
               Expanded(
                 child: filtered.isEmpty && (query.isNotEmpty || favoritesOnly)
                     ? Center(
@@ -336,32 +353,45 @@ class _DesktopLibraryState extends State<DesktopLibrary> {
                                     List<ServerEntry>,
                                     Map<String, dynamic>?,
                                   );
-                          return SubscriptionHeader(
-                            name: group.$2,
-                            source: group.$4,
-                            count: group.$3.length,
-                            collapsed:
-                                collapsed.contains(group.$1) && query.isEmpty,
-                            onToggle: () => setState(() {
-                              if (!collapsed.add(group.$1)) {
-                                collapsed.remove(group.$1);
-                              }
-                            }),
-                            onRefresh:
-                                group.$4?['remote'] == true && !c.busy.value
-                                ? () => c.refreshSource(
-                                    group.$4!['id'].toString(),
-                                  )
-                                : null,
-                            onProbe:
-                                group.$3.isNotEmpty &&
-                                    !c.probing.value &&
-                                    c.connection.value['available'] == true
-                                ? () => c.probe(group.$3)
-                                : null,
-                            onDetails: group.$4 == null
-                                ? null
-                                : () => editSource(context, c, group.$4!),
+                          return ListenableBuilder(
+                            listenable: Listenable.merge([
+                              c.refreshingSources,
+                              c.refreshErrors,
+                            ]),
+                            builder: (context, _) => SubscriptionHeader(
+                              refreshing: c.refreshingSources.value.contains(
+                                group.$4?['id'],
+                              ),
+                              refreshError:
+                                  c.refreshErrors.value[group.$4?['id']],
+                              onCancelRefresh: () =>
+                                  c.cancelRefresh(group.$4!['id'].toString()),
+                              name: group.$2,
+                              source: group.$4,
+                              count: group.$3.length,
+                              collapsed:
+                                  collapsed.contains(group.$1) && query.isEmpty,
+                              onToggle: () => setState(() {
+                                if (!collapsed.add(group.$1)) {
+                                  collapsed.remove(group.$1);
+                                }
+                              }),
+                              onRefresh:
+                                  group.$4?['remote'] == true && !c.busy.value
+                                  ? () => c.refreshSource(
+                                      group.$4!['id'].toString(),
+                                    )
+                                  : null,
+                              onProbe:
+                                  group.$3.isNotEmpty &&
+                                      !c.probing.value &&
+                                      c.connection.value['available'] == true
+                                  ? () => c.probe(group.$3)
+                                  : null,
+                              onDetails: group.$4 == null
+                                  ? null
+                                  : () => editSource(context, c, group.$4!),
+                            ),
                           );
                         },
                       ),
@@ -395,6 +425,19 @@ class _DesktopLibraryState extends State<DesktopLibrary> {
                     ),
                   ),
                 ],
+              ),
+              ValueListenableBuilder(
+                valueListenable: c.refreshProgress,
+                builder: (context, value, _) => value.isEmpty
+                    ? const SizedBox.shrink()
+                    : Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Text(
+                          value,
+                          maxLines: 2,
+                          style: const TextStyle(color: muted, fontSize: 11),
+                        ),
+                      ),
               ),
               ValueListenableBuilder(
                 valueListenable: c.probeProgress,
@@ -588,6 +631,8 @@ class DesktopConnection extends StatelessWidget {
       c.busy,
       c.connectionPhase,
       c.connectionIssue,
+      c.checking,
+      c.scenarioApplying,
       c.preferences,
     ]),
     builder: (context, _) {
@@ -596,7 +641,7 @@ class DesktopConnection extends StatelessWidget {
           .where((s) => s.id == c.selected.value)
           .firstOrNull;
       final pending = c.pendingConnectionChoice;
-      final locked = c.busy.value || view.phase.isNotEmpty;
+      final locked = c.busy.value || view.switching;
       final ready = c.connection.value['available'] == true && server != null;
       final action = view.running ? 'Отключить VPN' : 'Подключить';
       final VoidCallback? toggle = locked || (!view.running && !ready)
@@ -610,9 +655,7 @@ class DesktopConnection extends StatelessWidget {
       final detail = view.phase.isNotEmpty
           ? view.detail
           : view.error.isNotEmpty
-          ? view.running
-                ? 'Проверка интернета не прошла. VPN остаётся включён.'
-                : 'Подключение не удалось. Посмотрите подробности.'
+          ? view.detail
           : view.verified
           ? 'Интернет проверен'
           : view.running
@@ -672,7 +715,7 @@ class DesktopConnection extends StatelessWidget {
             FilledButton(
               key: const ValueKey('desktop-connect'),
               onPressed: toggle,
-              child: Text(view.phase.isNotEmpty ? view.title : action),
+              child: Text(view.switching ? view.title : action),
             ),
         ],
       );
@@ -680,15 +723,14 @@ class DesktopConnection extends StatelessWidget {
         return Material(
           color: surface,
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            padding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
             child: Column(
               mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Row(
                   children: [
                     Expanded(child: selection),
-                    const SizedBox(width: 16),
+                    const SizedBox(width: 12),
                     ConstrainedBox(
                       constraints: BoxConstraints(
                         maxWidth: MediaQuery.sizeOf(context).width * .48,
@@ -697,84 +739,75 @@ class DesktopConnection extends StatelessWidget {
                     ),
                   ],
                 ),
-                const SizedBox(height: 6),
+                SizedBox(height: 4),
                 Row(
                   children: [
-                    Icon(
-                      view.verified ? LucideIcons.check : LucideIcons.power,
-                      size: 14,
-                      color: view.verified ? success : accent,
-                    ),
-                    const SizedBox(width: 8),
                     Expanded(
-                      child: Text(
-                        pending
-                            ? '${view.title} · сейчас ${active?.country.title ?? c.connection.value['serverName'] ?? 'другой сервер'}'
-                            : view.title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontSize: 12),
-                      ),
-                    ),
-                    Flexible(
-                      fit: FlexFit.tight,
-                      child: TextButton.icon(
-                        onPressed: () => showDesktopSheet(
-                          context,
-                          'Параметры подключения',
-                          SingleChildScrollView(
-                            padding: const EdgeInsets.all(20),
-                            child: ListenableBuilder(
-                              listenable: Listenable.merge([
-                                c.mode,
-                                c.preferences,
-                                c.busy,
-                                c.connection,
-                              ]),
-                              builder: (context, _) => ModePicker(c: c),
+                      child: InkWell(
+                        onTap: () => showDiagnostics(context, c),
+                        child: ValueListenableBuilder(
+                          valueListenable: c.publicIP,
+                          builder: (context, ip, _) => Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            child: Text(
+                              '${view.title}${view.error.isNotEmpty ? ' · нужна проверка' : ''}${ip['ip'] == null ? '' : ' · ${ip['ip']}'}',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: view.error.isNotEmpty ? accent : ink,
+                              ),
                             ),
                           ),
                         ),
-                        icon: const Icon(LucideIcons.chevronDown, size: 14),
-                        label: Text(
-                          modeLabel(
-                            c.mode.value,
-                            Map<String, dynamic>.from(
-                              c.preferences.value['routing'] ?? {},
-                            ),
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
                       ),
                     ),
+                    ScenarioLauncher(c: c),
                     IconButton(
-                      tooltip: 'Подробнее о соединении',
+                      tooltip: 'Режим и правила трафика',
+                      onPressed: () => showDesktopSheet(
+                        context,
+                        'Параметры подключения',
+                        SingleChildScrollView(
+                          padding: const EdgeInsets.all(20),
+                          child: ListenableBuilder(
+                            listenable: Listenable.merge([
+                              c.mode,
+                              c.preferences,
+                              c.busy,
+                              c.connection,
+                            ]),
+                            builder: (context, _) => ModePicker(c: c),
+                          ),
+                        ),
+                      ),
+                      icon: const Icon(LucideIcons.slidersHorizontal, size: 17),
+                    ),
+                    TextButton(
                       onPressed: () => showDiagnostics(context, c),
-                      icon: const Icon(LucideIcons.info, size: 18),
+                      child: Text(
+                        view.error.isNotEmpty ? 'Что делать' : 'Подробнее',
+                      ),
                     ),
                   ],
                 ),
-                PublicIPLine(c: c),
-                if (view.error.isNotEmpty)
-                  Text(
-                    detail,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: Color(0xffffaaa6),
-                    ),
-                  ),
               ],
             ),
           ),
         );
       }
+
       return Padding(
         padding: const EdgeInsets.all(24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Eyebrow('ВАШЕ ПОДКЛЮЧЕНИЕ'),
+            Row(
+              children: [
+                const Expanded(child: Eyebrow('ВАШЕ ПОДКЛЮЧЕНИЕ')),
+                ScenarioLauncher(c: c),
+              ],
+            ),
             const SizedBox(height: 16),
             selection,
             const SizedBox(height: 8),
@@ -782,7 +815,7 @@ class DesktopConnection extends StatelessWidget {
               child: ConnectionOrbit(
                 running: view.running,
                 verified: view.verified,
-                busy: view.phase.isNotEmpty,
+                busy: view.switching,
                 onPressed: toggle,
                 hint: action,
               ),
@@ -821,9 +854,15 @@ class DesktopConnection extends StatelessWidget {
                     const SizedBox(height: 12),
                     if (view.running)
                       TextButton.icon(
-                        onPressed: locked ? null : c.check,
+                        onPressed: locked || c.checking.value ? null : c.check,
                         icon: const Icon(LucideIcons.refreshCw, size: 15),
-                        label: const Text('Проверить интернет'),
+                        label: Text(
+                          c.checking.value
+                              ? 'Проверяем интернет…'
+                              : view.error.isNotEmpty
+                              ? 'Повторить проверку'
+                              : 'Проверить интернет',
+                        ),
                       ),
                     TextButton.icon(
                       onPressed: () => showDiagnostics(context, c),

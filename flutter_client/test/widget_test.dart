@@ -93,8 +93,18 @@ void main() {
       ),
     );
     expect(tester.takeException(), isNull);
-    await tester.tap(find.text('Настройки').first);
+    await tester.tap(find.byKey(const ValueKey('desktop-tab-5')));
     await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('Проверка задержки'),
+      250,
+      scrollable: find
+          .descendant(
+            of: find.byType(PreferencesPage),
+            matching: find.byType(Scrollable),
+          )
+          .first,
+    );
     expect(find.text('Проверка задержки'), findsOneWidget);
     await tester.scrollUntilVisible(
       find.text('Обновлять при запуске'),

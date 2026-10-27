@@ -2,6 +2,11 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
+
+Map<String, dynamic> _decodeResponse(List<int> bytes) =>
+    jsonDecode(utf8.decode(bytes)) as Map<String, dynamic>;
+
 class ApiException implements Exception {
   ApiException(this.message, [this.status = 0]);
   final String message;
@@ -131,6 +136,7 @@ class NativeBackend extends Backend {
     Object? body,
     RequestCancellation? cancellation,
   }) async {
+    final requestToken = token;
     if (_closed) {
       throw ApiException('Локальный сервис остановлен. Перезапустите SVOI.');
     }
@@ -146,7 +152,10 @@ class NativeBackend extends Backend {
         throw ApiException('Запрос отменён.');
       }
       request.headers.set('X-SVOI-Backend', key);
-      request.headers.set(HttpHeaders.authorizationHeader, 'Bearer $token');
+      request.headers.set(
+        HttpHeaders.authorizationHeader,
+        'Bearer $requestToken',
+      );
       if (body != null) {
         request.headers.contentType = ContentType.json;
         request.write(jsonEncode(body));
@@ -161,11 +170,12 @@ class NativeBackend extends Backend {
         }
         bytes.addAll(chunk);
       }
-      final text = utf8.decode(bytes);
       final Map<String, dynamic> json =
           response.headers.contentType?.mimeType == 'application/json'
-          ? jsonDecode(text) as Map<String, dynamic>
-          : {'text': text};
+          ? bytes.length > 128 * 1024
+                ? await compute(_decodeResponse, bytes)
+                : _decodeResponse(bytes)
+          : {'text': utf8.decode(bytes)};
       if (response.statusCode >= 400) {
         throw ApiException(
           json['error']?.toString() ?? 'Ошибка сервиса',

@@ -170,6 +170,18 @@ func TestXrayVLESSRoundTrip(t *testing.T) {
 	if !status.Checked || status.State != "running" {
 		t.Fatal("connection not verified")
 	}
+	workingProcess := engine.cmd.Process.Pid
+	invalid := server
+	invalid.Outbound = json.RawMessage(`{"protocol":"not-a-real-protocol"}`)
+	if err := engine.Start(invalid, "local"); err == nil {
+		t.Fatal("invalid replacement was accepted")
+	}
+	if s := engine.Status(); s.State != "running" || s.HTTPPort != status.HTTPPort || engine.cmd.Process.Pid != workingProcess {
+		t.Fatalf("invalid replacement interrupted working VPN: %+v", s)
+	}
+	if _, err := engine.Check(context.Background()); err != nil {
+		t.Fatalf("working VPN lost after rejected replacement: %v", err)
+	}
 
 	conn, err := net.Dial("tcp", net.JoinHostPort("127.0.0.1", strconv.Itoa(status.SocksPort)))
 	if err != nil {

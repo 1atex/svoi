@@ -100,27 +100,27 @@ class DelayedConnectionBackend extends DemoBackend {
 }
 
 void main() {
-  test(
-    'connection phases distinguish start, check and an unsuccessful check',
-    () async {
-      final api = DelayedConnectionBackend();
-      final controller = SvoiController(api);
-      await controller.initialize();
-      final pending = controller.toggleConnection();
-      expect(controller.connectionPhase.value, 'starting');
-      api.started.complete();
-      await Future<void>.delayed(Duration.zero);
-      expect(controller.connectionPhase.value, 'checking');
-      expect(controller.lastUsed.value, controller.selected.value);
-      api.checked.complete();
-      await pending;
-      expect(controller.connectionPhase.value, isEmpty);
-      expect(controller.connectionIssue.value, 'timeout');
-      expect(controller.connection.value['checked'], false);
-      expect(controller.busy.value, false);
-      await controller.close();
-    },
-  );
+  test('startup ends before the independent internet check', () async {
+    final api = DelayedConnectionBackend();
+    final controller = SvoiController(api);
+    await controller.initialize();
+    final pending = controller.toggleConnection();
+    expect(controller.connectionPhase.value, 'starting');
+    api.started.complete();
+    await Future<void>.delayed(Duration.zero);
+    expect(controller.connectionPhase.value, isEmpty);
+    expect(controller.busy.value, false);
+    expect(controller.checking.value, true);
+    expect(controller.lastUsed.value, controller.selected.value);
+    api.checked.complete();
+    await pending;
+    await Future<void>.delayed(Duration.zero);
+    expect(controller.connectionPhase.value, isEmpty);
+    expect(controller.connectionIssue.value, 'timeout');
+    expect(controller.connection.value['checked'], false);
+    expect(controller.busy.value, false);
+    await controller.close();
+  });
 
   test(
     'favorites survive restart and latency sorting keeps favorites first',

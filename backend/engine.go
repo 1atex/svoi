@@ -19,23 +19,24 @@ import (
 )
 
 type EngineStatus struct {
-	Available  bool       `json:"available"`
-	Elevated   bool       `json:"elevated"`
-	Problem    string     `json:"problem,omitempty"`
-	Version    string     `json:"version"`
-	State      string     `json:"state"`
-	ServerID   string     `json:"serverId"`
-	ServerName string     `json:"serverName"`
-	Mode       string     `json:"mode"`
-	SocksPort  int        `json:"socksPort"`
-	HTTPPort   int        `json:"httpPort"`
-	StartedAt  *time.Time `json:"startedAt,omitempty"`
-	Error      string     `json:"error,omitempty"`
-	Latency    int64      `json:"latency,omitempty"`
-	Checked    bool       `json:"checked"`
-	CheckedAt  *time.Time `json:"checkedAt,omitempty"`
-	Routing    AppRouting `json:"routing"`
-	Logs       []string   `json:"logs"`
+	DirectDomains []string   `json:"directDomains"`
+	Available     bool       `json:"available"`
+	Elevated      bool       `json:"elevated"`
+	Problem       string     `json:"problem,omitempty"`
+	Version       string     `json:"version"`
+	State         string     `json:"state"`
+	ServerID      string     `json:"serverId"`
+	ServerName    string     `json:"serverName"`
+	Mode          string     `json:"mode"`
+	SocksPort     int        `json:"socksPort"`
+	HTTPPort      int        `json:"httpPort"`
+	StartedAt     *time.Time `json:"startedAt,omitempty"`
+	Error         string     `json:"error,omitempty"`
+	Latency       int64      `json:"latency,omitempty"`
+	Checked       bool       `json:"checked"`
+	CheckedAt     *time.Time `json:"checkedAt,omitempty"`
+	Routing       AppRouting `json:"routing"`
+	Logs          []string   `json:"logs"`
 }
 type Engine struct {
 	op            sync.Mutex
@@ -95,6 +96,7 @@ func (e *Engine) snapshot(includeLogs bool) EngineStatus {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	s := e.status
+	s.DirectDomains = append([]string{}, s.DirectDomains...)
 	s.Elevated = isElevated()
 	s.Routing.Processes = append([]string{}, e.status.Routing.Processes...)
 	s.Logs = nil
@@ -185,9 +187,6 @@ func (e *Engine) startContext(parent context.Context, server ServerConfig, mode 
 	if mode == "tun" && !isElevated() {
 		return fail(409, "Для TUN закройте SVOI и запустите его от имени администратора. Системный прокси работает без повышения прав.")
 	}
-	if err := e.stopLocked(); err != nil {
-		return err
-	}
 	socks, sp, err := reservePort()
 	if err != nil {
 		return err
@@ -223,6 +222,30 @@ func (e *Engine) startContext(parent context.Context, server ServerConfig, mode 
 		secretSource = server.Profile
 	}
 	_ = json.Unmarshal(secretSource, &outbound)
+	validationOutput := &Engine{redactions: credentialStrings(outbound), coreStarted: true}
+	ctx, cancel := context.WithTimeout(parent, 10*time.Second)
+	defer cancel()
+	validate := exec.CommandContext(ctx, e.binary, "run", "-test", "-c", path)
+	hideCommand(validate)
+	validate.Dir = filepath.Dir(e.binary)
+	validate.Stdout = validationOutput
+	validate.Stderr = validationOutput
+	if err = validate.Run(); err != nil {
+		for _, line := range validationOutput.Status().Logs {
+			_, _ = e.Write([]byte(line + "\n"))
+		}
+		err = fail(422, "Xray отклонил конфигурацию. Обновите подписку или выберите другой сервер; подробности — в диагностике.")
+		if e.Status().State != "running" {
+			e.setError(err)
+		}
+		return err
+	}
+	if err := parent.Err(); err != nil {
+		return err
+	}
+	if err := e.stopLocked(); err != nil {
+		return err
+	}
 	e.mu.Lock()
 	e.status.State = "starting"
 	e.status.Error = ""
@@ -234,18 +257,6 @@ func (e *Engine) startContext(parent context.Context, server ServerConfig, mode 
 	e.startupOutput = ""
 	e.redactions = credentialStrings(outbound)
 	e.mu.Unlock()
-	ctx, cancel := context.WithTimeout(parent, 10*time.Second)
-	defer cancel()
-	validate := exec.CommandContext(ctx, e.binary, "run", "-test", "-c", path)
-	hideCommand(validate)
-	validate.Dir = filepath.Dir(e.binary)
-	validate.Stdout = e
-	validate.Stderr = e
-	if err = validate.Run(); err != nil {
-		err = fail(422, "Xray отклонил конфигурацию. Подробности — в журнале ядра.")
-		e.setError(err)
-		return err
-	}
 	cmd := exec.Command(e.binary, "run", "-c", path)
 	prepareXrayCommand(cmd)
 	cmd.Dir = filepath.Dir(e.binary)
@@ -340,6 +351,7 @@ func (e *Engine) startContext(parent context.Context, server ServerConfig, mode 
 	e.status.ServerName = server.Name
 	e.status.Mode = mode
 	e.status.Routing = AppRouting{Mode: "all", Processes: []string{}}
+	e.status.DirectDomains = append([]string{}, server.RuntimeDirectDomains...)
 	if mode == "tun" && server.RuntimeApps != nil {
 		e.status.Routing = AppRouting{Mode: server.RuntimeApps.Mode, Processes: append([]string{}, server.RuntimeApps.Processes...)}
 	}
@@ -553,6 +565,7 @@ func (a *App) engineAPI(w http.ResponseWriter, r *http.Request) error {
 					return fail(409, "Дождитесь окончания перебора стратегий zapret")
 				}
 				server.RuntimeApps = &settings.Routing
+				server.RuntimeDirectDomains = settings.DirectDomains
 				if err = a.engine.Start(server, in.Mode); err != nil {
 					if a.engine.snapshot(false).State != "running" {
 						if restoreErr := a.handoff.restore(a.companion()); restoreErr != nil {

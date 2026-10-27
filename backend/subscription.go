@@ -26,9 +26,10 @@ type ServerInfo struct {
 }
 type ServerConfig struct {
 	ServerInfo
-	RuntimeApps *AppRouting     `json:"-"`
-	Outbound    json.RawMessage `json:"outbound"`
-	Profile     json.RawMessage `json:"profile,omitempty"`
+	RuntimeApps          *AppRouting     `json:"-"`
+	RuntimeDirectDomains []string        `json:"-"`
+	Outbound             json.RawMessage `json:"outbound"`
+	Profile              json.RawMessage `json:"profile,omitempty"`
 }
 type ParsedSubscription struct {
 	MetadataHeaders http.Header

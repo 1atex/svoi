@@ -26,7 +26,7 @@ import (
 )
 
 var appVersion = "0.4.0-prebeta.3"
-var nativeVersion = "0.5.0-beta.15"
+var nativeVersion = "0.5.0-beta.21"
 
 //go:embed web/*
 var assets embed.FS
@@ -256,7 +256,7 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 	_ = json.NewEncoder(w).Encode(v)
 }
 func (a *App) dispatch(w http.ResponseWriter, r *http.Request) error {
-	if r.URL.Path == "/api/settings" || r.URL.Path == "/api/startup" || strings.HasPrefix(r.URL.Path, "/api/updates") || strings.HasPrefix(r.URL.Path, "/api/zapret") || strings.HasPrefix(r.URL.Path, "/api/dns") {
+	if r.URL.Path == "/api/settings" || r.URL.Path == "/api/startup" || strings.HasPrefix(r.URL.Path, "/api/tools/") || strings.HasPrefix(r.URL.Path, "/api/updates") || strings.HasPrefix(r.URL.Path, "/api/zapret") || strings.HasPrefix(r.URL.Path, "/api/dns") {
 		return a.desktopAPI(w, r)
 	}
 	if strings.HasPrefix(r.URL.Path, "/api/transfer/") {
@@ -615,6 +615,9 @@ func (a *App) fetch(w http.ResponseWriter, r *http.Request) error {
 	}
 	parsed, err := parseSubscription(b)
 	if err != nil {
+		return err
+	}
+	if err := r.Context().Err(); err != nil {
 		return err
 	}
 	report := Report{Count: len(parsed.Servers), Format: parsed.Format, FetchedAt: time.Now().UTC(), Warnings: parsed.Warnings}

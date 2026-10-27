@@ -2,7 +2,7 @@ part of 'main.dart';
 
 Map<String, dynamic> trayState(SvoiController c) {
   final view = ConnectionView(c);
-  final locked = c.busy.value || view.phase.isNotEmpty;
+  final locked = c.busy.value || view.switching;
   final available = c.connection.value['available'] == true;
   final selected = c.servers.value
       .where((s) => s.id == c.selected.value)
@@ -39,6 +39,16 @@ Map<String, dynamic> trayState(SvoiController c) {
         enabled: false,
       ),
       separator,
+      {
+        'label': 'Сценарии',
+        'enabled': !locked,
+        'children': [
+          for (final scene in c.currentScenarios)
+            item('scenario:${scene['id']}', scene['name'].toString()),
+          if (c.currentScenarios.isNotEmpty) separator,
+          item('scenarios', 'Управлять сценариями…'),
+        ],
+      },
       item(
         view.running ? 'disconnect' : 'connect',
         view.running ? 'Отключить VPN' : 'Подключить VPN',
@@ -82,7 +92,11 @@ Map<String, dynamic> trayState(SvoiController c) {
             ),
         ],
       },
-      item('check', 'Проверить связь', enabled: !locked && view.running),
+      item(
+        'check',
+        c.checking.value ? 'Проверяем интернет…' : 'Проверить связь',
+        enabled: !locked && view.running && !c.checking.value,
+      ),
       separator,
       item(
         'import',
@@ -91,9 +105,13 @@ Map<String, dynamic> trayState(SvoiController c) {
       ),
       item(
         'refresh',
-        'Обновить подписки',
+        c.refreshingSources.value.isEmpty
+            ? 'Обновить подписки'
+            : 'Подписки обновляются…',
         enabled:
-            !locked && c.subscriptions.value.any((s) => s['remote'] == true),
+            !locked &&
+            c.refreshingSources.value.isEmpty &&
+            c.subscriptions.value.any((s) => s['remote'] == true),
       ),
       item('logs', 'Журнал Xray…'),
       item('settings', 'Настройки…'),
@@ -111,6 +129,12 @@ class TrayBridge {
     c.connection,
     c.connectionPhase,
     c.connectionIssue,
+    c.checking,
+    c.refreshingSources,
+    c.scenarios,
+    c.group,
+    c.scenarioApplying,
+    c.lastScenario,
     c.selected,
     c.mode,
     c.busy,
@@ -155,7 +179,7 @@ class TrayBridge {
 
   Future<void> handle(String command) async {
     if (_disposed) return;
-    if (['servers', 'settings', 'logs'].contains(command)) {
+    if (['servers', 'settings', 'logs', 'scenarios'].contains(command)) {
       await open(command);
       return;
     }
@@ -170,7 +194,9 @@ class TrayBridge {
     final ready =
         c.connection.value['available'] == true &&
         c.servers.value.any((s) => s.id == c.selected.value);
-    if (command == 'connect' && !running && ready ||
+    if (command.startsWith('scenario:')) {
+      await c.applyScenario(command.substring(9));
+    } else if (command == 'connect' && !running && ready ||
         command == 'apply' && running && ready && c.pendingConnectionChoice) {
       await c.toggleConnection();
     } else if (command == 'disconnect' && running) {

@@ -1,6 +1,6 @@
 part of 'main.dart';
 
-const clientVersion = '0.5.0-beta.15';
+const clientVersion = '0.5.0-beta.21';
 
 class ConfigPane extends StatelessWidget {
   const ConfigPane({
@@ -886,6 +886,20 @@ class PreferencesPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) => FeatureBody(
     children: [
+      Section(
+        'Сценарии',
+        children: [
+          Align(
+            alignment: Alignment.centerLeft,
+            child: OutlinedButton.icon(
+              onPressed: () =>
+                  showDesktopSheet(context, 'Сценарии', ScenarioManager(c: c)),
+              icon: const Icon(LucideIcons.layers, size: 16),
+              label: const Text('Управлять сценариями'),
+            ),
+          ),
+        ],
+      ),
       ProbeSettingsPanel(c: c),
       Section(
         'Автоматизация',
@@ -921,12 +935,34 @@ class PreferencesPage extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 12),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: OutlinedButton.icon(
-              onPressed: c.refreshSubscriptions,
-              icon: const Icon(Icons.refresh),
-              label: const Text('Обновить подписки сейчас'),
+          ListenableBuilder(
+            listenable: Listenable.merge([
+              c.refreshingSources,
+              c.refreshProgress,
+            ]),
+            builder: (context, _) => Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                OutlinedButton.icon(
+                  onPressed: c.refreshingSources.value.isEmpty
+                      ? c.refreshSubscriptions
+                      : null,
+                  icon: const Icon(Icons.refresh),
+                  label: Text(
+                    c.refreshingSources.value.isEmpty
+                        ? 'Обновить подписки сейчас'
+                        : 'Подписки обновляются…',
+                  ),
+                ),
+                if (c.refreshProgress.value.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Text(
+                      c.refreshProgress.value,
+                      style: const TextStyle(color: muted, fontSize: 12),
+                    ),
+                  ),
+              ],
             ),
           ),
         ],

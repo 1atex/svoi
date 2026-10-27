@@ -15,6 +15,7 @@ type AppRouting struct {
 	Processes []string `json:"processes"`
 }
 type LocalSettings struct {
+	DirectDomains    []string      `json:"directDomains"`
 	Probe            ProbeSettings `json:"probe"`
 	AutoRefresh      bool          `json:"autoRefresh"`
 	AutoUpdate       bool          `json:"autoUpdate"`
@@ -82,9 +83,15 @@ func (a *App) localSettings() LocalSettings {
 	defer a.settingsMu.Unlock()
 	s := a.settings
 	s.Routing.Processes = append([]string{}, s.Routing.Processes...)
+	s.DirectDomains = append([]string{}, s.DirectDomains...)
 	return s
 }
 func validateSettings(s *LocalSettings) error {
+	var err error
+	s.DirectDomains, err = normalizeDirectDomains(s.DirectDomains)
+	if err != nil {
+		return err
+	}
 	if err := validateProbeSettings(&s.Probe); err != nil {
 		return err
 	}
@@ -134,8 +141,11 @@ func (a *App) desktopAPI(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	if r.Method != "GET" && !owner {
+	if r.Method != "GET" && !owner && r.URL.Path != "/api/tools/site" {
 		return fail(403, "Доступно владельцу профиля")
+	}
+	if strings.HasPrefix(r.URL.Path, "/api/tools/") {
+		return a.siteAPI(w, r)
 	}
 	if strings.HasPrefix(r.URL.Path, "/api/updates") {
 		if a.updates == nil {

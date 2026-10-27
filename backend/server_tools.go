@@ -56,6 +56,7 @@ func (a *App) serverToolsAPI(w http.ResponseWriter, r *http.Request) error {
 	if parts[1] == "config" && r.Method == "GET" {
 		settings := a.localSettings()
 		server.RuntimeApps = &settings.Routing
+		server.RuntimeDirectDomains = settings.DirectDomains
 		mode := r.URL.Query().Get("mode")
 		if mode == "" {
 			mode = "local"

@@ -5,6 +5,11 @@
 #include <flutter/standard_method_codec.h>
 #include <commdlg.h>
 #include <shellapi.h>
+#include <shlwapi.h>
+#include <windowsx.h>
+#include <commctrl.h>
+#include <dwmapi.h>
+#include <cmath>
 #include "utils.h"
 #include "resource.h"
 #include "external_url.h"
@@ -86,6 +91,55 @@ FlutterWindow::FlutterWindow(const flutter::DartProject& project, bool start_hid
 
 FlutterWindow::~FlutterWindow() {}
 
+LRESULT FlutterWindow::FrameHitTest(LPARAM position) {
+  if (!custom_frame_) return HTCLIENT;
+  POINT point{GET_X_LPARAM(position), GET_Y_LPARAM(position)};
+  ScreenToClient(GetHandle(), &point);
+  RECT client{};
+  GetClientRect(GetHandle(), &client);
+  const UINT dpi = GetDpiForWindow(GetHandle());
+  const int border = GetSystemMetricsForDpi(SM_CXSIZEFRAME, dpi) +
+                     GetSystemMetricsForDpi(SM_CXPADDEDBORDER, dpi);
+  if (!IsZoomed(GetHandle())) {
+    const bool left = point.x < border, right = point.x >= client.right - border;
+    const bool top = point.y < border, bottom = point.y >= client.bottom - border;
+    if (top && left) return HTTOPLEFT;
+    if (top && right) return HTTOPRIGHT;
+    if (bottom && left) return HTBOTTOMLEFT;
+    if (bottom && right) return HTBOTTOMRIGHT;
+    if (left) return HTLEFT;
+    if (right) return HTRIGHT;
+    if (top) return HTTOP;
+    if (bottom) return HTBOTTOM;
+  }
+  const double x = point.x * 96.0 / dpi, y = point.y * 96.0 / dpi;
+  const auto contains = [x, y](const TitlebarRect& r) {
+    return x >= r.x && y >= r.y && x < r.x + r.width && y < r.y + r.height;
+  };
+  if (contains(maximize_region_)) return HTMAXBUTTON;
+  for (const auto& region : drag_regions_) {
+    if (contains(region)) return HTCAPTION;
+  }
+  return HTCLIENT;
+}
+
+void FlutterWindow::CaptionHover(bool hovered) {
+  if (max_hovered_ == hovered) return;
+  max_hovered_ = hovered;
+  if (channel_) channel_->InvokeMethod("captionHover",
+      std::make_unique<flutter::EncodableValue>(hovered));
+}
+
+LRESULT CALLBACK FlutterWindow::ChildFrameProc(HWND hwnd, UINT message,
+    WPARAM wparam, LPARAM lparam, UINT_PTR id, DWORD_PTR context) {
+  auto* window = reinterpret_cast<FlutterWindow*>(context);
+  if (message == WM_NCHITTEST && window->FrameHitTest(lparam) != HTCLIENT) {
+    return HTTRANSPARENT;
+  }
+  if (message == WM_NCDESTROY) RemoveWindowSubclass(hwnd, ChildFrameProc, id);
+  return DefSubclassProc(hwnd, message, wparam, lparam);
+}
+
 bool FlutterWindow::UpdateTray() {
   auto data = TrayData(GetHandle());
   wcsncpy_s(data.szTip, tray_tooltip_.c_str(), _TRUNCATE);
@@ -119,6 +173,54 @@ bool FlutterWindow::OnCreate() {
   channel_->SetMethodCallHandler([this](const auto& call, auto result) {
     if (call.method_name() == "ready") {
       dart_ready_ = true;
+      channel_->InvokeMethod("windowState",
+          std::make_unique<flutter::EncodableValue>(IsZoomed(GetHandle()) != FALSE));
+      result->Success();
+    } else if (call.method_name() == "titlebar") {
+      const auto* geometry = call.arguments() ? std::get_if<flutter::EncodableMap>(call.arguments()) : nullptr;
+      const auto read_rect = [](const flutter::EncodableValue& value, TitlebarRect& rect) {
+        const auto* values = std::get_if<flutter::EncodableList>(&value);
+        if (!values || values->size() != 4) return false;
+        double numbers[4]{};
+        for (size_t i = 0; i < 4; ++i) {
+          if (const auto* number = std::get_if<double>(&(*values)[i])) numbers[i] = *number;
+          else return false;
+          if (!std::isfinite(numbers[i]) || numbers[i] < 0) return false;
+        }
+        rect = {numbers[0], numbers[1], numbers[2], numbers[3]};
+        return true;
+      };
+      const auto* drag = geometry ? MenuValue<flutter::EncodableList>(*geometry, "drag") : nullptr;
+      if (!drag || drag->size() > 4) { result->Error("frame", "Invalid titlebar"); return; }
+      auto max = geometry->find(flutter::EncodableValue("maximize"));
+      TitlebarRect maximize{};
+      std::vector<TitlebarRect> regions;
+      if (max == geometry->end() || !read_rect(max->second, maximize)) {
+        result->Error("frame", "Invalid maximize bounds"); return;
+      }
+      for (const auto& value : *drag) {
+        TitlebarRect rect{};
+        if (!read_rect(value, rect)) { result->Error("frame", "Invalid drag bounds"); return; }
+        regions.push_back(rect);
+      }
+      maximize_region_ = maximize;
+      drag_regions_ = std::move(regions);
+      if (!custom_frame_) {
+        custom_frame_ = true;
+        const MARGINS margins{1, 1, 1, 1};
+        DwmExtendFrameIntoClientArea(GetHandle(), &margins);
+        SetWindowPos(GetHandle(), nullptr, 0, 0, 0, 0,
+            SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED);
+      }
+      result->Success();
+    } else if (call.method_name() == "minimize") {
+      ShowWindow(GetHandle(), SW_MINIMIZE);
+      result->Success();
+    } else if (call.method_name() == "maximize") {
+      ShowWindow(GetHandle(), IsZoomed(GetHandle()) ? SW_RESTORE : SW_MAXIMIZE);
+      result->Success();
+    } else if (call.method_name() == "requestWindowClose") {
+      PostMessage(GetHandle(), WM_CLOSE, 0, 0);
       result->Success();
     } else if (call.method_name() == "close") {
       allow_close_ = true;
@@ -138,6 +240,23 @@ bool FlutterWindow::OnCreate() {
       const auto opened = reinterpret_cast<INT_PTR>(ShellExecuteW(GetHandle(), L"open", wide.c_str(), nullptr, nullptr, SW_SHOWNORMAL));
       if (opened > 32) result->Success();
       else result->Error("url", "Не удалось открыть браузер");
+    } else if (call.method_name() == "openCommunity") {
+      wchar_t association[1024]{};
+      DWORD length = static_cast<DWORD>(std::size(association));
+      if (FAILED(AssocQueryStringW(ASSOCF_IS_PROTOCOL, ASSOCSTR_PROGID,
+          L"tg", nullptr, association, &length)) || association[0] == L'\0') {
+        result->Error("telegram_missing", "Telegram не установлен или ссылки tg: не зарегистрированы");
+        return;
+      }
+      SHELLEXECUTEINFOW launch{};
+      launch.cbSize = sizeof(launch);
+      launch.fMask = SEE_MASK_FLAG_NO_UI;
+      launch.hwnd = GetHandle();
+      launch.lpVerb = L"open";
+      launch.lpFile = L"tg://resolve?domain=SVOI_client";
+      launch.nShow = SW_SHOWNORMAL;
+      if (ShellExecuteExW(&launch)) result->Success();
+      else result->Error("telegram_launch", "Не удалось открыть Telegram");
     } else if (call.method_name() == "updateTray") {
       const auto* state = call.arguments() ? std::get_if<flutter::EncodableMap>(call.arguments()) : nullptr;
       if (!state) {
@@ -183,6 +302,8 @@ bool FlutterWindow::OnCreate() {
     }
   });
   SetChildContent(flutter_controller_->view()->GetNativeWindow());
+  SetWindowSubclass(flutter_controller_->view()->GetNativeWindow(), ChildFrameProc,
+      1, reinterpret_cast<DWORD_PTR>(this));
 
   flutter_controller_->engine()->SetNextFrameCallback([&]() {
     if (!start_hidden_ || !UpdateTray()) this->Show();
@@ -198,6 +319,7 @@ void FlutterWindow::OnDestroy() {
   Shell_NotifyIconW(NIM_DELETE, &tray);
   channel_ = nullptr;
   if (flutter_controller_) {
+    RemoveWindowSubclass(flutter_controller_->view()->GetNativeWindow(), ChildFrameProc, 1);
     flutter_controller_ = nullptr;
   }
 
@@ -208,6 +330,45 @@ LRESULT
 FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
                               WPARAM const wparam,
                               LPARAM const lparam) noexcept {
+  if (custom_frame_) {
+    if (message == WM_NCCALCSIZE && wparam) {
+      if (IsZoomed(hwnd)) {
+        auto* params = reinterpret_cast<NCCALCSIZE_PARAMS*>(lparam);
+        const UINT dpi = GetDpiForWindow(hwnd);
+        const int x = GetSystemMetricsForDpi(SM_CXSIZEFRAME, dpi) +
+                      GetSystemMetricsForDpi(SM_CXPADDEDBORDER, dpi);
+        const int y = GetSystemMetricsForDpi(SM_CYSIZEFRAME, dpi) +
+                      GetSystemMetricsForDpi(SM_CXPADDEDBORDER, dpi);
+        InflateRect(&params->rgrc[0], -x, -y);
+      }
+      return 0;
+    }
+    if (message == WM_NCHITTEST) return FrameHitTest(lparam);
+    if (message == WM_NCMOUSEMOVE) {
+      CaptionHover(wparam == HTMAXBUTTON);
+      TRACKMOUSEEVENT tracking{sizeof(tracking), TME_LEAVE | TME_NONCLIENT, hwnd, 0};
+      TrackMouseEvent(&tracking);
+      LRESULT result = 0;
+      if (DwmDefWindowProc(hwnd, message, wparam, lparam, &result)) return result;
+    }
+    if (message == WM_NCMOUSELEAVE) CaptionHover(false);
+    if (message == WM_NCLBUTTONDOWN && wparam == HTMAXBUTTON) {
+      max_pressed_ = true;
+      SetCapture(hwnd);
+      return 0;
+    }
+    if (message == WM_LBUTTONUP && max_pressed_) {
+      max_pressed_ = false;
+      POINT point{GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam)};
+      ClientToScreen(hwnd, &point);
+      const bool activate = FrameHitTest(MAKELPARAM(point.x, point.y)) == HTMAXBUTTON;
+      ReleaseCapture();
+      CaptionHover(false);
+      if (activate) ShowWindow(hwnd, IsZoomed(hwnd) ? SW_RESTORE : SW_MAXIMIZE);
+      return 0;
+    }
+    if (message == WM_CAPTURECHANGED) max_pressed_ = false;
+  }
   if (message == WM_DESTROY) {
     auto data = TrayData(hwnd);
     Shell_NotifyIconW(NIM_DELETE, &data);
@@ -250,8 +411,8 @@ FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
   if (message == WM_GETMINMAXINFO) {
     auto info = reinterpret_cast<MINMAXINFO*>(lparam);
     const UINT dpi = GetDpiForWindow(hwnd);
-    info->ptMinTrackSize.x = MulDiv(816, dpi, 96);
-    info->ptMinTrackSize.y = MulDiv(632, dpi, 96);
+    info->ptMinTrackSize.x = MulDiv(800, dpi, 96);
+    info->ptMinTrackSize.y = MulDiv(600, dpi, 96);
     return 0;
   }
   if (message == WM_CLOSE && dart_ready_ && !allow_close_) {
@@ -270,6 +431,8 @@ FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
     return 0;
   }
   if (message == WM_SIZE && dart_ready_) {
+    channel_->InvokeMethod("windowState",
+        std::make_unique<flutter::EncodableValue>(IsZoomed(hwnd) != FALSE));
     channel_->InvokeMethod("visibility", std::make_unique<flutter::EncodableValue>(wparam != SIZE_MINIMIZED));
   }
 

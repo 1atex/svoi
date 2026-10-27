@@ -8,6 +8,7 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "win32_window.h"
 
@@ -35,10 +36,20 @@ class FlutterWindow : public Win32Window {
   bool allow_close_ = false;
   bool tray_added_ = false;
   bool start_hidden_ = false;
+  bool custom_frame_ = false;
+  bool max_hovered_ = false;
+  bool max_pressed_ = false;
+  struct TitlebarRect { double x, y, width, height; };
+  std::vector<TitlebarRect> drag_regions_;
+  TitlebarRect maximize_region_{};
   std::wstring tray_tooltip_ = L"SVOI";
   flutter::EncodableList tray_items_;
   bool UpdateTray();
   void RestoreFromTray();
+  LRESULT FrameHitTest(LPARAM position);
+  void CaptionHover(bool hovered);
+  static LRESULT CALLBACK ChildFrameProc(HWND hwnd, UINT message, WPARAM wparam,
+      LPARAM lparam, UINT_PTR id, DWORD_PTR context);
 };
 
 #endif

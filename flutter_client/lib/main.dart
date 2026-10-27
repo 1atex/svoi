@@ -11,12 +11,15 @@ import 'countries.dart';
 
 import 'backend.dart';
 import 'controller.dart';
+import 'user_failure.dart';
 import 'demo.dart';
 import 'data_directory.dart';
 part 'features.dart';
 part 'design.dart';
 part 'overview.dart';
 part 'desktop_workspace.dart';
+part 'desktop_titlebar.dart';
+part 'community.dart';
 part 'power_control.dart';
 part 'connection_view.dart';
 part 'connection_card.dart';
@@ -28,6 +31,9 @@ part 'network_tools.dart';
 part 'subscription_details.dart';
 part 'probe_settings.dart';
 part 'public_ip.dart';
+part 'scenario_widgets.dart';
+part 'traffic_rules.dart';
+part 'site_tools.dart';
 
 const windowChannel = MethodChannel('dev.svoi/window');
 const canvas = Color(0xff101013),
@@ -165,6 +171,12 @@ class _BootstrapState extends State<Bootstrap> with WidgetsBindingObserver {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     windowChannel.setMethodCallHandler((call) async {
+      if (call.method == 'windowState') {
+        windowMaximized.value = call.arguments == true;
+      }
+      if (call.method == 'captionHover') {
+        windowMaxHovered.value = call.arguments == true;
+      }
       if (call.method == 'requestClose') await _close();
       if (call.method == 'visibility') {
         _controller?.visibility(call.arguments == true);
@@ -258,11 +270,13 @@ class _BootstrapState extends State<Bootstrap> with WidgetsBindingObserver {
                 TickerMode(enabled: visible, child: child!),
           ),
     home: _closing
-        ? const Scaffold(body: Center(child: Text('Завершаем соединение…')))
+        ? const DesktopStartup(
+            child: Center(child: Text('Завершаем соединение…')),
+          )
         : _ready
         ? SvoiShell(key: _shellKey, controller: _controller!, demo: widget.demo)
-        : Scaffold(
-            body: Center(
+        : DesktopStartup(
+            child: Center(
               child: SizedBox(
                 width: 520,
                 child: Padding(
@@ -365,6 +379,13 @@ class _SvoiShellState extends State<SvoiShell> {
     _trayDialogOpen = true;
     try {
       if (action == 'import') await importDialog(context, widget.controller);
+      if (action == 'scenarios' && mounted) {
+        await showDesktopSheet(
+          context,
+          'Сценарии',
+          ScenarioManager(c: widget.controller),
+        );
+      }
       if (action == 'logs' && mounted) {
         await showLogs(context, widget.controller);
       }
@@ -386,65 +407,13 @@ class _SvoiShellState extends State<SvoiShell> {
     return Scaffold(
       body: Column(
         children: [
-          Material(
-            color: const Color(0xff141417),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-              child: Row(
-                children: [
-                  const SizedBox(width: 120, height: 40, child: BrandMark()),
-                  const SizedBox(width: 28),
-                  Expanded(
-                    child: SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: Row(
-                        children: [
-                          for (final (index, label, icon) in [
-                            (0, 'Подключение', LucideIcons.power),
-                            (4, 'zapret', LucideIcons.shield),
-                            (6, 'DNS', LucideIcons.network),
-                            (5, 'Настройки', LucideIcons.settings2),
-                          ])
-                            Padding(
-                              padding: const EdgeInsets.only(right: 6),
-                              child: TextButton.icon(
-                                style: TextButton.styleFrom(
-                                  foregroundColor: page == index
-                                      ? accent
-                                      : muted,
-                                  backgroundColor: page == index
-                                      ? accent.withValues(alpha: .12)
-                                      : Colors.transparent,
-                                  minimumSize: const Size(0, 42),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                ),
-                                onPressed: () => setState(() => page = index),
-                                icon: Icon(icon, size: 17),
-                                label: Text(label),
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  IconButton(
-                    tooltip: 'Профили и перенос',
-                    onPressed: () => showDesktopSheet(
-                      context,
-                      'Профили и перенос',
-                      ProfilePage(c: c),
-                    ),
-                    icon: const Icon(LucideIcons.users, size: 19),
-                  ),
-                  IconButton(
-                    tooltip: 'Свернуть в трей',
-                    onPressed: () => windowChannel.invokeMethod('tray'),
-                    icon: const Icon(LucideIcons.chevronDown, size: 19),
-                  ),
-                ],
-              ),
+          DesktopTitlebar(
+            page: page,
+            onPage: (value) => setState(() => page = value),
+            onProfiles: () => showDesktopSheet(
+              context,
+              'Профили и перенос',
+              ProfilePage(c: c),
             ),
           ),
           const Divider(height: 1),
@@ -486,7 +455,7 @@ class _SvoiShellState extends State<SvoiShell> {
             child: switch (page) {
               4 => ZapretPage(c: c),
               5 => PreferencesPage(c: c),
-              6 => DnsTools(c: c),
+              6 => NetworkToolsPage(c: c),
               _ => DesktopWorkspace(c: c),
             },
           ),
@@ -511,68 +480,86 @@ class Panel extends StatelessWidget {
 }
 
 Future<void> importDialog(BuildContext context, SvoiController c) async {
-  var text = '';
+  var text = '', localError = '';
   final value = await showDialog<String>(
     context: context,
-    builder: (context) => AlertDialog(
-      title: const Text('Добавить подписку'),
-      content: SizedBox(
-        width: 560,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'HTTPS-ссылка, VLESS / VMess / Trojan / SS / Hysteria2, JSON или код SVOI1. Перед переносом профиля будет показан его состав.',
-              style: TextStyle(color: muted, fontSize: 13),
-            ),
-            const SizedBox(height: 18),
-            TextField(
-              onChanged: (value) => text = value,
-              autofocus: true,
-              minLines: 4,
-              maxLines: 8,
-              decoration: const InputDecoration(
-                hintText: 'Вставьте ссылку или конфигурацию',
+    builder: (context) => StatefulBuilder(
+      builder: (context, setLocal) => AlertDialog(
+        title: const Text('Добавить подписку'),
+        content: SizedBox(
+          width: 560,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'HTTPS-ссылка, VLESS / VMess / Trojan / SS / Hysteria2, JSON или код SVOI1. Перед переносом профиля будет показан его состав.',
+                style: TextStyle(color: muted, fontSize: 13),
               ),
-              enableSuggestions: false,
-              autocorrect: false,
-            ),
-          ],
+              const SizedBox(height: 18),
+              TextField(
+                onChanged: (value) => text = value,
+                autofocus: true,
+                minLines: 4,
+                maxLines: 8,
+                decoration: InputDecoration(
+                  errorText: localError.isEmpty ? null : localError,
+                  hintText: 'Вставьте ссылку или конфигурацию',
+                ),
+                enableSuggestions: false,
+                autocorrect: false,
+              ),
+            ],
+          ),
         ),
-      ),
-      actions: [
-        TextButton.icon(
-          onPressed: () async {
-            try {
-              final path = await windowChannel.invokeMethod<String>('openFile');
-              if (path == null || !context.mounted) return;
-              final file = File(path);
-              if (await file.length() > 12 * 1024 * 1024) {
-                c.message.value = 'Файл больше 12 МБ';
-                return;
+        actions: [
+          TextButton.icon(
+            onPressed: () async {
+              try {
+                final path = await windowChannel.invokeMethod<String>(
+                  'openFile',
+                );
+                if (path == null || !context.mounted) return;
+                final file = File(path);
+                if (await file.length() > 12 * 1024 * 1024) {
+                  setLocal(
+                    () => localError =
+                        'Файл больше 12 МБ. Выберите меньший файл.',
+                  );
+                  return;
+                }
+                final content = await file.readAsString();
+                if (context.mounted) Navigator.pop(context, content);
+              } catch (e) {
+                if (context.mounted) {
+                  setLocal(
+                    () => localError = 'Не удалось прочитать файл. Проверьте, что он доступен и содержит текст.',
+                  );
+                }
               }
-              final content = await file.readAsString();
-              if (context.mounted) Navigator.pop(context, content);
-            } catch (e) {
-              c.message.value = 'Не удалось прочитать файл: $e';
-              if (context.mounted) Navigator.pop(context);
-            }
-          },
-          icon: const Icon(Icons.file_open_outlined),
-          label: const Text('Из файла'),
-        ),
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Отмена'),
-        ),
-        FilledButton(
-          onPressed: () {
-            if (text.trim().isNotEmpty) Navigator.pop(context, text);
-          },
-          child: const Text('Добавить'),
-        ),
-      ],
+            },
+            icon: const Icon(Icons.file_open_outlined),
+            label: const Text('Из файла'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Отмена'),
+          ),
+          FilledButton(
+            onPressed: () {
+              if (text.trim().isNotEmpty) {
+                Navigator.pop(context, text);
+              } else {
+                setLocal(
+                  () => localError =
+                      'Вставьте ссылку, конфигурацию или код профиля.',
+                );
+              }
+            },
+            child: const Text('Добавить'),
+          ),
+        ],
+      ),
     ),
   );
   if (value != null && context.mounted) {
