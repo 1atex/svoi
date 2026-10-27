@@ -20,23 +20,23 @@ class ReleaseNoticeBanner extends StatefulWidget {
 class _ReleaseNoticeBannerState extends State<ReleaseNoticeBanner> {
   bool _busy = false;
 
-  Future<void> _dismiss({bool open = false}) async {
+  Future<void> _act({Uri? uri, bool acknowledge = true}) async {
     final version = widget.store.pendingVersion;
     if (_busy || version == null) return;
     setState(() => _busy = true);
+    var opened = uri == null;
     try {
-      if (open) {
-        await widget.open(changelogUri(version, platform: widget.platform));
+      if (uri != null) {
+        await widget.open(uri);
+        opened = true;
       }
-      await widget.store.acknowledge();
+      if (acknowledge) await widget.store.acknowledge();
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              open
-                  ? 'Не удалось открыть историю изменений. Попробуйте ещё раз.'
-                  : 'Не удалось сохранить выбор. Проверьте доступ к папке данных SVOI.',
+              !opened ? 'Не удалось открыть ссылку. Попробуйте ещё раз.' : 'Не удалось сохранить выбор. Проверьте доступ к папке данных SVOI.',
             ),
           ),
         );
@@ -57,30 +57,79 @@ class _ReleaseNoticeBannerState extends State<ReleaseNoticeBanner> {
         color: theme.colorScheme.surface,
         child: Padding(
           padding: const EdgeInsets.fromLTRB(18, 6, 8, 6),
-          child: Row(
-            children: [
-              Icon(
-                Icons.auto_awesome_outlined,
-                size: 18,
-                color: theme.colorScheme.primary,
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  'SVOI обновлён до $version',
-                  style: const TextStyle(fontSize: 12),
-                ),
-              ),
-              TextButton(
-                onPressed: _busy ? null : () => _dismiss(open: true),
-                child: const Text('Что нового', style: TextStyle(fontSize: 12)),
-              ),
-              IconButton(
+          child: LayoutBuilder(
+            builder: (context, bounds) {
+              final title = Row(
+                children: [
+                  Icon(
+                    Icons.auto_awesome_outlined,
+                    size: 18,
+                    color: theme.colorScheme.primary,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'SVOI обновлён до $version',
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                  ),
+                ],
+              );
+              final links = Wrap(
+                spacing: 8,
+                runSpacing: 4,
+                children: [
+                  TextButton(
+                    onPressed: _busy
+                        ? null
+                        : () => _act(
+                            uri: changelogUri(
+                              version,
+                              platform: widget.platform,
+                            ),
+                          ),
+                    child: const Text(
+                      'Что нового',
+                      style: TextStyle(fontSize: 12),
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: _busy
+                        ? null
+                        : () => _act(
+                            uri: sourceRepositoryUri,
+                            acknowledge: false,
+                          ),
+                    child: const Text('GitHub', style: TextStyle(fontSize: 12)),
+                  ),
+                ],
+              );
+              final close = IconButton(
                 tooltip: 'Скрыть до следующего обновления',
-                onPressed: _busy ? null : _dismiss,
+                onPressed: _busy ? null : () => _act(),
                 icon: const Icon(Icons.close, size: 18),
-              ),
-            ],
+              );
+              return bounds.maxWidth >= 640
+                  ? Row(
+                      children: [
+                        Expanded(child: title),
+                        links,
+                        close,
+                      ],
+                    )
+                  : Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(child: title),
+                            close,
+                          ],
+                        ),
+                        links,
+                      ],
+                    );
+            },
           ),
         ),
       );

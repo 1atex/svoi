@@ -181,20 +181,18 @@ class _OnboardingDialogState extends State<OnboardingDialog> {
     }
   }
 
-  Future<void> _openChanges() async {
+  Future<void> _openLink(Uri uri) async {
     if (_opening) return;
     setState(() {
       _opening = true;
       _error = null;
     });
     try {
-      await widget.open(
-        changelogUri(widget.version, platform: widget.platform),
-      );
+      await widget.open(uri);
     } catch (_) {
       if (mounted) {
         setState(
-          () => _error = 'Не удалось открыть браузер. История изменений доступна в GitHub Releases SVOI.',
+          () => _error = 'Не удалось открыть браузер. Попробуйте ещё раз или откройте svoi.space вручную.',
         );
       }
     } finally {
@@ -472,10 +470,30 @@ class _OnboardingDialogState extends State<OnboardingDialog> {
               style: TextStyle(color: p.muted, height: 1.6, fontSize: 13),
             ),
             const SizedBox(height: 13),
-            OutlinedButton.icon(
-              onPressed: _opening ? null : _openChanges,
-              icon: const Icon(Icons.open_in_new, size: 16),
-              label: Text(_opening ? 'Открываем…' : 'Посмотреть изменения'),
+            Wrap(
+              spacing: 10,
+              runSpacing: 8,
+              children: [
+                OutlinedButton.icon(
+                  onPressed: _opening
+                      ? null
+                      : () => _openLink(
+                          changelogUri(
+                            widget.version,
+                            platform: widget.platform,
+                          ),
+                        ),
+                  icon: const Icon(Icons.open_in_new, size: 16),
+                  label: Text(_opening ? 'Открываем…' : 'Посмотреть изменения'),
+                ),
+                TextButton.icon(
+                  onPressed: _opening
+                      ? null
+                      : () => _openLink(sourceRepositoryUri),
+                  icon: const Icon(Icons.code_rounded, size: 16),
+                  label: const Text('GitHub'),
+                ),
+              ],
             ),
           ],
         ),

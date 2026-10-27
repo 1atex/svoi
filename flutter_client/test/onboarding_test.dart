@@ -140,7 +140,14 @@ void main() {
       expect(find.text('Всё на своих местах.'), findsOneWidget);
       await tester.tap(find.text('Посмотреть изменения'));
       await tester.pumpAndSettle();
-      expect(opened.single.path, endsWith('v0.6.0-beta.4'));
+      expect(opened.single.host, 'svoi.space');
+      expect(opened.single.queryParameters, {
+        'version': '0.6.0-beta.4',
+        'platform': 'windows',
+      });
+      await tester.tap(find.text('GitHub'));
+      await tester.pumpAndSettle();
+      expect(opened.last.toString(), 'https://github.com/1atex/svoi');
       await tester.tap(find.text('Назад'));
       await tester.pumpAndSettle();
       expect(appearance.value, AppAppearance.rose);

@@ -2,8 +2,7 @@ param(
     [string]$Version = '0.6.0-beta.4',
     [string]$FlutterSdk = '',
     [string]$CrtDirectory = '',
-    [switch]$SkipChecks,
-    [switch]$PublicChangelog
+    [switch]$SkipChecks
 )
 $ErrorActionPreference = 'Stop'
 if ($Version -notmatch '^\d+\.\d+\.\d+(?:-(?:prebeta|beta|rc)\.\d+)?$') { throw 'Invalid version' }
@@ -47,7 +46,6 @@ try {
         }
         (Get-Item windows/runner/Runner.rc).LastWriteTime = Get-Date
         $buildOptions = @('--no-version-check', 'build', 'windows', '--release')
-        if ($PublicChangelog) { $buildOptions += '--dart-define=SVOI_PUBLIC_CHANGELOG=true' }
         & $flutter @buildOptions
         if ($LASTEXITCODE) { throw 'Flutter release build failed' }
         & "$PSScriptRoot/verify-windows-branding.ps1" -Executable "$PSScriptRoot/build/windows/x64/runner/Release/svoi.exe"

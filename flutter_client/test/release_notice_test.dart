@@ -71,14 +71,22 @@ void main() {
     expect(isNewerRelease('0.6.0', '0.6.0-beta.15'), isTrue);
     expect(isNewerRelease('0.6.0-beta.3', '0.6.0'), isFalse);
     expect(isNewerRelease('unknown', '0.6.0'), isFalse);
+    for (final (version, platform) in [
+      ('0.6.0-beta.4', 'windows'),
+      ('0.1.0-preview.9', 'android'),
+      ('0.6.0-preview.2', 'linux'),
+    ]) {
+      final uri = changelogUri(version, platform: platform);
+      expect(uri.scheme, 'https');
+      expect(uri.host, 'svoi.space');
+      expect(uri.path, '/changelog/');
+      expect(uri.queryParameters, {'platform': platform, 'version': version});
+    }
     expect(
-      changelogUri('0.6.0-beta.4').path,
-      '/1atex/svoi/releases/tag/v0.6.0-beta.4',
+      changelogUri('0.6.0-beta.4&platform=other').queryParameters['version'],
+      '0.6.0-beta.4&platform=other',
     );
-    expect(
-      changelogUri('0.1.0-preview.9', platform: 'android').path,
-      '/1atex/svoi/releases/tag/android-v0.1.0-preview.9',
-    );
+    expect(sourceRepositoryUri.toString(), 'https://github.com/1atex/svoi');
   });
 
   test(
@@ -105,7 +113,8 @@ void main() {
       var fail = true;
       Future<void> open(Uri uri) async {
         opened++;
-        expect(uri.path, endsWith('v0.6.0-beta.4'));
+        expect(uri.host, 'svoi.space');
+        expect(uri.queryParameters['version'], '0.6.0-beta.4');
         if (fail) throw Exception('No browser');
       }
 
@@ -171,4 +180,30 @@ void main() {
       expect(store.pendingVersion, isNull);
     },
   );
+
+  testWidgets('GitHub opens repository without dismissing release reminder', (
+    tester,
+  ) async {
+    late ReleaseNoticeStore store;
+    await tester.runAsync(() async {
+      store = ReleaseNoticeStore(file);
+      await store.load('0.6.0-beta.4', previousInstall: '0.6.0-beta.3');
+    });
+    final opened = <Uri>[];
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: ReleaseNoticeBanner(
+            store: store,
+            open: (uri) async => opened.add(uri),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('GitHub'));
+    await tester.pumpAndSettle();
+    expect(opened.single.toString(), 'https://github.com/1atex/svoi');
+    expect(store.pendingVersion, '0.6.0-beta.4');
+    expect(find.text('Что нового'), findsOneWidget);
+  });
 }

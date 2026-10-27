@@ -4,20 +4,13 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 
 Uri changelogUri(String version, {String platform = 'windows'}) {
-  const websiteEnabled = bool.fromEnvironment('SVOI_PUBLIC_CHANGELOG');
-  if (websiteEnabled) {
-    return Uri.https('svoi.space', '/changelog/', {
-      'platform': platform,
-      'version': version,
-    });
-  }
-  final prefix = switch (platform) {
-    'android' => 'android-v',
-    'linux' => 'linux-v',
-    _ => 'v',
-  };
-  return Uri.https('github.com', '/1atex/svoi/releases/tag/$prefix$version');
+  return Uri.https('svoi.space', '/changelog/', {
+    'platform': platform,
+    'version': version,
+  });
 }
+
+final sourceRepositoryUri = Uri.https('github.com', '/1atex/svoi');
 
 bool isNewerRelease(String current, String previous) {
   List<String>? parts(String value) {
