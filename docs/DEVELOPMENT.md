@@ -30,4 +30,4 @@ go vet ./...
 
 ## Следующее обновление Android
 
-Перенести кнопку «Новости SVOI в Telegram» в мобильный интерфейс. Канал: `@SVOI_client`, диплинк: `tg://resolve?domain=SVOI_client`. Открывать через Android Intent в обработчике `openCommunity`, без автоматического перехода в браузер; при отсутствии Telegram показать подсказку и копирование ссылки. Windows beta.21 реализует этот переход в Windows runner.
+Перенести кнопку «Новости SVOI в Telegram» в мобильный интерфейс. Канал: `@SVOI_client`, диплинк: `tg://resolve?domain=SVOI_client`. Открывать через Android Intent в обработчике `openCommunity`, без автоматического перехода в браузер; при отсутствии Telegram показать подсказку и копирование ссылки. Windows 0.6.0-beta.1 реализует этот переход в Windows runner.

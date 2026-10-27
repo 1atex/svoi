@@ -12,7 +12,7 @@ import (
 )
 
 func TestUpdateVersionOrder(t *testing.T) {
-	for _, pair := range [][2]string{{"9.1.0-prebeta.1", "0.4.0-prebeta.1"}, {"0.4.0-beta.1", "0.4.0-prebeta.9"}, {"0.4.0-rc.1", "0.4.0-beta.9"}, {"v0.4.0", "0.4.0-rc.9"}, {"0.5.0-prebeta.1", "0.4.0"}} {
+	for _, pair := range [][2]string{{"9.1.0-prebeta.1", "0.4.0-prebeta.1"}, {"0.4.0-beta.1", "0.4.0-prebeta.9"}, {"0.4.0-rc.1", "0.4.0-beta.9"}, {"v0.4.0", "0.4.0-rc.9"}, {"0.5.0-prebeta.1", "0.4.0"}, {"0.6.0-beta.1", "0.5.0-beta.15"}, {"0.6.0-beta.1", "0.5.0-beta.99"}} {
 		if !newerVersion(pair[0], pair[1]) || newerVersion(pair[1], pair[0]) || newerVersion(pair[0], pair[0]) {
 			t.Fatal(pair)
 		}
