@@ -24,6 +24,10 @@
   &nbsp; · &nbsp;
   <a href="https://github.com/1atex/svoi/releases/latest">Последний релиз Windows</a>
   &nbsp; · &nbsp;
+  <a href="https://svoi.space/">Сайт SVOI</a>
+  &nbsp; · &nbsp;
+  <a href="https://svoi.space/changelog/">История обновлений</a>
+  &nbsp; · &nbsp;
   <a href="https://github.com/1atex/svoi/issues">Сообщить об ошибке</a>
   &nbsp; · &nbsp;
   <a href="https://t.me/SVOI_client">Telegram · новости и обсуждения</a>
