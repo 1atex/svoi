@@ -42,9 +42,9 @@ class _DesktopTitlebarState extends State<DesktopTitlebar> {
     builder: (context, bounds) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _reportFrame());
       final narrow = bounds.maxWidth < 600;
-      const tabs = [
+      final tabs = [
         (0, 'Подключение', LucideIcons.power),
-        (4, 'zapret', LucideIcons.shield),
+        if (!Platform.isLinux) (4, 'zapret', LucideIcons.shield),
         (6, 'Инструменты', LucideIcons.network),
         (5, 'Настройки', LucideIcons.settings2),
       ];
@@ -165,10 +165,7 @@ class _DesktopTitlebarState extends State<DesktopTitlebar> {
                       value: 'profiles',
                       child: Text('Профили и перенос'),
                     ),
-                    PopupMenuItem(
-                      value: 'tray',
-                      child: Text('Свернуть в трей'),
-                    ),
+                    PopupMenuItem(value: 'tray', child: Text('Свернуть')),
                   ],
                   icon: const Icon(LucideIcons.ellipsis, size: 20),
                 ),
@@ -179,7 +176,7 @@ class _DesktopTitlebarState extends State<DesktopTitlebar> {
                   icon: const Icon(LucideIcons.users, size: 20),
                 ),
                 IconButton(
-                  tooltip: 'Свернуть в трей',
+                  tooltip: Platform.isLinux ? 'Свернуть' : 'Свернуть в трей',
                   onPressed: () => _sendWindowCommand('tray'),
                   icon: const Icon(LucideIcons.chevronDown, size: 20),
                 ),

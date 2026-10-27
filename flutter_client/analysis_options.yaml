@@ -5,6 +5,7 @@ analyzer:
     - build/**
     - windows/**
     - android/**
+    - linux/**
 
 linter:
   rules: {}

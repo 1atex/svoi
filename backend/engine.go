@@ -12,6 +12,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -72,6 +73,9 @@ func newEngine(binary, dir string) (*Engine, error) {
 	if _, err := os.Stat(binary); err != nil {
 		e.status.Problem = "core_missing"
 		e.status.Error = "Не найдено или недоступно ядро core/xray.exe. Установите SVOI через setup.exe или распакуйте весь Windows-архив: папка core должна находиться рядом с EXE. Затем перезапустите приложение."
+		if runtime.GOOS == "linux" {
+			e.status.Error = "Не найдено ядро Xray. Переустановите пакет SVOI или распакуйте весь Linux-архив вместе с папкой backend/core."
+		}
 		return e, nil
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -82,6 +86,9 @@ func newEngine(binary, dir string) (*Engine, error) {
 	if err != nil {
 		e.status.Problem = "core_start_failed"
 		e.status.Error = "Ядро Xray найдено, но не запускается. Распакуйте полный Windows x64 архив и проверьте, разрешён ли запуск core/xray.exe в Windows."
+		if runtime.GOOS == "linux" {
+			e.status.Error = "Не удалось запустить Xray. Проверьте права на исполнение backend/core/xray и архитектуру x86_64."
+		}
 		return e, nil
 	}
 	e.status.Available = true
@@ -97,7 +104,7 @@ func (e *Engine) snapshot(includeLogs bool) EngineStatus {
 	defer e.mu.Unlock()
 	s := e.status
 	s.DirectDomains = append([]string{}, s.DirectDomains...)
-	s.Elevated = isElevated()
+	s.Elevated = canCreateTun(e.binary)
 	s.Routing.Processes = append([]string{}, e.status.Routing.Processes...)
 	s.Logs = nil
 	if includeLogs {
@@ -184,7 +191,10 @@ func (e *Engine) startContext(parent context.Context, server ServerConfig, mode 
 	if !e.Status().Available {
 		return fail(503, "Ядро Xray не найдено. Распакуйте приложение вместе с папкой core.")
 	}
-	if mode == "tun" && !isElevated() {
+	if mode == "tun" && !canCreateTun(e.binary) {
+		if runtime.GOOS == "linux" {
+			return fail(409, "Для TUN установите пакет .deb: он выдаст ядру сетевые права. Для переносимой сборки выполните команду setcap из LINUX.md, затем повторите подключение. Само приложение запускайте обычным пользователем.")
+		}
 		return fail(409, "Для TUN закройте SVOI и запустите его от имени администратора. Системный прокси работает без повышения прав.")
 	}
 	socks, sp, err := reservePort()

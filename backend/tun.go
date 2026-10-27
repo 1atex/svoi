@@ -1,13 +1,20 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+	"runtime"
+)
 
 func tunInbound(tag string) object {
+	routes := []string{"0.0.0.0/0", "::/0"}
+	if runtime.GOOS == "linux" {
+		routes = []string{"0.0.0.0/1", "128.0.0.0/1", "::/1", "8000::/1"}
+	}
 	return object{"tag": tag, "protocol": "tun", "settings": object{
 		"name": "SVOI", "desc": "SVOI", "mtu": 1500,
 		"gateway":                []string{"172.31.255.1/30", "fd42:7376:6f69::1/126"},
 		"dns":                    []string{"1.1.1.1", "8.8.8.8"},
-		"autoSystemRoutingTable": []string{"0.0.0.0/0", "::/0"},
+		"autoSystemRoutingTable": routes,
 		"autoOutboundsInterface": "auto",
 	}, "sniffing": object{"enabled": true, "destOverride": []string{"http", "tls", "quic"}, "routeOnly": true}}
 }

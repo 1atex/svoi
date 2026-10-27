@@ -373,10 +373,12 @@ class AppearancePanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final store = AppearanceScope.of(context);
     if (store == null) return const SizedBox.shrink();
-    const labels = {
+    final labels = {
       AppAppearance.dark: 'Классика',
       AppAppearance.light: 'Светлая',
-      AppAppearance.system: 'Как в Windows',
+      AppAppearance.system: Platform.isLinux
+          ? 'Как в системе'
+          : 'Как в Windows',
       AppAppearance.ocean: 'Океан',
       AppAppearance.emerald: 'Изумруд',
       AppAppearance.rose: 'Роза',

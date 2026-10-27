@@ -44,7 +44,7 @@ func TestMissingCoreExplainsUnavailableConnection(t *testing.T) {
 		t.Fatal(err)
 	}
 	status := engine.Status()
-	if status.Available || status.Problem != "core_missing" || !strings.Contains(status.Error, "Windows-архив") {
+	if status.Available || status.Problem != "core_missing" || !strings.Contains(status.Error, "Xray") {
 		t.Fatalf("missing actionable diagnostic: %+v", status)
 	}
 }

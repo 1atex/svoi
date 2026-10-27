@@ -7,6 +7,19 @@ Future<Directory> prepareDataDirectory({
   final env = environment ?? Platform.environment;
   final override = env['SVOI_DATA'] ?? env['SVOI_FLUTTER_DATA'];
   if (override != null) return Directory(override)..createSync(recursive: true);
+  if (!Platform.isWindows && env['APPDATA'] == null) {
+    final home = env['HOME'];
+    final base =
+        env['XDG_DATA_HOME'] ?? (home == null ? null : '$home/.local/share');
+    if (base == null || !base.startsWith('/')) {
+      throw const FileSystemException(
+        'Не удалось определить домашний каталог. Задайте SVOI_DATA.',
+      );
+    }
+    final directory = Directory('$base/svoi');
+    await directory.create(recursive: true);
+    return directory;
+  }
   final root = env['APPDATA'] ?? Directory.current.path;
   final target = Directory('$root/SVOI');
   final marker = File('${target.path}/.desktop-data');

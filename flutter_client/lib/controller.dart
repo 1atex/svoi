@@ -223,7 +223,9 @@ class SvoiController {
           .toList();
       final savedMode = saved['mode'];
       if (['local', 'system', 'tun'].contains(savedMode)) {
-        mode.value = savedMode;
+        mode.value = Platform.isLinux && savedMode == 'system'
+            ? 'tun'
+            : savedMode;
       }
     }
     if (api.token.isNotEmpty) {
@@ -240,8 +242,8 @@ class SvoiController {
         method: 'POST',
         body: {
           'name': 'Моя сеть',
-          'deviceName': 'Windows',
-          'platform': 'Windows',
+          'deviceName': Platform.isLinux ? 'Linux' : 'Windows',
+          'platform': Platform.isLinux ? 'Linux' : 'Windows',
         },
       );
       api.token = result['token'];
@@ -615,8 +617,8 @@ class SvoiController {
         method: 'POST',
         body: {
           'code': text,
-          'deviceName': 'Windows',
-          'platform': 'Windows',
+          'deviceName': Platform.isLinux ? 'Linux' : 'Windows',
+          'platform': Platform.isLinux ? 'Linux' : 'Windows',
           'replace': true,
         },
       );
@@ -654,7 +656,11 @@ class SvoiController {
     final result = await api.request(
       'groups',
       method: 'POST',
-      body: {'name': name, 'deviceName': 'Мой ПК', 'platform': 'Windows'},
+      body: {
+        'name': name,
+        'deviceName': 'Мой ПК',
+        'platform': Platform.isLinux ? 'Linux' : 'Windows',
+      },
     );
     api.token = result['token'];
     _acceptGroup(result['group']);
@@ -690,7 +696,7 @@ class SvoiController {
           body: {
             'code': code,
             'deviceName': 'Мой ПК',
-            'platform': 'Windows',
+            'platform': Platform.isLinux ? 'Linux' : 'Windows',
             'replace': replace,
           },
         );

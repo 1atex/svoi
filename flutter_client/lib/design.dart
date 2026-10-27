@@ -229,13 +229,14 @@ class ModePicker extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
               ),
             ),
-            const DropdownMenuItem(
-              value: 'system',
-              child: Text(
-                'Приложения с системным прокси',
-                overflow: TextOverflow.ellipsis,
+            if (!Platform.isLinux)
+              const DropdownMenuItem(
+                value: 'system',
+                child: Text(
+                  'Приложения с системным прокси',
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
-            ),
             const DropdownMenuItem(
               value: 'local',
               child: Text(
@@ -253,6 +254,10 @@ class ModePicker extends StatelessWidget {
         const SizedBox(height: 10),
         Text(
           switch (c.mode.value) {
+            'tun' when Platform.isLinux =>
+              c.connection.value['elevated'] == true
+                  ? 'Маршруты из конфигурации сохраняются. DNS управляется системой Linux.'
+                  : 'Для TUN установите пакет .deb или настройте сетевые права ядра по LINUX.md.',
             'tun' =>
               c.connection.value['elevated'] == true
                   ? 'Маршруты из конфигурации сохраняются.'

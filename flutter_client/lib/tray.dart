@@ -82,7 +82,7 @@ Map<String, dynamic> trayState(SvoiController c) {
         'children': [
           for (final entry in [
             ('tun', 'TUN'),
-            ('system', 'Системный прокси'),
+            if (!Platform.isLinux) ('system', 'Системный прокси'),
             ('local', 'Ручной прокси'),
           ])
             item(

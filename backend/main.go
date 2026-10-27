@@ -20,6 +20,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -300,7 +301,7 @@ func (a *App) dispatch(w http.ResponseWriter, r *http.Request) error {
 					return fail(409, "Лимит групп на этом сервере достигнут")
 				}
 				member.Device.Owner = true
-				g := Group{ID: secret(), Name: strings.TrimSpace(in.Name), Identity: Identity{HWID: digest(secret())[:32], OS: "Windows", Model: "SVOI Group", Locale: "ru-RU", UserAgent: "SVOI/0.2"}, Devices: []Member{member}}
+				g := Group{ID: secret(), Name: strings.TrimSpace(in.Name), Identity: Identity{HWID: digest(secret())[:32], OS: platformIdentityOS(), Model: "SVOI Group", Locale: "ru-RU", UserAgent: "SVOI/0.2"}, Devices: []Member{member}}
 				a.state.Groups = append(a.state.Groups, g)
 				result = snapshot(&g, &member)
 			} else {
@@ -761,24 +762,26 @@ func run() error {
 		if err != nil {
 			return err
 		}
-		a.engine, err = newEngine(filepath.Join(filepath.Dir(exe), "core", "xray.exe"), filepath.Join(filepath.Dir(*data), "runtime"))
+		a.engine, err = newEngine(filepath.Join(filepath.Dir(exe), "core", coreExecutableName()), filepath.Join(filepath.Dir(*data), "runtime"))
 		if err != nil {
 			return err
 		}
 		defer a.engine.Stop()
-		a.zapret = newZapret(a)
-		defer a.zapret.Stop()
-		if *native && *startup {
-			if err := a.startSavedZapret(); err != nil {
-				log.Print(err)
+		if runtime.GOOS == "windows" {
+			a.zapret = newZapret(a)
+			defer a.zapret.Stop()
+			if *native && *startup {
+				if err := a.startSavedZapret(); err != nil {
+					log.Print(err)
+				}
 			}
-		}
-		if a.localSettings().ZapretAutoUpdate && a.zapret.installed.Directory != "" {
-			a.zapret.launchJob("update", nil, false)
-		}
-		a.updates = newUpdater(a)
-		if a.localSettings().AutoUpdate {
-			a.updates.start("check")
+			if a.localSettings().ZapretAutoUpdate && a.zapret.installed.Directory != "" {
+				a.zapret.launchJob("update", nil, false)
+			}
+			a.updates = newUpdater(a)
+			if a.localSettings().AutoUpdate {
+				a.updates.start("check")
+			}
 		}
 	}
 	log.Printf("SVOI %s — http://%s", appVersion, *listen)

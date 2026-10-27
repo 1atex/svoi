@@ -60,7 +60,7 @@ class NativeBackend extends Backend {
     final directory = File(Platform.resolvedExecutable).parent.path;
     final binary =
         Platform.environment['SVOI_BACKEND'] ??
-        '$directory/backend/svoi-backend.exe';
+        '$directory/backend/svoi-backend${Platform.isWindows ? '.exe' : ''}';
     if (!await File(binary).exists()) {
       throw ApiException(
         'Не найден локальный сервис SVOI. Переустановите приложение или распакуйте весь архив.',

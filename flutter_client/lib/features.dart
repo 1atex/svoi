@@ -1,6 +1,9 @@
 part of 'main.dart';
 
-const clientVersion = '0.6.0-beta.3';
+const clientVersion = String.fromEnvironment(
+  'SVOI_VERSION',
+  defaultValue: '0.6.0-beta.3',
+);
 
 class ConfigPane extends StatelessWidget {
   const ConfigPane({
@@ -893,239 +896,257 @@ class PreferencesPage extends StatelessWidget {
   const PreferencesPage({super.key, required this.c});
   final SvoiController c;
   @override
-  Widget build(BuildContext context) => FeatureBody(
-    children: [
-      const AppearancePanel(),
-      Section(
-        'Сценарии',
-        children: [
-          Align(
-            alignment: Alignment.centerLeft,
-            child: OutlinedButton.icon(
-              onPressed: () =>
-                  showDesktopSheet(context, 'Сценарии', ScenarioManager(c: c)),
-              icon: const Icon(LucideIcons.layers, size: 16),
-              label: const Text('Управлять сценариями'),
-            ),
-          ),
-        ],
-      ),
-      ProbeSettingsPanel(c: c),
-      Section(
-        'Автоматизация',
-        children: [
-          StartupPanel(c: c),
-          const Divider(height: 28),
-          ListenableBuilder(
-            listenable: Listenable.merge([c.preferences, c.busy]),
-            builder: (context, _) => Column(
+  Widget build(BuildContext context) => Platform.isLinux
+      ? LinuxPreferences(c: c)
+      : FeatureBody(
+          children: [
+            const AppearancePanel(),
+            Section(
+              'Сценарии',
               children: [
-                for (final entry in {
-                  'autoRefresh': 'Обновлять при запуске',
-                  'autoUpdate': 'Проверять обновления приложения',
-                  'autoDownload': 'Скачивать обновления автоматически',
-                  'autoPauseZapret': 'Переключать zapret и VPN автоматически',
-                }.entries)
-                  SwitchListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: Text(entry.value),
-                    subtitle: entry.key == 'autoRefresh'
-                        ? const Text('Подписки загрузятся в фоне.')
-                        : entry.key == 'autoPauseZapret'
-                        ? const Text(
-                            'Приостанавливать zapret из SVOI перед TUN и возвращать после отключения VPN.',
-                          )
-                        : null,
-                    value: c.preferences.value[entry.key] == true,
-                    onChanged: c.busy.value
-                        ? null
-                        : (value) => c.settings({entry.key: value}),
-                  ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 12),
-          ListenableBuilder(
-            listenable: Listenable.merge([
-              c.refreshingSources,
-              c.refreshProgress,
-            ]),
-            builder: (context, _) => Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                OutlinedButton.icon(
-                  onPressed: c.refreshingSources.value.isEmpty
-                      ? c.refreshSubscriptions
-                      : null,
-                  icon: const Icon(Icons.refresh),
-                  label: Text(
-                    c.refreshingSources.value.isEmpty
-                        ? 'Обновить подписки сейчас'
-                        : 'Подписки обновляются…',
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: OutlinedButton.icon(
+                    onPressed: () => showDesktopSheet(
+                      context,
+                      'Сценарии',
+                      ScenarioManager(c: c),
+                    ),
+                    icon: const Icon(LucideIcons.layers, size: 16),
+                    label: const Text('Управлять сценариями'),
                   ),
                 ),
-                if (c.refreshProgress.value.isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 8),
-                    child: Text(
-                      c.refreshProgress.value,
-                      style: TextStyle(
-                        color: appColors(context).muted,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ),
               ],
             ),
-          ),
-        ],
-      ),
-      Section(
-        'Обновления SVOI',
-        subtitle:
-            'Версия $clientVersion. Проверка и загрузка выполняются в приложении.',
-        children: [
-          RemotePanel(
-            c: c,
-            path: 'updates',
-            builder: (context, u, acting, act) {
-              final state = u['state'];
-              final working =
-                  acting ||
-                  ['checking', 'downloading', 'installing'].contains(state);
-              final labels = {
-                'idle': 'Проверка ещё не выполнялась',
-                'checking': 'Проверяем релизы…',
-                'current': 'Установлена актуальная версия',
-                'available': 'Доступна ${u['version']}',
-                'downloading': 'Загружаем ${u['version']}',
-                'ready': '${u['version']} скачана и проверена',
-                'installing': 'Запускаем установщик…',
-                'error': 'Не удалось обновить приложение',
-              };
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text(
-                    labels[state] ?? state ?? '',
-                    style: const TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  if (state == 'downloading')
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      child: LinearProgressIndicator(
-                        value: (u['size'] ?? 0) > 0
-                            ? (u['downloaded'] ?? 0) / u['size']
-                            : null,
-                      ),
-                    ),
-                  if (u['error']?.toString().isNotEmpty == true)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 12),
-                      child: Text(
-                        u['error'],
-                        style: TextStyle(color: appColors(context).error),
-                      ),
-                    ),
-                  const SizedBox(height: 16),
-                  Wrap(
-                    spacing: 12,
-                    runSpacing: 12,
+            ProbeSettingsPanel(c: c),
+            Section(
+              'Автоматизация',
+              children: [
+                StartupPanel(c: c),
+                const Divider(height: 28),
+                ListenableBuilder(
+                  listenable: Listenable.merge([c.preferences, c.busy]),
+                  builder: (context, _) => Column(
                     children: [
-                      OutlinedButton(
-                        onPressed: working ? null : () => act('check', null),
-                        child: const Text('Проверить обновления'),
-                      ),
-                      if (state == 'available')
-                        FilledButton(
-                          onPressed: working
+                      for (final entry in {
+                        'autoRefresh': 'Обновлять при запуске',
+                        'autoUpdate': 'Проверять обновления приложения',
+                        'autoDownload': 'Скачивать обновления автоматически',
+                        'autoPauseZapret':
+                            'Переключать zapret и VPN автоматически',
+                      }.entries)
+                        SwitchListTile(
+                          contentPadding: EdgeInsets.zero,
+                          title: Text(entry.value),
+                          subtitle: entry.key == 'autoRefresh'
+                              ? const Text('Подписки загрузятся в фоне.')
+                              : entry.key == 'autoPauseZapret'
+                              ? const Text(
+                                  'Приостанавливать zapret из SVOI перед TUN и возвращать после отключения VPN.',
+                                )
+                              : null,
+                          value: c.preferences.value[entry.key] == true,
+                          onChanged: c.busy.value
                               ? null
-                              : () => act('download', null),
-                          child: const Text('Скачать'),
-                        ),
-                      if (state == 'ready')
-                        FilledButton(
-                          onPressed: working
-                              ? null
-                              : () async {
-                                  if (await confirmAction(
-                                    context,
-                                    'Установить обновление?',
-                                    'VPN и zapret будут остановлены. Приложение закроется и откроет установщик новой версии.',
-                                  )) {
-                                    await act('install', null);
-                                  }
-                                },
-                          child: const Text('Установить и перезапустить'),
+                              : (value) => c.settings({entry.key: value}),
                         ),
                     ],
                   ),
-                  if (u['notes']?.toString().isNotEmpty == true)
-                    ExpansionTile(
-                      tilePadding: EdgeInsets.zero,
-                      title: const Text('Что нового'),
-                      children: [SelectableText(u['notes'])],
-                    ),
-                  const SizedBox(height: 12),
-                  Text(
-                    'Установка начинается по вашей команде; скачанный файл проверяется по SHA-256.',
-                    style: TextStyle(
-                      color: appColors(context).muted,
-                      fontSize: 12,
-                    ),
+                ),
+                const SizedBox(height: 12),
+                ListenableBuilder(
+                  listenable: Listenable.merge([
+                    c.refreshingSources,
+                    c.refreshProgress,
+                  ]),
+                  builder: (context, _) => Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      OutlinedButton.icon(
+                        onPressed: c.refreshingSources.value.isEmpty
+                            ? c.refreshSubscriptions
+                            : null,
+                        icon: const Icon(Icons.refresh),
+                        label: Text(
+                          c.refreshingSources.value.isEmpty
+                              ? 'Обновить подписки сейчас'
+                              : 'Подписки обновляются…',
+                        ),
+                      ),
+                      if (c.refreshProgress.value.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8),
+                          child: Text(
+                            c.refreshProgress.value,
+                            style: TextStyle(
+                              color: appColors(context).muted,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
-                ],
-              );
-            },
-          ),
-        ],
-      ),
-      Section(
-        'Сетевые инструменты',
-        children: [
-          Text(
-            'Сравните текущий DNS с альтернативами и сохраните возможность вернуть прежние настройки.',
-            style: TextStyle(color: appColors(context).muted, height: 1.5),
-          ),
-          const SizedBox(height: 12),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: OutlinedButton.icon(
-              onPressed: () => showDesktopSheet(
-                context,
-                'Сетевые инструменты',
-                DnsTools(c: c),
-              ),
-              icon: const Icon(Icons.dns_outlined),
-              label: const Text('Подобрать DNS'),
+                ),
+              ],
             ),
-          ),
-        ],
-      ),
-      Section(
-        'SVOI',
-        subtitle: 'На связи со своими.',
-        children: [
-          Text(
-            'SVOI · Xray Core',
-            style: TextStyle(color: appColors(context).muted),
-          ),
-          const SizedBox(height: 12),
-          ValueListenableBuilder(
-            valueListenable: c.connection,
-            builder: (context, status, _) =>
-                Text(status['version']?.toString() ?? ''),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'Данные приложения находятся в %APPDATA%\\SVOI. Подписки и настройки сохраняются при обновлении.',
-            style: TextStyle(color: appColors(context).muted, height: 1.5),
-          ),
-        ],
-      ),
-    ],
-  );
+            Section(
+              'Обновления SVOI',
+              subtitle:
+                  'Версия $clientVersion. Проверка и загрузка выполняются в приложении.',
+              children: [
+                RemotePanel(
+                  c: c,
+                  path: 'updates',
+                  builder: (context, u, acting, act) {
+                    final state = u['state'];
+                    final working =
+                        acting ||
+                        [
+                          'checking',
+                          'downloading',
+                          'installing',
+                        ].contains(state);
+                    final labels = {
+                      'idle': 'Проверка ещё не выполнялась',
+                      'checking': 'Проверяем релизы…',
+                      'current': 'Установлена актуальная версия',
+                      'available': 'Доступна ${u['version']}',
+                      'downloading': 'Загружаем ${u['version']}',
+                      'ready': '${u['version']} скачана и проверена',
+                      'installing': 'Запускаем установщик…',
+                      'error': 'Не удалось обновить приложение',
+                    };
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Text(
+                          labels[state] ?? state ?? '',
+                          style: const TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        if (state == 'downloading')
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            child: LinearProgressIndicator(
+                              value: (u['size'] ?? 0) > 0
+                                  ? (u['downloaded'] ?? 0) / u['size']
+                                  : null,
+                            ),
+                          ),
+                        if (u['error']?.toString().isNotEmpty == true)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 12),
+                            child: Text(
+                              u['error'],
+                              style: TextStyle(color: appColors(context).error),
+                            ),
+                          ),
+                        const SizedBox(height: 16),
+                        Wrap(
+                          spacing: 12,
+                          runSpacing: 12,
+                          children: [
+                            OutlinedButton(
+                              onPressed: working
+                                  ? null
+                                  : () => act('check', null),
+                              child: const Text('Проверить обновления'),
+                            ),
+                            if (state == 'available')
+                              FilledButton(
+                                onPressed: working
+                                    ? null
+                                    : () => act('download', null),
+                                child: const Text('Скачать'),
+                              ),
+                            if (state == 'ready')
+                              FilledButton(
+                                onPressed: working
+                                    ? null
+                                    : () async {
+                                        if (await confirmAction(
+                                          context,
+                                          'Установить обновление?',
+                                          'VPN и zapret будут остановлены. Приложение закроется и откроет установщик новой версии.',
+                                        )) {
+                                          await act('install', null);
+                                        }
+                                      },
+                                child: const Text('Установить и перезапустить'),
+                              ),
+                          ],
+                        ),
+                        if (u['notes']?.toString().isNotEmpty == true)
+                          ExpansionTile(
+                            tilePadding: EdgeInsets.zero,
+                            title: const Text('Что нового'),
+                            children: [SelectableText(u['notes'])],
+                          ),
+                        const SizedBox(height: 12),
+                        Text(
+                          'Установка начинается по вашей команде; скачанный файл проверяется по SHA-256.',
+                          style: TextStyle(
+                            color: appColors(context).muted,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+              ],
+            ),
+            Section(
+              'Сетевые инструменты',
+              children: [
+                Text(
+                  'Сравните текущий DNS с альтернативами и сохраните возможность вернуть прежние настройки.',
+                  style: TextStyle(
+                    color: appColors(context).muted,
+                    height: 1.5,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: OutlinedButton.icon(
+                    onPressed: () => showDesktopSheet(
+                      context,
+                      'Сетевые инструменты',
+                      DnsTools(c: c),
+                    ),
+                    icon: const Icon(Icons.dns_outlined),
+                    label: const Text('Подобрать DNS'),
+                  ),
+                ),
+              ],
+            ),
+            Section(
+              'SVOI',
+              subtitle: 'На связи со своими.',
+              children: [
+                Text(
+                  'SVOI · Xray Core',
+                  style: TextStyle(color: appColors(context).muted),
+                ),
+                const SizedBox(height: 12),
+                ValueListenableBuilder(
+                  valueListenable: c.connection,
+                  builder: (context, status, _) =>
+                      Text(status['version']?.toString() ?? ''),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Данные приложения находятся в %APPDATA%\\SVOI. Подписки и настройки сохраняются при обновлении.',
+                  style: TextStyle(
+                    color: appColors(context).muted,
+                    height: 1.5,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        );
 }

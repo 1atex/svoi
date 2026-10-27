@@ -20,6 +20,7 @@ part 'overview.dart';
 part 'desktop_workspace.dart';
 part 'desktop_titlebar.dart';
 part 'community.dart';
+part 'linux_preferences.dart';
 part 'appearance.dart';
 part 'power_control.dart';
 part 'connection_view.dart';

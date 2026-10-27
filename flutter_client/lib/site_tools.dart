@@ -4,27 +4,29 @@ class NetworkToolsPage extends StatelessWidget {
   const NetworkToolsPage({super.key, required this.c});
   final SvoiController c;
   @override
-  Widget build(BuildContext context) => DefaultTabController(
-    length: 2,
-    child: Column(
-      children: [
-        const TabBar(
-          tabs: [
-            Tab(text: 'Проверить сайт'),
-            Tab(text: 'DNS'),
-          ],
-        ),
-        Expanded(
-          child: TabBarView(
+  Widget build(BuildContext context) => Platform.isLinux
+      ? SiteCheckPanel(c: c)
+      : DefaultTabController(
+          length: 2,
+          child: Column(
             children: [
-              SiteCheckPanel(c: c),
-              DnsTools(c: c),
+              const TabBar(
+                tabs: [
+                  Tab(text: 'Проверить сайт'),
+                  Tab(text: 'DNS'),
+                ],
+              ),
+              Expanded(
+                child: TabBarView(
+                  children: [
+                    SiteCheckPanel(c: c),
+                    DnsTools(c: c),
+                  ],
+                ),
+              ),
             ],
           ),
-        ),
-      ],
-    ),
-  );
+        );
 }
 
 class SiteCheckPanel extends StatefulWidget {

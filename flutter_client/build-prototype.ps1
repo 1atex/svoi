@@ -7,7 +7,7 @@ param(
 $ErrorActionPreference = 'Stop'
 if ($Version -notmatch '^\d+\.\d+\.\d+(?:-(?:prebeta|beta|rc)\.\d+)?$') { throw 'Invalid version' }
 $root = Split-Path $PSScriptRoot -Parent
-$dartVersion = [regex]::Match((Get-Content -LiteralPath "$PSScriptRoot/lib/features.dart" -Raw), "const clientVersion = '([^']+)'").Groups[1].Value
+$dartVersion = [regex]::Match((Get-Content -LiteralPath "$PSScriptRoot/lib/features.dart" -Raw), "(?s)const clientVersion\s*=\s*String\.fromEnvironment\(.*?defaultValue:\s*'([^']+)'").Groups[1].Value
 $packageVersion = [regex]::Match((Get-Content -LiteralPath "$PSScriptRoot/pubspec.yaml" -Raw), '(?m)^version: ([^+\s]+)').Groups[1].Value
 if ($Version -ne $dartVersion -or $Version -ne $packageVersion) { throw 'Go, Dart and pubspec release versions must match -Version' }
 if (!$FlutterSdk) { $FlutterSdk = Join-Path $root '.tools/sdk/flutter' }

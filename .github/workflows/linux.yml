@@ -1,0 +1,71 @@
+name: Linux preview
+on:
+  push:
+    tags: ['linux-v*']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  linux:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.27.3'
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.7'
+          channel: stable
+          cache: true
+      - name: Install Linux build and test dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev libstdc++-12-dev libayatana-appindicator3-dev libcap2-bin xvfb xdotool scrot openbox dbus-x11
+      - name: Verify tag and build packages
+        run: |
+          VERSION=$(python3 -c 'import json; print(json.load(open("config/linux-release.json"))["version"])')
+          if [[ "$GITHUB_REF_TYPE" == tag && "$GITHUB_REF_NAME" != "linux-v$VERSION" ]]; then exit 1; fi
+          echo "LINUX_VERSION=$VERSION" >> "$GITHUB_ENV"
+          bash scripts/build-linux.sh
+      - name: Check backend and interface
+        run: |
+          export SVOI_TEST_CORE="$PWD/.tools/linux-core/xray"
+          go test -tags native_core ./...
+          go vet -tags native_core ./...
+          cd flutter_client
+          dart format --output=none --set-exit-if-changed lib test
+          flutter analyze
+          flutter test test/linux_platform_test.dart test/controller_test.dart test/data_directory_test.dart test/appearance_test.dart test/community_test.dart
+      - name: Verify traffic, reconnects and window lifecycle
+        run: |
+          BUNDLE="$PWD/.tools/linux-package/$LINUX_VERSION/svoi"
+          python3 scripts/linux-backend-smoke.py "$BUNDLE"
+          sudo bash scripts/linux-tun-smoke.sh "$(id -un)"
+          dbus-run-session -- xvfb-run -a -s '-screen 0 1280x900x24' python3 scripts/linux-ui-smoke.py "$BUNDLE" .tools/linux-ui-results
+          for file in releases/linux-v"$LINUX_VERSION"/*.sha256; do (cd "$(dirname "$file")" && sha256sum -c "$(basename "$file")"); done
+      - name: Verify Debian installation
+        run: |
+          sudo apt-get install -y ./releases/linux-v"$LINUX_VERSION"/SVOI-"$LINUX_VERSION"-linux-amd64.deb
+          test "$(stat -c '%U:%G:%a' /opt/svoi/backend/core/xray)" = 'root:sudo:750'
+          getcap /opt/svoi/backend/core/xray | grep -F 'cap_net_admin,cap_net_raw=ep'
+          test "$(find /opt/svoi -type f -perm /0022 | wc -l)" = 0
+          python3 scripts/linux-backend-smoke.py /opt/svoi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Linux-test-diagnostics
+          path: .tools/linux-ui-results/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SVOI-Linux
+          path: releases/linux-v*/*
+      - name: Publish Linux preview
+        if: github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" releases/linux-v"$LINUX_VERSION"/* --title "SVOI Linux $LINUX_VERSION" --notes-file docs/LINUX-RELEASE-NOTES.md --verify-tag --prerelease --latest=false
+    permissions:
+      contents: write

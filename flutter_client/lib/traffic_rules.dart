@@ -4,32 +4,34 @@ Future<void> showTrafficRules(
   BuildContext context,
   SvoiController c, {
   int tab = 0,
-}) => showDesktopSheet(
-  context,
-  'Правила трафика',
-  DefaultTabController(
-    length: 2,
-    initialIndex: tab,
-    child: Column(
-      children: [
-        const TabBar(
-          tabs: [
-            Tab(text: 'Приложения'),
-            Tab(text: 'Сайты напрямую'),
-          ],
-        ),
-        Expanded(
-          child: TabBarView(
+}) => Platform.isLinux
+    ? showDesktopSheet(context, 'Сайты напрямую', DirectSitesPanel(c: c))
+    : showDesktopSheet(
+        context,
+        'Правила трафика',
+        DefaultTabController(
+          length: 2,
+          initialIndex: tab,
+          child: Column(
             children: [
-              RoutingPage(c: c),
-              DirectSitesPanel(c: c),
+              const TabBar(
+                tabs: [
+                  Tab(text: 'Приложения'),
+                  Tab(text: 'Сайты напрямую'),
+                ],
+              ),
+              Expanded(
+                child: TabBarView(
+                  children: [
+                    RoutingPage(c: c),
+                    DirectSitesPanel(c: c),
+                  ],
+                ),
+              ),
             ],
           ),
         ),
-      ],
-    ),
-  ),
-);
+      );
 
 class DirectSitesPanel extends StatefulWidget {
   const DirectSitesPanel({super.key, required this.c});
