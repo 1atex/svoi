@@ -43,7 +43,7 @@ class _PublicIPLineState extends State<PublicIPLine> {
             'Внешний IP запроса SVOI к api64.ipify.org. При маршрутизации по приложениям и сайтам другие запросы могут иметь другой IP.${previous == null ? '' : '\nДо подключения: $previous'}',
         child: Row(
           children: [
-            const Icon(LucideIcons.globe, size: 16, color: muted),
+            Icon(LucideIcons.globe, size: 16, color: appColors(context).muted),
             const SizedBox(width: 8),
             Expanded(
               child: Column(
@@ -63,7 +63,10 @@ class _PublicIPLineState extends State<PublicIPLine> {
                   ),
                   Text(
                     detail,
-                    style: const TextStyle(fontSize: 11, color: muted),
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: appColors(context).muted,
+                    ),
                   ),
                 ],
               ),

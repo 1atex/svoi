@@ -79,6 +79,16 @@ class MainActivity : FlutterActivity() {
         }
         MethodChannel(engine.dartExecutor.binaryMessenger, "dev.svoi/window").setMethodCallHandler { call, result ->
             when (call.method) {
+                "openCommunity" -> {
+                    try {
+                        startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse("tg://resolve?domain=SVOI_client")))
+                        result.success(null)
+                    } catch (e: android.content.ActivityNotFoundException) {
+                        result.error("telegram_missing", "Установите Telegram и попробуйте ещё раз", null)
+                    } catch (e: Exception) {
+                        result.error("telegram_launch", "Не удалось открыть Telegram", null)
+                    }
+                }
                 "ready", "show", "updateTray" -> result.success(null)
                 "tray" -> { moveTaskToBack(true); result.success(null) }
                 "close" -> { finish(); result.success(null) }

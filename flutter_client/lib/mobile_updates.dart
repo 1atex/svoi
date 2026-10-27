@@ -114,7 +114,7 @@ class MobileUpdatesPanel extends StatelessWidget {
               const SizedBox(height: 8),
               Text(
                 'Версия ${d['currentVersion'] ?? '…'}',
-                style: const TextStyle(color: muted),
+                style: TextStyle(color: appColors(context).muted),
               ),
               const SizedBox(height: 16),
               Text(label),
@@ -129,7 +129,7 @@ class MobileUpdatesPanel extends StatelessWidget {
                   const SizedBox(height: 8),
                   Text(
                     '${(received / 1048576).toStringAsFixed(1)} / ${(size / 1048576).toStringAsFixed(1)} МБ',
-                    style: const TextStyle(color: muted),
+                    style: TextStyle(color: appColors(context).muted),
                   ),
                 ],
               ],
@@ -142,9 +142,9 @@ class MobileUpdatesPanel extends StatelessWidget {
               ],
               if (ready && d['canInstall'] != true) ...[
                 const SizedBox(height: 12),
-                const Text(
+                Text(
                   'Разрешите установку из SVOI в настройках Android, затем вернитесь и нажмите «Установить обновление».',
-                  style: TextStyle(color: muted),
+                  style: TextStyle(color: appColors(context).muted),
                 ),
               ],
               const SizedBox(height: 16),

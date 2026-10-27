@@ -102,9 +102,9 @@ class _MobileIdentityPageState extends State<MobileIdentityPage> {
             style: const TextStyle(fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 12),
-          const Text(
+          Text(
             'Эти параметры используются только при запросе подписок. При переносе профиля сохраняются значения отправителя.',
-            style: TextStyle(color: muted),
+            style: TextStyle(color: appColors(context).muted),
           ),
           const SizedBox(height: 12),
           SwitchListTile(
@@ -117,11 +117,11 @@ class _MobileIdentityPageState extends State<MobileIdentityPage> {
             onChanged: saving ? null : (v) => setState(() => sendDevice = v),
           ),
           if (!sendDevice)
-            const Padding(
+            Padding(
               padding: EdgeInsets.symmetric(vertical: 12),
               child: Text(
                 'Провайдер может отказать в загрузке подписки без данных устройства. Сохранённые серверы останутся доступны.',
-                style: TextStyle(color: accent),
+                style: TextStyle(color: appColors(context).accent),
               ),
             ),
           const SizedBox(height: 16),
@@ -197,7 +197,7 @@ class MobileProbeButton extends StatelessWidget {
                   style: TextStyle(
                     color: result.error != null
                         ? Theme.of(context).colorScheme.error
-                        : accent,
+                        : appColors(context).accent,
                   ),
                 ),
         ),

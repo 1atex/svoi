@@ -112,7 +112,10 @@ Future<Map<String, String>?> editFields(
               if (hint != null)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 20),
-                  child: Text(hint, style: const TextStyle(color: muted)),
+                  child: Text(
+                    hint,
+                    style: TextStyle(color: appColors(context).muted),
+                  ),
                 ),
               for (final entry in labels.entries)
                 Padding(
@@ -176,7 +179,7 @@ class Section extends StatelessWidget {
             padding: const EdgeInsets.only(top: 8),
             child: Text(
               subtitle!,
-              style: const TextStyle(color: muted, height: 1.5),
+              style: TextStyle(color: appColors(context).muted, height: 1.5),
             ),
           ),
         const SizedBox(height: 18),
@@ -214,7 +217,7 @@ Future<void> editSource(
                   padding: const EdgeInsets.only(top: 8),
                   child: Text(
                     warning.toString(),
-                    style: const TextStyle(color: Color(0xffffc98a)),
+                    style: TextStyle(color: appColors(context).accent),
                   ),
                 ),
             ],
@@ -278,9 +281,9 @@ Future<void> editSource(
               method: 'DELETE',
             );
           },
-          child: const Text(
+          child: Text(
             'Удалить',
-            style: TextStyle(color: Color(0xffffaaa6)),
+            style: TextStyle(color: appColors(context).error),
           ),
         ),
         TextButton(
@@ -385,11 +388,14 @@ class ProfilePage extends StatelessWidget {
                     session['token'] == c.api.token
                         ? Icons.check_circle
                         : Icons.account_circle_outlined,
-                    color: accent,
+                    color: appColors(context).accent,
                   ),
                   title: Text(session['name']),
                   trailing: session['token'] == c.api.token
-                      ? const Text('Активный', style: TextStyle(color: muted))
+                      ? Text(
+                          'Активный',
+                          style: TextStyle(color: appColors(context).muted),
+                        )
                       : null,
                   onTap: c.busy.value || session['token'] == c.api.token
                       ? null
@@ -534,7 +540,10 @@ class ProfilePage extends StatelessWidget {
                     children: [
                       Text(
                         entry.value,
-                        style: const TextStyle(color: muted, fontSize: 12),
+                        style: TextStyle(
+                          color: appColors(context).muted,
+                          fontSize: 12,
+                        ),
                       ),
                       const SizedBox(height: 4),
                       SelectableText(identity[entry.key]?.toString() ?? '—'),
@@ -646,7 +655,7 @@ class RoutingPage extends StatelessWidget {
                     routing['mode'] == entry.key
                         ? Icons.radio_button_checked
                         : Icons.radio_button_off,
-                    color: accent,
+                    color: appColors(context).accent,
                   ),
                   title: Text(entry.value),
                   onTap: c.busy.value
@@ -744,9 +753,9 @@ class RoutingPage extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 16),
-              const Text(
+              Text(
                 'Дочерние процессы приложения могут иметь другие имена. Добавьте их отдельно, если часть трафика идёт вне выбранного правила.',
-                style: TextStyle(color: muted, height: 1.5),
+                style: TextStyle(color: appColors(context).muted, height: 1.5),
               ),
             ],
           ),
@@ -877,7 +886,7 @@ class _RemotePanelState extends State<RemotePanel> {
       if (error.isNotEmpty)
         Padding(
           padding: const EdgeInsets.only(bottom: 12),
-          child: Text(error, style: const TextStyle(color: Color(0xffffaaa6))),
+          child: Text(error, style: TextStyle(color: appColors(context).error)),
         ),
       if (data.isEmpty)
         error.isEmpty
@@ -987,7 +996,7 @@ class PreferencesPage extends StatelessWidget {
                       padding: const EdgeInsets.only(top: 12),
                       child: Text(
                         u['error'],
-                        style: const TextStyle(color: Color(0xffffaaa6)),
+                        style: TextStyle(color: appColors(context).error),
                       ),
                     ),
                   const SizedBox(height: 16),
@@ -1030,9 +1039,12 @@ class PreferencesPage extends StatelessWidget {
                       children: [SelectableText(u['notes'])],
                     ),
                   const SizedBox(height: 12),
-                  const Text(
+                  Text(
                     'Установка начинается по вашей команде; скачанный файл проверяется по SHA-256.',
-                    style: TextStyle(color: muted, fontSize: 12),
+                    style: TextStyle(
+                      color: appColors(context).muted,
+                      fontSize: 12,
+                    ),
                   ),
                 ],
               );
@@ -1043,9 +1055,9 @@ class PreferencesPage extends StatelessWidget {
       Section(
         'Сетевые инструменты',
         children: [
-          const Text(
+          Text(
             'Сравните текущий DNS с альтернативами и сохраните возможность вернуть прежние настройки.',
-            style: TextStyle(color: muted, height: 1.5),
+            style: TextStyle(color: appColors(context).muted, height: 1.5),
           ),
           const SizedBox(height: 12),
           Align(
@@ -1066,7 +1078,10 @@ class PreferencesPage extends StatelessWidget {
         'SVOI',
         subtitle: 'На связи со своими.',
         children: [
-          const Text('SVOI · Xray Core', style: TextStyle(color: muted)),
+          Text(
+            'SVOI · Xray Core',
+            style: TextStyle(color: appColors(context).muted),
+          ),
           const SizedBox(height: 12),
           ValueListenableBuilder(
             valueListenable: c.connection,
@@ -1074,9 +1089,9 @@ class PreferencesPage extends StatelessWidget {
                 Text(status['version']?.toString() ?? ''),
           ),
           const SizedBox(height: 16),
-          const Text(
+          Text(
             'Данные приложения находятся в %APPDATA%\\SVOI. Подписки и настройки сохраняются при обновлении.',
-            style: TextStyle(color: muted, height: 1.5),
+            style: TextStyle(color: appColors(context).muted, height: 1.5),
           ),
         ],
       ),

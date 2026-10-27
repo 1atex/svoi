@@ -1,66 +1,104 @@
 part of 'main.dart';
 
-ThemeData mobileTheme(ThemeData base) => base.copyWith(
-  textTheme: base.textTheme
-      .apply(fontFamily: 'Roboto')
-      .copyWith(
-        bodyMedium: const TextStyle(
-          fontFamily: 'Roboto',
-          fontSize: 14,
-          height: 1.45,
-          color: ink,
+ThemeData mobileTheme(ThemeData base) {
+  final p = base.extension<SvoiColors>() ?? SvoiColors.dark;
+  return base.copyWith(
+    textTheme: base.textTheme
+        .apply(fontFamily: 'Roboto')
+        .copyWith(
+          bodyMedium: TextStyle(
+            fontFamily: 'Roboto',
+            fontSize: 14,
+            height: 1.45,
+            color: p.ink,
+          ),
+          titleMedium: TextStyle(
+            fontFamily: 'Roboto',
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            color: p.ink,
+          ),
         ),
-        titleMedium: const TextStyle(
-          fontFamily: 'Roboto',
-          fontSize: 16,
-          fontWeight: FontWeight.w600,
-          color: ink,
+    appBarTheme: AppBarTheme(
+      backgroundColor: p.canvas,
+      surfaceTintColor: Colors.transparent,
+      centerTitle: false,
+      titleSpacing: 20,
+      toolbarHeight: 64,
+      systemOverlayStyle: SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: p.brightness == Brightness.dark
+            ? Brightness.light
+            : Brightness.dark,
+        systemNavigationBarColor: p.canvas,
+        systemNavigationBarIconBrightness: p.brightness == Brightness.dark
+            ? Brightness.light
+            : Brightness.dark,
+      ),
+      titleTextStyle: TextStyle(
+        fontFamily: 'Roboto',
+        fontSize: 25,
+        fontWeight: FontWeight.w700,
+        color: p.ink,
+      ),
+    ),
+    textButtonTheme: TextButtonThemeData(
+      style: TextButton.styleFrom(
+        foregroundColor: p.accent,
+        textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+        minimumSize: const Size(48, 44),
+      ),
+    ),
+    cardTheme: CardThemeData(
+      color: p.surface,
+      surfaceTintColor: Colors.transparent,
+      margin: const EdgeInsets.only(bottom: 10),
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+        side: BorderSide(color: p.edge),
+      ),
+    ),
+    listTileTheme: ListTileThemeData(
+      iconColor: p.muted,
+      textColor: p.ink,
+      selectedColor: p.accent,
+      titleTextStyle: const TextStyle(
+        fontFamily: 'Roboto',
+        fontSize: 15,
+        fontWeight: FontWeight.w600,
+      ),
+      subtitleTextStyle: TextStyle(
+        fontFamily: 'Roboto',
+        fontSize: 13,
+        color: p.muted,
+        height: 1.4,
+      ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+    ),
+    navigationBarTheme: NavigationBarThemeData(
+      height: 72,
+      backgroundColor: p.canvas,
+      indicatorColor: p.selected,
+      surfaceTintColor: Colors.transparent,
+      iconTheme: WidgetStateProperty.resolveWith(
+        (states) => IconThemeData(
+          color: states.contains(WidgetState.selected) ? p.accent : p.muted,
         ),
       ),
-  appBarTheme: const AppBarTheme(
-    backgroundColor: canvas,
-    surfaceTintColor: Colors.transparent,
-    centerTitle: false,
-    titleSpacing: 20,
-    toolbarHeight: 64,
-    titleTextStyle: TextStyle(
-      fontSize: 25,
-      fontWeight: FontWeight.w700,
-      color: ink,
+      labelTextStyle: WidgetStateProperty.resolveWith(
+        (states) => TextStyle(
+          fontFamily: 'Roboto',
+          color: states.contains(WidgetState.selected) ? p.accent : p.muted,
+          fontSize: 12,
+          fontWeight: states.contains(WidgetState.selected)
+              ? FontWeight.w600
+              : FontWeight.w400,
+        ),
+      ),
     ),
-  ),
-  textButtonTheme: TextButtonThemeData(
-    style: TextButton.styleFrom(
-      foregroundColor: accent,
-      textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-      minimumSize: const Size(48, 44),
-    ),
-  ),
-  cardTheme: CardThemeData(
-    color: surface,
-    surfaceTintColor: Colors.transparent,
-    margin: const EdgeInsets.only(bottom: 10),
-    elevation: 0,
-    shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(20),
-      side: const BorderSide(color: edge),
-    ),
-  ),
-  listTileTheme: const ListTileThemeData(
-    iconColor: muted,
-    textColor: ink,
-    selectedColor: accent,
-    titleTextStyle: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-    subtitleTextStyle: TextStyle(fontSize: 13, color: muted, height: 1.4),
-    contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-  ),
-  navigationBarTheme: base.navigationBarTheme.copyWith(
-    height: 72,
-    backgroundColor: canvas,
-    indicatorColor: accent.withValues(alpha: .12),
-    surfaceTintColor: Colors.transparent,
-  ),
-);
+  );
+}
 
 class MobilePanel extends StatelessWidget {
   const MobilePanel({
@@ -76,17 +114,23 @@ class MobilePanel extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     padding: padding,
     decoration: BoxDecoration(
-      color: surface,
+      color: appColors(context).surface,
       gradient: hero
-          ? const LinearGradient(
+          ? LinearGradient(
               begin: Alignment.topRight,
               end: Alignment.bottomLeft,
-              colors: [Color(0xff29251f), Color(0xff1b1b20), surface],
+              colors: [
+                appColors(context).heroTint,
+                appColors(context).surface,
+                appColors(context).surface,
+              ],
               stops: [0, .5, 1],
             )
           : null,
       borderRadius: BorderRadius.circular(24),
-      border: Border.all(color: hero ? const Color(0xff494031) : edge),
+      border: Border.all(
+        color: hero ? appColors(context).edge : appColors(context).edge,
+      ),
     ),
     child: child,
   );
@@ -105,42 +149,54 @@ class MobileConnectionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final view = ConnectionView(c);
-    final busy = c.busy.value || view.phase.isNotEmpty;
+    final busy =
+        c.busy.value || (view.phase.isNotEmpty && view.phase != 'checking');
     final action = view.running ? 'Отключить VPN' : 'Подключить VPN';
-    final color = view.verified ? success : accent;
+    final color = view.verified
+        ? appColors(context).success
+        : appColors(context).accent;
     return MobilePanel(
       hero: true,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 12,
+            runSpacing: 6,
             children: [
-              const Expanded(
-                child: Text(
-                  'ПОДКЛЮЧЕНИЕ',
-                  style: TextStyle(
-                    fontSize: 11,
-                    letterSpacing: 1.6,
-                    color: muted,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-              Container(
-                width: 6,
-                height: 6,
-                decoration: BoxDecoration(
-                  color: view.running ? color : muted,
-                  shape: BoxShape.circle,
-                ),
-              ),
-              const SizedBox(width: 7),
               Text(
-                view.running ? 'VPN включён' : 'VPN выключен',
+                'ПОДКЛЮЧЕНИЕ',
                 style: TextStyle(
-                  fontSize: 12,
-                  color: view.running ? color : muted,
+                  fontSize: 11,
+                  letterSpacing: 1.6,
+                  color: appColors(context).muted,
+                  fontWeight: FontWeight.w600,
                 ),
+              ),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 6,
+                    height: 6,
+                    decoration: BoxDecoration(
+                      color: view.running ? color : appColors(context).muted,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  const SizedBox(width: 7),
+                  Flexible(
+                    child: Text(
+                      view.running ? 'VPN включён' : 'VPN выключен',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: view.running ? color : appColors(context).muted,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -177,67 +233,85 @@ class MobileConnectionCard extends StatelessWidget {
                         : view.running
                         ? 'Интернет ещё не подтверждён'
                         : 'Подключитесь одним нажатием',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 13,
-                      color: muted,
+                      color: appColors(context).muted,
                       height: 1.4,
                     ),
                   ),
                   const SizedBox(height: 6),
-                  TextButton(
-                    onPressed: busy ? null : c.toggleConnection,
-                    style: TextButton.styleFrom(
-                      padding: EdgeInsets.zero,
-                      alignment: Alignment.centerLeft,
+                  Text(
+                    action,
+                    style: TextStyle(
+                      color: appColors(context).accent,
+                      fontWeight: FontWeight.w600,
                     ),
-                    child: Text(action),
                   ),
                 ],
               );
-              final power = Container(
-                width: 128,
-                height: 128,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(color: color.withValues(alpha: .18)),
-                ),
-                child: Container(
-                  width: 88,
-                  height: 88,
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(color: color.withValues(alpha: .12)),
-                  ),
-                  child: IconButton(
-                    key: const ValueKey('mobile-power'),
-                    tooltip: action,
-                    onPressed: busy ? null : c.toggleConnection,
-                    style: IconButton.styleFrom(
-                      backgroundColor: color.withValues(alpha: .12),
-                      foregroundColor: color,
-                      disabledForegroundColor: muted,
-                      side: BorderSide(color: color.withValues(alpha: .55)),
-                    ),
-                    icon: view.phase.isNotEmpty
-                        ? SizedBox(
-                            width: 32,
-                            height: 32,
-                            child: MediaQuery.disableAnimationsOf(context)
-                                ? const Icon(Icons.more_horiz)
-                                : CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: color,
-                                  ),
-                          )
-                        : const Icon(
-                            Icons.power_settings_new_rounded,
-                            size: 39,
+              final power = appColors(context).halloween
+                  ? SizedBox(
+                      width: 128,
+                      height: 128,
+                      child: FittedBox(
+                        child: ConnectionOrbit(
+                          controlKey: const ValueKey('mobile-power'),
+                          running: view.running,
+                          verified: view.verified,
+                          busy: busy,
+                          onPressed: busy ? null : c.toggleConnection,
+                          hint: action,
+                        ),
+                      ),
+                    )
+                  : Container(
+                      width: 128,
+                      height: 128,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(color: color.withValues(alpha: .18)),
+                      ),
+                      child: Container(
+                        width: 88,
+                        height: 88,
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: color.withValues(alpha: .12),
                           ),
-                  ),
-                ),
-              );
+                        ),
+                        child: IconButton(
+                          key: const ValueKey('mobile-power'),
+                          tooltip: action,
+                          onPressed: busy ? null : c.toggleConnection,
+                          style: IconButton.styleFrom(
+                            backgroundColor: color.withValues(alpha: .12),
+                            foregroundColor: color,
+                            disabledForegroundColor: appColors(context).muted,
+                            side: BorderSide(
+                              color: color.withValues(alpha: .55),
+                            ),
+                          ),
+                          icon: view.phase.isNotEmpty
+                              ? SizedBox(
+                                  width: 32,
+                                  height: 32,
+                                  child: MediaQuery.disableAnimationsOf(context)
+                                      ? const Icon(Icons.more_horiz)
+                                      : CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: color,
+                                        ),
+                                )
+                              : const Icon(
+                                  Icons.power_settings_new_rounded,
+                                  size: 39,
+                                ),
+                        ),
+                      ),
+                    );
               return stacked
                   ? Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -268,7 +342,7 @@ class MobileConnectionCard extends StatelessWidget {
             ),
           const SizedBox(height: 16),
           Material(
-            color: canvas.withValues(alpha: .65),
+            color: appColors(context).canvas.withValues(alpha: .65),
             borderRadius: BorderRadius.circular(16),
             clipBehavior: Clip.antiAlias,
             child: ListTile(
@@ -284,7 +358,7 @@ class MobileConnectionCard extends StatelessWidget {
               ),
               subtitle: Text(
                 '${server.protocol} · Сменить сервер',
-                style: const TextStyle(fontSize: 12, color: muted),
+                style: TextStyle(fontSize: 12, color: appColors(context).muted),
               ),
               trailing: const Icon(Icons.chevron_right_rounded, size: 20),
               onTap: onServer,

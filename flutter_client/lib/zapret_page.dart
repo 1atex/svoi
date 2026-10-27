@@ -42,12 +42,12 @@ class _ZapretPageState extends State<ZapretPage> {
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: accent.withValues(alpha: .1),
+                      color: appColors(context).accent.withValues(alpha: .1),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Icon(
+                    child: Icon(
                       LucideIcons.shield,
-                      color: accent,
+                      color: appColors(context).accent,
                       size: 23,
                     ),
                   ),
@@ -66,7 +66,10 @@ class _ZapretPageState extends State<ZapretPage> {
                         const SizedBox(height: 4),
                         Text(
                           'Flowseal · ${z['version']?.toString().isNotEmpty == true ? z['version'] : 'не установлен'}',
-                          style: const TextStyle(fontSize: 12, color: muted),
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: appColors(context).muted,
+                          ),
                         ),
                       ],
                     ),
@@ -90,9 +93,9 @@ class _ZapretPageState extends State<ZapretPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
+                      Text(
                         'SVOI вернёт прежнюю стратегию после отключения VPN.',
-                        style: TextStyle(color: accent),
+                        style: TextStyle(color: appColors(context).accent),
                       ),
                       Wrap(
                         spacing: 8,
@@ -145,8 +148,8 @@ class _ZapretPageState extends State<ZapretPage> {
                   padding: const EdgeInsets.only(bottom: 14),
                   child: Text(
                     z['error'],
-                    style: const TextStyle(
-                      color: Color(0xffffaaa6),
+                    style: TextStyle(
+                      color: appColors(context).error,
                       fontSize: 12,
                     ),
                   ),
@@ -189,8 +192,8 @@ class _ZapretPageState extends State<ZapretPage> {
                           running
                               ? 'Чтобы сменить стратегию, сначала остановите zapret.'
                               : 'Выберите стратегию и запустите. Если сайты недоступны, сравните варианты во вкладке «Проверки».',
-                          style: const TextStyle(
-                            color: muted,
+                          style: TextStyle(
+                            color: appColors(context).muted,
                             fontSize: 12,
                             height: 1.5,
                           ),
@@ -225,22 +228,22 @@ class _ZapretPageState extends State<ZapretPage> {
                               : () => act('start', {'strategy': current}),
                         ),
                         if (z['elevated'] != true)
-                          const Padding(
+                          Padding(
                             padding: EdgeInsets.only(top: 12),
                             child: Text(
                               'Нужны права администратора. В установщике можно включить постоянный запуск с повышением прав.',
                               style: TextStyle(
-                                color: accent,
+                                color: appColors(context).accent,
                                 fontSize: 12,
                                 height: 1.5,
                               ),
                             ),
                           ),
                         const SizedBox(height: 16),
-                        const Text(
+                        Text(
                           'Автозапуск SVOI и выбранной стратегии при входе в Windows включается в Настройках.',
                           style: TextStyle(
-                            color: muted,
+                            color: appColors(context).muted,
                             fontSize: 12,
                             height: 1.5,
                           ),
@@ -281,17 +284,20 @@ class _ZapretPageState extends State<ZapretPage> {
                           ],
                         ),
                         const SizedBox(height: 8),
-                        const Text(
+                        Text(
                           'SVOI скачивает и распаковывает релиз из GitHub Flowseal.',
-                          style: TextStyle(color: muted, fontSize: 12),
+                          style: TextStyle(
+                            color: appColors(context).muted,
+                            fontSize: 12,
+                          ),
                         ),
                         if (z['pendingVersion']?.toString().isNotEmpty == true)
                           Padding(
                             padding: const EdgeInsets.only(top: 12),
                             child: Text(
                               'Версия ${z['pendingVersion']} готова и применится после остановки.',
-                              style: const TextStyle(
-                                color: accent,
+                              style: TextStyle(
+                                color: appColors(context).accent,
                                 fontSize: 12,
                               ),
                             ),
@@ -381,9 +387,12 @@ class _ZapretPageState extends State<ZapretPage> {
                                   'Доступность сайтов',
                                   style: TextStyle(fontSize: 13),
                                 ),
-                                subtitle: const Text(
+                                subtitle: Text(
                                   'Ответы сервисов и время запроса',
-                                  style: TextStyle(fontSize: 11, color: muted),
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: appColors(context).muted,
+                                  ),
                                 ),
                               ),
                               RadioListTile<String>(
@@ -394,9 +403,12 @@ class _ZapretPageState extends State<ZapretPage> {
                                   'DPI-checkers · HTTP и TLS',
                                   style: TextStyle(fontSize: 13),
                                 ),
-                                subtitle: const Text(
+                                subtitle: Text(
                                   'Признаки фильтрации соединений',
-                                  style: TextStyle(fontSize: 11, color: muted),
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: appColors(context).muted,
+                                  ),
                                 ),
                               ),
                             ],
@@ -409,9 +421,12 @@ class _ZapretPageState extends State<ZapretPage> {
                             'Перебрать стратегии',
                             style: TextStyle(fontSize: 13),
                           ),
-                          subtitle: const Text(
+                          subtitle: Text(
                             'Запускает выбранные варианты по очереди',
-                            style: TextStyle(color: muted, fontSize: 11),
+                            style: TextStyle(
+                              color: appColors(context).muted,
+                              fontSize: 11,
+                            ),
                           ),
                           value: sweep,
                           onChanged: working
@@ -421,13 +436,19 @@ class _ZapretPageState extends State<ZapretPage> {
                         if (sweep) ...[
                           Text(
                             'Выбрано ${chosen.intersection(strategies.toSet()).length} из ${strategies.length}',
-                            style: const TextStyle(fontSize: 11, color: muted),
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: appColors(context).muted,
+                            ),
                           ),
                           const SizedBox(height: 8),
                           if (strategies.isEmpty)
-                            const Text(
+                            Text(
                               'Сначала установите zapret во вкладке «Управление».',
-                              style: TextStyle(fontSize: 12, color: muted),
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: appColors(context).muted,
+                              ),
                             ),
                           Wrap(
                             spacing: 6,
@@ -495,11 +516,11 @@ class _ZapretPageState extends State<ZapretPage> {
                           ],
                         ),
                         const SizedBox(height: 12),
-                        const Text(
+                        Text(
                           'Активный VPN влияет на результат. Таймаут сам по себе не доказывает DPI-блокировку.',
                           style: TextStyle(
                             fontSize: 11,
-                            color: muted,
+                            color: appColors(context).muted,
                             height: 1.5,
                           ),
                         ),
@@ -543,10 +564,10 @@ class _ZapretPageState extends State<ZapretPage> {
                             (z['logs'] as List? ?? []).isEmpty
                                 ? 'Сообщений пока нет.'
                                 : (z['logs'] as List).join('\n'),
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontFamily: 'Consolas',
                               fontSize: 12,
-                              color: muted,
+                              color: appColors(context).muted,
                               height: 1.6,
                             ),
                           ),
@@ -648,18 +669,18 @@ class _ZapretPageState extends State<ZapretPage> {
             ],
           ),
           if (results.isEmpty)
-            const Padding(
+            Padding(
               padding: EdgeInsets.symmetric(vertical: 22),
               child: Text(
                 'Запустите проверку — здесь появятся ответы и ошибки.',
-                style: TextStyle(fontSize: 12, color: muted),
+                style: TextStyle(fontSize: 12, color: appColors(context).muted),
               ),
             ),
           if (results.isNotEmpty) ...[
             const SizedBox(height: 8),
             Text(
               '${job['successful'] ?? results.where((r) => r['state'] == 'ok').length} успешных из ${job['resultCount'] ?? results.length} · последние ${results.length} в списке',
-              style: const TextStyle(fontSize: 11, color: muted),
+              style: TextStyle(fontSize: 11, color: appColors(context).muted),
             ),
             const SizedBox(height: 10),
             Align(
@@ -672,11 +693,14 @@ class _ZapretPageState extends State<ZapretPage> {
             ),
             const SizedBox(height: 8),
             if (visible.isEmpty)
-              const Padding(
+              Padding(
                 padding: EdgeInsets.all(14),
                 child: Text(
                   'В показанных результатах проблем нет.',
-                  style: TextStyle(fontSize: 12, color: success),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: appColors(context).success,
+                  ),
                 ),
               )
             else
@@ -694,7 +718,9 @@ class _ZapretPageState extends State<ZapretPage> {
                       contentPadding: EdgeInsets.zero,
                       leading: Icon(
                         ok ? LucideIcons.circleCheck : LucideIcons.circleAlert,
-                        color: ok ? success : accent,
+                        color: ok
+                            ? appColors(context).success
+                            : appColors(context).accent,
                         size: 19,
                       ),
                       title: Text(
@@ -708,7 +734,10 @@ class _ZapretPageState extends State<ZapretPage> {
                             .trim(),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontSize: 10, color: muted),
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: appColors(context).muted,
+                        ),
                       ),
                       trailing: Text(
                         ok
@@ -718,7 +747,9 @@ class _ZapretPageState extends State<ZapretPage> {
                             : 'Подробнее',
                         style: TextStyle(
                           fontSize: 11,
-                          color: ok ? success : accent,
+                          color: ok
+                              ? appColors(context).success
+                              : appColors(context).accent,
                         ),
                       ),
                       onTap: () => showDialog<void>(

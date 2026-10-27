@@ -50,6 +50,59 @@ class MobileFeaturesBackend extends DemoBackend {
 
 void main() {
   testWidgets(
+    'mobile themes fit narrow screens and preserve the VPN controller',
+    (tester) async {
+      tester.view.physicalSize = const Size(320, 740);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final c = SvoiController(MobileFeaturesBackend());
+      await c.initialize();
+      final store = AppearanceStore();
+      await tester.pumpWidget(
+        AppearanceScope(
+          store: store,
+          child: ValueListenableBuilder<AppAppearance>(
+            valueListenable: store,
+            builder: (context, choice, _) => MaterialApp(
+              theme: mobileTheme(
+                svoiTheme(palette: SvoiColors.forAppearance(choice)),
+              ),
+              builder: (context, child) => MediaQuery(
+                data: MediaQuery.of(context)
+                    .copyWith(textScaler: const TextScaler.linear(1.6)),
+                child: child!,
+              ),
+              home: MobileShell(c: c),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final shellState = tester.state(find.byType(MobileShell));
+      final selected = c.selected.value;
+      for (final choice in AppAppearance.values) {
+        await store.select(choice);
+        await tester.pumpAndSettle();
+        expect(tester.state(find.byType(MobileShell)), same(shellState));
+        expect(c.selected.value, selected);
+        expect(find.byKey(const ValueKey('mobile-power')), findsOneWidget);
+        expect(tester.takeException(), isNull, reason: choice.name);
+      }
+      await tester.tap(find.text('Настройки').last);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Оформление'));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('theme-dark')), findsOneWidget);
+      expect(find.byKey(const ValueKey('theme-halloween')), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox.shrink());
+      await c.close();
+      store.dispose();
+    },
+  );
+
+  testWidgets(
     'mobile connection and subscription fit above the fold and adapt to large text',
     (tester) async {
       tester.view.physicalSize = const Size(360, 740);

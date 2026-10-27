@@ -52,43 +52,51 @@ class _MobileShellState extends State<MobileShell> {
       child: Scaffold(
         appBar: AppBar(
           title: page == 0
-              ? Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: Image.asset(
-                        'assets/svoi-mark.png',
-                        width: 34,
-                        height: 34,
+              ? FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: Image.asset(
+                          'assets/svoi-mark.png',
+                          width: 34,
+                          height: 34,
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 10),
-                    const Text(
-                      'svoi',
-                      style: TextStyle(
-                        fontSize: 29,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: -1,
+                      const SizedBox(width: 10),
+                      const Text(
+                        'svoi',
+                        style: TextStyle(
+                          fontSize: 29,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: -1,
+                        ),
                       ),
-                    ),
-                    const Text(
-                      '·',
-                      style: TextStyle(
-                        color: accent,
-                        fontSize: 29,
-                        fontWeight: FontWeight.w800,
+                      Text(
+                        '·',
+                        style: TextStyle(
+                          color: appColors(context).accent,
+                          fontSize: 29,
+                          fontWeight: FontWeight.w800,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 )
               : Text(['SVOI', 'Серверы', 'Профиль', 'Настройки'][page]),
           actions: [
+            const CommunityButton(),
             if (updates?.available == true)
               IconButton(
                 tooltip: 'Доступно обновление SVOI',
                 onPressed: () => setState(() => page = 3),
-                icon: const Icon(Icons.system_update, color: accent),
+                icon: Icon(
+                  Icons.system_update,
+                  color: appColors(context).accent,
+                ),
               ),
             IconButton(
               tooltip: 'Импортировать подписку',
@@ -98,8 +106,8 @@ class _MobileShellState extends State<MobileShell> {
           ],
         ),
         bottomNavigationBar: DecoratedBox(
-          decoration: const BoxDecoration(
-            border: Border(top: BorderSide(color: edge)),
+          decoration: BoxDecoration(
+            border: Border(top: BorderSide(color: appColors(context).edge)),
           ),
           child: NavigationBar(
             selectedIndex: page,
@@ -164,9 +172,13 @@ class _MobileShellState extends State<MobileShell> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Align(
+                Align(
                   alignment: Alignment.centerLeft,
-                  child: Icon(Icons.add_link_rounded, color: accent, size: 36),
+                  child: Icon(
+                    Icons.add_link_rounded,
+                    color: appColors(context).accent,
+                    size: 36,
+                  ),
                 ),
                 const SizedBox(height: 24),
                 Text(
@@ -184,7 +196,10 @@ class _MobileShellState extends State<MobileShell> {
                   c.sessions.value.length > 1
                       ? 'Подписки каждого профиля хранятся отдельно. Выберите сохранённый профиль или добавьте подписку.'
                       : 'Вставьте ссылку от провайдера или перенесите профиль из SVOI на компьютере.',
-                  style: const TextStyle(color: muted, height: 1.5),
+                  style: TextStyle(
+                    color: appColors(context).muted,
+                    height: 1.5,
+                  ),
                 ),
                 const SizedBox(height: 24),
                 FilledButton.icon(
@@ -238,10 +253,14 @@ class _MobileShellState extends State<MobileShell> {
                 width: 38,
                 height: 38,
                 decoration: BoxDecoration(
-                  color: accent.withValues(alpha: .08),
+                  color: appColors(context).accent.withValues(alpha: .08),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Icon(Icons.link_rounded, color: accent, size: 22),
+                child: Icon(
+                  Icons.link_rounded,
+                  color: appColors(context).accent,
+                  size: 22,
+                ),
               ),
               title: Text(
                 subscriptionDisplayName(source),
@@ -263,7 +282,7 @@ class _MobileShellState extends State<MobileShell> {
                       subscriptionMetadata(source)['announcement'].toString(),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(color: accent),
+                      style: TextStyle(color: appColors(context).accent),
                     ),
                 ],
               ),
@@ -272,9 +291,9 @@ class _MobileShellState extends State<MobileShell> {
             ),
           ),
         if (c.subscriptions.value.isEmpty)
-          const Text(
+          Text(
             'Здесь появятся ваши источники серверов.',
-            style: TextStyle(color: muted, fontSize: 13),
+            style: TextStyle(color: appColors(context).muted, fontSize: 13),
           ),
       ],
     );
@@ -316,7 +335,7 @@ class _MobileShellState extends State<MobileShell> {
             children: [
               Text(
                 '${list.length} серверов',
-                style: const TextStyle(color: muted),
+                style: TextStyle(color: appColors(context).muted),
               ),
               FilterChip(
                 label: const Text('По пингу'),
@@ -346,7 +365,7 @@ class _MobileShellState extends State<MobileShell> {
             c.probeProgress.value.isEmpty
                 ? 'GET через профиль · до ${c.api.probeConcurrency} одновременно · ${(c.preferences.value['probe'] as Map?)?['timeoutSeconds'] ?? 4} с'
                 : c.probeProgress.value,
-            style: const TextStyle(color: muted, fontSize: 12),
+            style: TextStyle(color: appColors(context).muted, fontSize: 12),
           ),
         ),
         Expanded(
@@ -394,13 +413,13 @@ class _MobileShellState extends State<MobileShell> {
                         borderRadius: BorderRadius.circular(18),
                         side: BorderSide(
                           color: s.id == c.selected.value
-                              ? accent.withValues(alpha: .5)
-                              : edge,
+                              ? appColors(context).accent.withValues(alpha: .5)
+                              : appColors(context).edge,
                         ),
                       ),
                       color: s.id == c.selected.value
                           ? const Color(0xff25221d)
-                          : surface,
+                          : appColors(context).surface,
                       child: ListTile(
                         contentPadding: const EdgeInsets.symmetric(
                           horizontal: 12,
@@ -525,6 +544,27 @@ class _MobileShellState extends State<MobileShell> {
     children: [
       ListTile(
         contentPadding: EdgeInsets.zero,
+        leading: const Icon(Icons.palette_outlined),
+        title: const Text('Оформление'),
+        subtitle: const Text('8 тем, включая Хэллоуин'),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute<void>(
+            builder: (_) => Scaffold(
+              appBar: AppBar(title: const Text('Оформление')),
+              body: SafeArea(
+                child: ListView(
+                  padding: const EdgeInsets.all(12),
+                  children: const [AppearancePanel()],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+      ListTile(
+        contentPadding: EdgeInsets.zero,
         leading: const Icon(Icons.fingerprint),
         title: const Text('HWID и данные устройства'),
         subtitle: const Text('Параметры активного профиля'),
@@ -575,16 +615,16 @@ class _MobileShellState extends State<MobileShell> {
       if (updates != null)
         MobileUpdatesPanel(model: updates!)
       else
-        const Text('SVOI · Android Preview 7'),
+        const Text('SVOI · Android Preview 8'),
       const SizedBox(height: 12),
-      const Text(
+      Text(
         'Новая версия устанавливается через системное окно Android. Профили и подписки сохраняются.',
-        style: TextStyle(color: muted),
+        style: TextStyle(color: appColors(context).muted),
       ),
       const SizedBox(height: 12),
-      const Text(
+      Text(
         'При смене сети переподключите VPN, если соединение не восстановилось. Работа на физических устройствах ещё требует проверки.',
-        style: TextStyle(color: muted),
+        style: TextStyle(color: appColors(context).muted),
       ),
     ],
   );

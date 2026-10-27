@@ -162,7 +162,10 @@ class _ServerPageState extends State<ServerPage> {
                       filtered.length == c.servers.value.length
                           ? '${filtered.length} серверов'
                           : '${filtered.length} из ${c.servers.value.length} серверов',
-                      style: const TextStyle(color: muted, fontSize: 11),
+                      style: TextStyle(
+                        color: appColors(context).muted,
+                        fontSize: 11,
+                      ),
                     ),
                   ),
                   TextButton.icon(
@@ -195,7 +198,10 @@ class _ServerPageState extends State<ServerPage> {
                           text,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(color: muted, fontSize: 11),
+                          style: TextStyle(
+                            color: appColors(context).muted,
+                            fontSize: 11,
+                          ),
                         ),
                       ),
               ),
@@ -205,17 +211,17 @@ class _ServerPageState extends State<ServerPage> {
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(
+                            Icon(
                               LucideIcons.search,
                               size: 28,
-                              color: muted,
+                              color: appColors(context).muted,
                             ),
                             const SizedBox(height: 12),
                             Text(
                               c.servers.value.isEmpty
                                   ? 'Добавьте первую подписку'
                                   : 'Нет серверов по этим условиям',
-                              style: const TextStyle(color: muted),
+                              style: TextStyle(color: appColors(context).muted),
                             ),
                             if (c.servers.value.isNotEmpty)
                               TextButton(
@@ -251,7 +257,10 @@ class _ServerPageState extends State<ServerPage> {
                   widget.onSelected == null
                       ? 'Кружок — выбрать · название — конфигурация · «Нет ответа» не запрещает подключение'
                       : 'Нажмите на сервер для выбора · значок документа открывает конфигурацию',
-                  style: const TextStyle(fontSize: 10, color: muted),
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: appColors(context).muted,
+                  ),
                 ),
               ),
             ],
@@ -283,11 +292,13 @@ class ServerRow extends StatelessWidget {
       return Container(
         margin: const EdgeInsets.only(bottom: 5),
         decoration: BoxDecoration(
-          color: selected ? raised : surface,
+          color: selected
+              ? appColors(context).raised
+              : appColors(context).surface,
           border: Border.all(
             color: selected
-                ? accent.withValues(alpha: .5)
-                : edge.withValues(alpha: .6),
+                ? appColors(context).accent.withValues(alpha: .5)
+                : appColors(context).edge.withValues(alpha: .6),
           ),
           borderRadius: BorderRadius.circular(12),
         ),
@@ -337,13 +348,13 @@ class ServerRow extends StatelessWidget {
                             ),
                           ),
                           if (active)
-                            const Padding(
+                            Padding(
                               padding: EdgeInsets.only(left: 6),
                               child: Tooltip(
                                 message: 'Через этот сервер запущен VPN',
                                 child: Icon(
                                   LucideIcons.radio,
-                                  color: success,
+                                  color: appColors(context).success,
                                   size: 15,
                                 ),
                               ),
@@ -359,7 +370,10 @@ class ServerRow extends StatelessWidget {
                             : ''}${server.details}',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontSize: 11, color: muted),
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: appColors(context).muted,
+                        ),
                       ),
                     ],
                   ),
@@ -377,7 +391,9 @@ class ServerRow extends StatelessWidget {
                     ? Icons.star
                     : LucideIcons.star,
                 size: 17,
-                color: c.favorites.value.contains(server.id) ? accent : muted,
+                color: c.favorites.value.contains(server.id)
+                    ? appColors(context).accent
+                    : appColors(context).muted,
               ),
             ),
             IconButton(
@@ -418,16 +434,19 @@ class ServerRow extends StatelessWidget {
                           style: TextStyle(
                             fontSize: 12,
                             color: result.error != null
-                                ? const Color(0xffffaaa6)
+                                ? appColors(context).error
                                 : result.latency != null
-                                ? success
-                                : accent,
+                                ? appColors(context).success
+                                : appColors(context).accent,
                           ),
                         ),
                         if (result.checkedAt != null)
                           Text(
                             clockLabel(result.checkedAt),
-                            style: const TextStyle(fontSize: 9, color: muted),
+                            style: TextStyle(
+                              fontSize: 9,
+                              color: appColors(context).muted,
+                            ),
                           ),
                       ],
                     ),

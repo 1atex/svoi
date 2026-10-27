@@ -138,7 +138,7 @@ class SubscriptionHeader extends StatelessWidget {
             Icon(
               collapsed ? LucideIcons.chevronRight : LucideIcons.chevronDown,
               size: 15,
-              color: muted,
+              color: appColors(context).muted,
             ),
             const SizedBox(width: 8),
             Expanded(
@@ -163,7 +163,10 @@ class SubscriptionHeader extends StatelessWidget {
                           caption,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(fontSize: 12, color: muted),
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: appColors(context).muted,
+                          ),
                         ),
                       ),
                     ),
@@ -183,7 +186,7 @@ class SubscriptionHeader extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 8),
             child: Text(
               '$count',
-              style: const TextStyle(fontSize: 12, color: muted),
+              style: TextStyle(fontSize: 12, color: appColors(context).muted),
             ),
           ),
         ),
@@ -210,12 +213,12 @@ class SubscriptionHeader extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(top: 4, bottom: 4),
       child: Material(
-        color: source == null ? Colors.transparent : surface,
+        color: source == null ? Colors.transparent : appColors(context).surface,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
           side: source == null
               ? BorderSide.none
-              : const BorderSide(color: edge),
+              : BorderSide(color: appColors(context).edge),
         ),
         child: Padding(
           padding: EdgeInsets.all(source == null ? 0 : 8),
@@ -288,11 +291,11 @@ class SubscriptionTrafficBar extends StatelessWidget {
                         ? (used / total).clamp(0.0, 1.0)
                         : 0,
                     borderRadius: BorderRadius.circular(7),
-                    backgroundColor: canvas,
+                    backgroundColor: appColors(context).canvas,
                     color:
                         (exhausted
                                 ? Theme.of(context).colorScheme.error
-                                : accent)
+                                : appColors(context).accent)
                             .withValues(alpha: .25),
                   ),
                 ),
@@ -303,7 +306,7 @@ class SubscriptionTrafficBar extends StatelessWidget {
                       border: Border.all(
                         color: exhausted
                             ? Theme.of(context).colorScheme.error
-                            : edge,
+                            : appColors(context).edge,
                       ),
                     ),
                   ),
@@ -348,7 +351,7 @@ class SubscriptionSummary extends StatelessWidget {
         fontSize: 12,
         color: expiry.startsWith('Истекла')
             ? Theme.of(context).colorScheme.error
-            : muted,
+            : appColors(context).muted,
       ),
     );
     return Padding(
@@ -370,10 +373,10 @@ class SubscriptionSummary extends StatelessWidget {
                         padding: EdgeInsets.zero,
                         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       ),
-                      icon: const Icon(
+                      icon: Icon(
                         LucideIcons.info,
                         size: 16,
-                        color: accent,
+                        color: appColors(context).accent,
                       ),
                     ),
                   ),
@@ -415,15 +418,15 @@ class SubscriptionSummary extends StatelessWidget {
                       vertical: 4,
                     ),
                     decoration: BoxDecoration(
-                      color: accent.withValues(alpha: .06),
+                      color: appColors(context).accent.withValues(alpha: .06),
                       borderRadius: BorderRadius.circular(7),
                     ),
                     child: Row(
                       children: [
-                        const Icon(
+                        Icon(
                           LucideIcons.messageSquare,
                           size: 14,
-                          color: muted,
+                          color: appColors(context).muted,
                         ),
                         const SizedBox(width: 8),
                         Expanded(
@@ -431,7 +434,10 @@ class SubscriptionSummary extends StatelessWidget {
                             announcement,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(fontSize: 12, color: muted),
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: appColors(context).muted,
+                            ),
                           ),
                         ),
                       ],
@@ -483,13 +489,13 @@ class SubscriptionDetails extends StatelessWidget {
         if (m['updateHours'] != null)
           Text(
             'Рекомендуемое обновление: каждые ${m['updateHours']} ч',
-            style: const TextStyle(color: muted),
+            style: TextStyle(color: appColors(context).muted),
           ),
         if (m['announcement'] != null) ...[
           const SizedBox(height: 12),
-          const Text(
+          Text(
             'Сообщение провайдера',
-            style: TextStyle(fontSize: 12, color: muted),
+            style: TextStyle(fontSize: 12, color: appColors(context).muted),
           ),
           SelectableText(m['announcement'].toString()),
         ],
@@ -516,13 +522,16 @@ class SubscriptionDetails extends StatelessWidget {
         ),
         if (m['routingStatus'] != null) ...[
           const SizedBox(height: 8),
-          const Text(
+          Text(
             'Маршрутизация Happ не применена',
-            style: TextStyle(color: accent, fontWeight: FontWeight.w600),
+            style: TextStyle(
+              color: appColors(context).accent,
+              fontWeight: FontWeight.w600,
+            ),
           ),
-          const Text(
+          Text(
             'Этот заголовок — отдельный профиль Happ. Правила внутри полных конфигураций Xray сохраняются. Конвертация профиля Happ пока не поддерживается.',
-            style: TextStyle(fontSize: 12, color: muted),
+            style: TextStyle(fontSize: 12, color: appColors(context).muted),
           ),
           if (m['routing'] != null)
             ExpansionTile(
@@ -547,9 +556,9 @@ class SubscriptionDetails extends StatelessWidget {
               style: TextStyle(fontSize: 12),
             ),
             children: [
-              const Text(
+              Text(
                 'Сохранены для просмотра. Они не меняют ваши настройки HWID, проверки связи или интерфейса.',
-                style: TextStyle(fontSize: 12, color: muted),
+                style: TextStyle(fontSize: 12, color: appColors(context).muted),
               ),
               const SizedBox(height: 8),
               for (final entry in hints.entries)

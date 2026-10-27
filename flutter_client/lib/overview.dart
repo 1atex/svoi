@@ -12,10 +12,12 @@ class Overview extends StatelessWidget {
         final wide = constraints.maxWidth >= 870;
         return Stack(
           children: [
-            const Positioned.fill(
+            Positioned.fill(
               child: IgnorePointer(
                 child: RepaintBoundary(
-                  child: CustomPaint(painter: NetworkBackdrop()),
+                  child: CustomPaint(
+                    painter: NetworkBackdrop(color: appColors(context).accent),
+                  ),
                 ),
               ),
             ),
@@ -71,14 +73,21 @@ class Overview extends StatelessWidget {
                     ],
                   ],
                   const SizedBox(height: 20),
-                  const Row(
+                  Row(
                     children: [
-                      Icon(LucideIcons.flaskConical, size: 14, color: muted),
+                      Icon(
+                        LucideIcons.flaskConical,
+                        size: 14,
+                        color: appColors(context).muted,
+                      ),
                       SizedBox(width: 8),
                       Expanded(
                         child: Text(
                           'Beta · профили этой версии хранятся отдельно от прежнего SVOI.',
-                          style: TextStyle(color: muted, fontSize: 11),
+                          style: TextStyle(
+                            color: appColors(context).muted,
+                            fontSize: 11,
+                          ),
                         ),
                       ),
                     ],
@@ -107,7 +116,11 @@ class Overview extends StatelessWidget {
           children: [
             Row(
               children: [
-                const Icon(LucideIcons.layers, color: accent, size: 18),
+                Icon(
+                  LucideIcons.layers,
+                  color: appColors(context).accent,
+                  size: 18,
+                ),
                 const SizedBox(width: 10),
                 const Text(
                   'Подписки',
@@ -118,7 +131,10 @@ class Overview extends StatelessWidget {
                   valueListenable: c.subscriptions,
                   builder: (context, sources, _) => Text(
                     '${sources.length}',
-                    style: const TextStyle(color: muted, fontSize: 12),
+                    style: TextStyle(
+                      color: appColors(context).muted,
+                      fontSize: 12,
+                    ),
                   ),
                 ),
               ],
@@ -127,12 +143,12 @@ class Overview extends StatelessWidget {
             ValueListenableBuilder(
               valueListenable: c.subscriptions,
               builder: (context, sources, _) => sources.isEmpty
-                  ? const Padding(
+                  ? Padding(
                       padding: EdgeInsets.symmetric(vertical: 14),
                       child: Text(
                         'Добавьте ссылку или импортируйте конфигурацию из файла.',
                         style: TextStyle(
-                          color: muted,
+                          color: appColors(context).muted,
                           fontSize: 12,
                           height: 1.6,
                         ),
@@ -165,8 +181,8 @@ class Overview extends StatelessWidget {
                                 '${s['count']} серверов · ${s['host'] ?? 'Из файла'}',
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  color: muted,
+                                style: TextStyle(
+                                  color: appColors(context).muted,
                                   fontSize: 11,
                                 ),
                               ),
@@ -185,9 +201,9 @@ class Overview extends StatelessWidget {
                                       ),
                                     ),
                                   )
-                                : const Icon(
+                                : Icon(
                                     LucideIcons.chevronRight,
-                                    color: muted,
+                                    color: appColors(context).muted,
                                     size: 16,
                                   ),
                           );
@@ -251,9 +267,13 @@ class _ImportWelcomeState extends State<ImportWelcome> {
               style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 10),
-            const Text(
+            Text(
               'Вставьте ссылку от VPN-провайдера или импортируйте профиль SVOI. Серверы появятся здесь после добавления.',
-              style: TextStyle(color: muted, height: 1.5, fontSize: 13),
+              style: TextStyle(
+                color: appColors(context).muted,
+                height: 1.5,
+                fontSize: 13,
+              ),
             ),
             const SizedBox(height: 24),
             TextFormField(
@@ -321,9 +341,13 @@ class _ImportWelcomeState extends State<ImportWelcome> {
               ),
             ],
             const SizedBox(height: 16),
-            const Text(
+            Text(
               'Для импорта: код SVOI1, файл .svoi / JSON или ссылка на отдельный сервер.',
-              style: TextStyle(color: muted, fontSize: 11, height: 1.5),
+              style: TextStyle(
+                color: appColors(context).muted,
+                fontSize: 11,
+                height: 1.5,
+              ),
             ),
           ],
         ),
