@@ -244,9 +244,9 @@ class _SiteCheckPanelState extends State<SiteCheckPanel> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
+                    Text(
                       'Работает TUN. Для сравнения другого профиля отключите VPN.',
-                      style: TextStyle(color: accent),
+                      style: TextStyle(color: appColors(context).accent),
                     ),
                     TextButton(
                       onPressed: working
@@ -294,14 +294,17 @@ class _SiteCheckPanelState extends State<SiteCheckPanel> {
                 if (results[route]!['label'] != null)
                   Text(
                     results[route]!['label'].toString(),
-                    style: const TextStyle(color: muted, fontSize: 12),
+                    style: TextStyle(
+                      color: appColors(context).muted,
+                      fontSize: 12,
+                    ),
                   ),
                 if (results[route]!['error'] != null)
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 8),
                     child: Text(
                       results[route]!['error'].toString(),
-                      style: const TextStyle(color: Color(0xffffaaa6)),
+                      style: TextStyle(color: appColors(context).error),
                     ),
                   ),
                 for (final raw in results[route]!['steps'] as List? ?? [])
@@ -309,7 +312,9 @@ class _SiteCheckPanelState extends State<SiteCheckPanel> {
                     contentPadding: EdgeInsets.zero,
                     leading: Icon(
                       raw['ok'] == true ? LucideIcons.check : LucideIcons.info,
-                      color: raw['ok'] == true ? success : accent,
+                      color: raw['ok'] == true
+                          ? appColors(context).success
+                          : appColors(context).accent,
                       size: 18,
                     ),
                     title: Text('${raw['name']} · ${raw['ms']} мс'),
@@ -352,9 +357,13 @@ class _SiteCheckPanelState extends State<SiteCheckPanel> {
                 icon: const Icon(LucideIcons.arrowUpRight, size: 16),
                 label: const Text('Добавить сайт в исключения'),
               ),
-            const Text(
+            Text(
               'Проверка профиля учитывает исключения сайтов. DNS и TCP внутри профиля отдельно не измеряются. Его правила могут направлять сайт напрямую. Для проверки другого профиля отключите работающий TUN.',
-              style: TextStyle(color: muted, fontSize: 12, height: 1.5),
+              style: TextStyle(
+                color: appColors(context).muted,
+                fontSize: 12,
+                height: 1.5,
+              ),
             ),
           ],
         ),

@@ -316,9 +316,9 @@ class _DesktopLibraryState extends State<DesktopLibrary> {
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Text(
+                            Text(
                               'Серверы не найдены',
-                              style: TextStyle(color: muted),
+                              style: TextStyle(color: appColors(context).muted),
                             ),
                             TextButton(
                               onPressed: () {
@@ -404,7 +404,10 @@ class _DesktopLibraryState extends State<DesktopLibrary> {
                       filtered.length == c.servers.value.length
                           ? '${filtered.length} серверов'
                           : '${filtered.length} из ${c.servers.value.length} серверов',
-                      style: const TextStyle(color: muted, fontSize: 12),
+                      style: TextStyle(
+                        color: appColors(context).muted,
+                        fontSize: 12,
+                      ),
                     ),
                   ),
                   TextButton.icon(
@@ -435,7 +438,10 @@ class _DesktopLibraryState extends State<DesktopLibrary> {
                         child: Text(
                           value,
                           maxLines: 2,
-                          style: const TextStyle(color: muted, fontSize: 11),
+                          style: TextStyle(
+                            color: appColors(context).muted,
+                            fontSize: 11,
+                          ),
                         ),
                       ),
               ),
@@ -447,7 +453,10 @@ class _DesktopLibraryState extends State<DesktopLibrary> {
                         value,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(color: muted, fontSize: 11),
+                        style: TextStyle(
+                          color: appColors(context).muted,
+                          fontSize: 11,
+                        ),
                       ),
               ),
             ],
@@ -479,12 +488,14 @@ class DesktopServerRow extends StatelessWidget {
       return Padding(
         padding: const EdgeInsets.only(bottom: 5),
         child: Material(
-          color: selected ? const Color(0xff30291e) : surface,
+          color: selected
+              ? appColors(context).selected
+              : appColors(context).surface,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
             side: BorderSide(
               color: selected
-                  ? accent.withValues(alpha: .5)
+                  ? appColors(context).accent.withValues(alpha: .5)
                   : Colors.transparent,
             ),
           ),
@@ -526,7 +537,9 @@ class DesktopServerRow extends StatelessWidget {
                                 : server.country.label,
                             style: TextStyle(
                               fontSize: 11,
-                              color: active ? success : muted,
+                              color: active
+                                  ? appColors(context).success
+                                  : appColors(context).muted,
                             ),
                           ),
                         ],
@@ -560,10 +573,10 @@ class DesktopServerRow extends StatelessWidget {
                             style: TextStyle(
                               fontSize: 11,
                               color: probe.error != null
-                                  ? const Color(0xffffaaa6)
+                                  ? appColors(context).error
                                   : probe.latency != null
-                                  ? success
-                                  : muted,
+                                  ? appColors(context).success
+                                  : appColors(context).muted,
                             ),
                           ),
                         ),
@@ -571,10 +584,10 @@ class DesktopServerRow extends StatelessWidget {
                     ),
                     PopupMenuButton<String>(
                       tooltip: 'Действия сервера',
-                      icon: const Icon(
+                      icon: Icon(
                         LucideIcons.ellipsis,
                         size: 18,
-                        color: muted,
+                        color: appColors(context).muted,
                       ),
                       onSelected: (value) {
                         if (value == 'config') {
@@ -684,7 +697,10 @@ class DesktopConnection extends StatelessWidget {
                   pending ? 'Выбран для переключения' : 'Выбранный сервер',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(color: muted, fontSize: 11),
+                  style: TextStyle(
+                    color: appColors(context).muted,
+                    fontSize: 11,
+                  ),
                 ),
               ],
             ),
@@ -715,13 +731,30 @@ class DesktopConnection extends StatelessWidget {
             FilledButton(
               key: const ValueKey('desktop-connect'),
               onPressed: toggle,
-              child: Text(view.switching ? view.title : action),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (appColors(context).halloween) ...[
+                    ExcludeSemantics(
+                      child: Image.asset(
+                        'assets/themes/pumpkin-power.png',
+                        width: 24,
+                        height: 24,
+                        cacheWidth: 64,
+                        cacheHeight: 64,
+                      ),
+                    ),
+                    const SizedBox(width: 7),
+                  ],
+                  Text(view.switching ? view.title : action),
+                ],
+              ),
             ),
         ],
       );
       if (compact) {
         return Material(
-          color: surface,
+          color: appColors(context).surface,
           child: Padding(
             padding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
             child: Column(
@@ -755,7 +788,9 @@ class DesktopConnection extends StatelessWidget {
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
                                 fontSize: 12,
-                                color: view.error.isNotEmpty ? accent : ink,
+                                color: view.error.isNotEmpty
+                                    ? appColors(context).accent
+                                    : appColors(context).ink,
                               ),
                             ),
                           ),
@@ -829,7 +864,11 @@ class DesktopConnection extends StatelessWidget {
             Text(
               detail,
               textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 12, color: muted, height: 1.5),
+              style: TextStyle(
+                fontSize: 12,
+                color: appColors(context).muted,
+                height: 1.5,
+              ),
             ),
             if (pending)
               Padding(
@@ -837,7 +876,10 @@ class DesktopConnection extends StatelessWidget {
                 child: Text(
                   'Сейчас: ${active?.country.title ?? c.connection.value['serverName'] ?? 'другой сервер'} · ${modeLabel(c.connection.value['mode'], null)}',
                   textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 12, color: accent),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: appColors(context).accent,
+                  ),
                 ),
               ),
             if (pending) ...[const SizedBox(height: 16), controls],

@@ -81,11 +81,15 @@ class ConnectionCard extends StatelessWidget {
         padding: const EdgeInsets.all(22),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: const Color(0xff4b402e)),
-          gradient: const LinearGradient(
+          border: Border.all(color: appColors(context).edge),
+          gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [Color(0xff262219), surface, surface],
+            colors: [
+              appColors(context).heroTint,
+              appColors(context).surface,
+              appColors(context).surface,
+            ],
           ),
         ),
         child: Column(
@@ -129,18 +133,18 @@ class ConnectionCard extends StatelessWidget {
                                   pending
                                       ? 'Выбран для следующего подключения'
                                       : 'Нажмите, чтобы сменить сервер',
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 11,
-                                    color: muted,
+                                    color: appColors(context).muted,
                                   ),
                                 ),
                               ],
                             ),
                           ),
-                          const Icon(
+                          Icon(
                             LucideIcons.chevronDown,
                             size: 18,
-                            color: muted,
+                            color: appColors(context).muted,
                           ),
                         ],
                       ),
@@ -162,7 +166,7 @@ class ConnectionCard extends StatelessWidget {
                 margin: const EdgeInsets.only(top: 10),
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: canvas,
+                  color: appColors(context).canvas,
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Column(
@@ -183,12 +187,18 @@ class ConnectionCard extends StatelessWidget {
                             ? null
                             : Map<String, dynamic>.from(state['routing']),
                       ),
-                      style: const TextStyle(fontSize: 11, color: muted),
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: appColors(context).muted,
+                      ),
                     ),
                     const SizedBox(height: 8),
                     Text(
                       'После применения: ${selected?.country.title ?? 'сервер не выбран'} · ${modeLabel(c.mode.value, Map<String, dynamic>.from(c.preferences.value['routing'] ?? {}))}',
-                      style: const TextStyle(fontSize: 12, color: accent),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: appColors(context).accent,
+                      ),
                     ),
                   ],
                 ),
@@ -217,7 +227,11 @@ class ConnectionCard extends StatelessWidget {
             Text(
               view.detail,
               textAlign: TextAlign.center,
-              style: const TextStyle(color: muted, fontSize: 12, height: 1.5),
+              style: TextStyle(
+                color: appColors(context).muted,
+                fontSize: 12,
+                height: 1.5,
+              ),
             ),
             const SizedBox(height: 18),
             ConnectionPath(view: view),
@@ -303,11 +317,15 @@ class QuickServers extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             if (servers.isEmpty)
-              const Padding(
+              Padding(
                 padding: EdgeInsets.only(bottom: 12),
                 child: Text(
                   'Отметьте сервер звёздочкой. Избранные и последний запущенный появятся здесь.',
-                  style: TextStyle(fontSize: 12, color: muted, height: 1.5),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: appColors(context).muted,
+                    height: 1.5,
+                  ),
                 ),
               ),
             for (final s in servers)
@@ -322,14 +340,17 @@ class QuickServers extends StatelessWidget {
                 ),
                 subtitle: Text(
                   s.id == c.lastUsed.value ? 'Последний запуск' : 'Избранный',
-                  style: const TextStyle(fontSize: 11, color: muted),
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: appColors(context).muted,
+                  ),
                 ),
                 trailing: Icon(
                   s.id == c.selected.value
                       ? LucideIcons.check
                       : LucideIcons.chevronRight,
                   size: 17,
-                  color: accent,
+                  color: appColors(context).accent,
                 ),
                 onTap: () => c.select(s.id),
               ),

@@ -20,10 +20,13 @@ class _ConnectionOrbitState extends State<ConnectionOrbit> {
   bool hovered = false, focused = false, pressed = false;
   @override
   Widget build(BuildContext context) {
+    if (appColors(context).halloween) return _PumpkinPower(control: widget);
     final enabled = widget.onPressed != null;
     final color = enabled || widget.busy
-        ? (widget.verified ? success : accent)
-        : muted;
+        ? (widget.verified
+              ? appColors(context).success
+              : appColors(context).accent)
+        : appColors(context).muted;
     final duration = MediaQuery.disableAnimationsOf(context)
         ? Duration.zero
         : const Duration(milliseconds: 150);
@@ -89,13 +92,13 @@ class _ConnectionOrbitState extends State<ConnectionOrbit> {
                       shape: const CircleBorder(),
                       padding: EdgeInsets.zero,
                       backgroundColor: widget.verified
-                          ? const Color(0xff23362e)
-                          : const Color(0xff342b1e),
-                      disabledBackgroundColor: raised,
+                          ? appColors(context).powerOn
+                          : appColors(context).powerOff,
+                      disabledBackgroundColor: appColors(context).raised,
                       foregroundColor: color,
                       side: BorderSide(
                         color: focused
-                            ? ink
+                            ? appColors(context).ink
                             : color.withValues(alpha: enabled ? .65 : .25),
                         width: focused ? 2 : 1,
                       ),
@@ -148,8 +151,159 @@ class _ConnectionOrbitState extends State<ConnectionOrbit> {
   }
 }
 
+class _PumpkinPower extends StatefulWidget {
+  const _PumpkinPower({required this.control});
+  final ConnectionOrbit control;
+  @override
+  State<_PumpkinPower> createState() => _PumpkinPowerState();
+}
+
+class _PumpkinPowerState extends State<_PumpkinPower> {
+  bool hovered = false, focused = false, pressed = false;
+  @override
+  Widget build(BuildContext context) {
+    final control = widget.control;
+    final p = appColors(context);
+    final enabled = control.onPressed != null && !control.busy;
+    final tone = control.verified ? p.success : p.accent;
+    final duration = MediaQuery.disableAnimationsOf(context)
+        ? Duration.zero
+        : const Duration(milliseconds: 130);
+    return SizedBox(
+      width: 184,
+      height: 184,
+      child: Tooltip(
+        message: control.hint,
+        child: AnimatedScale(
+          scale: pressed
+              ? .96
+              : hovered && enabled
+              ? 1.04
+              : 1,
+          duration: duration,
+          child: Listener(
+            onPointerDown: enabled
+                ? (_) => setState(() => pressed = true)
+                : null,
+            onPointerUp: (_) => setState(() => pressed = false),
+            onPointerCancel: (_) => setState(() => pressed = false),
+            child: TextButton(
+              key: const ValueKey('connection-power'),
+              onPressed: enabled ? control.onPressed : null,
+              onHover: (value) => setState(() => hovered = value),
+              onFocusChange: (value) => setState(() => focused = value),
+              style: TextButton.styleFrom(
+                padding: EdgeInsets.zero,
+                backgroundColor: Colors.transparent,
+                disabledBackgroundColor: Colors.transparent,
+                foregroundColor: tone,
+                overlayColor: Colors.transparent,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(24),
+                  side: BorderSide(
+                    color: focused ? p.ink : Colors.transparent,
+                    width: 2,
+                  ),
+                ),
+              ),
+              child: Semantics(
+                label: control.hint,
+                child: ExcludeSemantics(
+                  child: Stack(
+                    children: [
+                      Positioned(
+                        left: 7,
+                        right: 7,
+                        top: 0,
+                        height: 163,
+                        child: Opacity(
+                          opacity: enabled || control.busy ? 1 : .4,
+                          child: Image.asset(
+                            'assets/themes/pumpkin-power.png',
+                            cacheWidth: 384,
+                            cacheHeight: 384,
+                            fit: BoxFit.contain,
+                            errorBuilder: (_, error, stack) =>
+                                Icon(LucideIcons.power, size: 64, color: tone),
+                          ),
+                        ),
+                      ),
+                      if (control.busy)
+                        Positioned.fill(
+                          child: Center(
+                            child: Container(
+                              width: 42,
+                              height: 42,
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: p.canvas.withValues(alpha: .9),
+                                shape: BoxShape.circle,
+                              ),
+                              child: MediaQuery.disableAnimationsOf(context)
+                                  ? Icon(LucideIcons.ellipsis, color: p.accent)
+                                  : CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: p.accent,
+                                    ),
+                            ),
+                          ),
+                        ),
+                      Positioned(
+                        left: 0,
+                        right: 0,
+                        bottom: 1,
+                        child: Center(
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 11,
+                              vertical: 5,
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                if (control.running && !control.busy) ...[
+                                  Icon(
+                                    control.verified
+                                        ? LucideIcons.shieldCheck
+                                        : LucideIcons.power,
+                                    color: tone,
+                                    size: 12,
+                                  ),
+                                  const SizedBox(width: 5),
+                                ],
+                                Text(
+                                  control.busy
+                                      ? 'Подождите…'
+                                      : control.running
+                                      ? 'Отключить VPN'
+                                      : 'Подключить',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: enabled || control.busy
+                                        ? tone
+                                        : p.muted,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class NetworkBackdrop extends CustomPainter {
-  const NetworkBackdrop();
+  const NetworkBackdrop({this.color = const Color(0xffe7b96a)});
+  final Color color;
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
@@ -157,7 +311,7 @@ class NetworkBackdrop extends CustomPainter {
       ..strokeWidth = 1;
     for (var i = 0; i < 17; i++) {
       final offset = i * 24.0;
-      paint.color = accent.withValues(alpha: .035 + (i % 3) * .009);
+      paint.color = color.withValues(alpha: .035 + (i % 3) * .009);
       final path = Path()
         ..moveTo(size.width * .47 + offset, -30)
         ..cubicTo(
@@ -180,7 +334,7 @@ class NetworkBackdrop extends CustomPainter {
     }
     paint
       ..style = PaintingStyle.fill
-      ..color = accent.withValues(alpha: .13);
+      ..color = color.withValues(alpha: .13);
     for (var y = 26.0; y < 150; y += 30) {
       for (var x = size.width * .7; x < size.width - 20; x += 30) {
         canvas.drawCircle(Offset(x, y), .7, paint);
@@ -189,5 +343,6 @@ class NetworkBackdrop extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant NetworkBackdrop oldDelegate) => false;
+  bool shouldRepaint(covariant NetworkBackdrop oldDelegate) =>
+      color != oldDelegate.color;
 }

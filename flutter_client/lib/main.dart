@@ -20,6 +20,7 @@ part 'overview.dart';
 part 'desktop_workspace.dart';
 part 'desktop_titlebar.dart';
 part 'community.dart';
+part 'appearance.dart';
 part 'power_control.dart';
 part 'connection_view.dart';
 part 'connection_card.dart';
@@ -54,98 +55,6 @@ void main(List<String> args) {
   );
 }
 
-ThemeData svoiTheme() => ThemeData(
-  useMaterial3: true,
-  brightness: Brightness.dark,
-  fontFamily: 'Segoe UI',
-  splashFactory: NoSplash.splashFactory,
-  hoverColor: Colors.white.withValues(alpha: .04),
-  listTileTheme: const ListTileThemeData(
-    iconColor: muted,
-    textColor: ink,
-    selectedColor: accent,
-  ),
-  iconButtonTheme: IconButtonThemeData(
-    style: IconButton.styleFrom(foregroundColor: muted),
-  ),
-  textButtonTheme: TextButtonThemeData(
-    style: TextButton.styleFrom(
-      foregroundColor: accent,
-      textStyle: const TextStyle(
-        fontFamily: 'Segoe UI',
-        fontSize: 12,
-        fontWeight: FontWeight.w500,
-      ),
-    ),
-  ),
-  dialogTheme: DialogThemeData(
-    backgroundColor: surface,
-    surfaceTintColor: Colors.transparent,
-    shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(18),
-      side: const BorderSide(color: edge),
-    ),
-  ),
-  colorScheme: const ColorScheme.dark(
-    primary: accent,
-    onPrimary: canvas,
-    surface: surface,
-    onSurface: Color(0xfff4f2ed),
-    outline: edge,
-    error: Color(0xffffaaa6),
-  ),
-  scaffoldBackgroundColor: canvas,
-  dividerColor: edge,
-  dividerTheme: const DividerThemeData(color: edge, thickness: 1, space: 1),
-  cardTheme: const CardThemeData(elevation: 0),
-  chipTheme: ChipThemeData(
-    backgroundColor: surface,
-    selectedColor: accent.withValues(alpha: .12),
-    side: const BorderSide(color: edge),
-    checkmarkColor: accent,
-    labelStyle: const TextStyle(
-      fontFamily: 'Segoe UI',
-      fontSize: 12,
-      color: ink,
-    ),
-    iconTheme: const IconThemeData(color: muted, size: 15),
-    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(9)),
-    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-  ),
-  filledButtonTheme: FilledButtonThemeData(
-    style: FilledButton.styleFrom(
-      minimumSize: const Size(100, 44),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-    ),
-  ),
-  outlinedButtonTheme: OutlinedButtonThemeData(
-    style: OutlinedButton.styleFrom(
-      minimumSize: const Size(100, 44),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-    ),
-  ),
-  inputDecorationTheme: InputDecorationTheme(
-    filled: true,
-    fillColor: canvas,
-    border: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(10),
-      borderSide: const BorderSide(color: edge),
-    ),
-    enabledBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(10),
-      borderSide: const BorderSide(color: edge),
-    ),
-  ),
-  scrollbarTheme: const ScrollbarThemeData(
-    thumbColor: WidgetStatePropertyAll(Color(0xff64676e)),
-    thickness: WidgetStatePropertyAll(6),
-    radius: Radius.circular(6),
-  ),
-  tooltipTheme: const TooltipThemeData(
-    waitDuration: Duration(milliseconds: 500),
-  ),
-);
-
 class Bootstrap extends StatefulWidget {
   const Bootstrap({
     super.key,
@@ -161,6 +70,7 @@ class Bootstrap extends StatefulWidget {
 }
 
 class _BootstrapState extends State<Bootstrap> with WidgetsBindingObserver {
+  final _appearance = AppearanceStore();
   SvoiController? _controller;
   String? _error;
   bool _ready = false, _closing = false;
@@ -194,6 +104,9 @@ class _BootstrapState extends State<Bootstrap> with WidgetsBindingObserver {
       final data = widget.demo
           ? Directory.systemTemp
           : await prepareDataDirectory();
+      if (!widget.demo) {
+        await _appearance.load(File('${data.path}/appearance.json'));
+      }
       final api =
           widget.backend ??
           (widget.demo
@@ -240,6 +153,7 @@ class _BootstrapState extends State<Bootstrap> with WidgetsBindingObserver {
     setState(() => _closing = true);
     if (_controller == null) await _launch;
     await _controller?.close();
+    await _appearance.flush().catchError((Object _) {});
     await windowChannel.invokeMethod('close');
   }
 
@@ -251,73 +165,109 @@ class _BootstrapState extends State<Bootstrap> with WidgetsBindingObserver {
   }
 
   @override
+  void didChangeAccessibilityFeatures() {
+    if (mounted) setState(() {});
+  }
+
+  @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _appearance.dispose();
     super.dispose();
   }
 
   @override
-  Widget build(BuildContext context) => MaterialApp(
-    debugShowCheckedModeBanner: false,
-    title: 'SVOI',
-    theme: svoiTheme(),
-    builder: (context, child) => _controller == null
-        ? child!
-        : ValueListenableBuilder(
-            valueListenable: _controller!.foreground,
-            child: child,
-            builder: (context, visible, child) =>
-                TickerMode(enabled: visible, child: child!),
-          ),
-    home: _closing
-        ? const DesktopStartup(
-            child: Center(child: Text('Завершаем соединение…')),
-          )
-        : _ready
-        ? SvoiShell(key: _shellKey, controller: _controller!, demo: widget.demo)
-        : DesktopStartup(
-            child: Center(
-              child: SizedBox(
-                width: 520,
-                child: Padding(
-                  padding: const EdgeInsets.all(32),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(
-                        Icons.shield_outlined,
-                        size: 44,
-                        color: accent,
-                      ),
-                      const SizedBox(height: 20),
-                      const Text(
-                        'SVOI',
-                        style: TextStyle(
-                          fontSize: 28,
-                          fontWeight: FontWeight.w700,
+  Widget build(BuildContext context) => AppearanceScope(
+    store: _appearance,
+    child: ValueListenableBuilder(
+      valueListenable: _appearance,
+      builder: (context, appearance, _) => MaterialApp(
+        debugShowCheckedModeBanner: false,
+        title: 'SVOI',
+        theme: svoiTheme(
+          palette: appearance == AppAppearance.system
+              ? SvoiColors.light
+              : SvoiColors.forAppearance(appearance),
+        ),
+        darkTheme: svoiTheme(),
+        themeMode: appearance == AppAppearance.system
+            ? ThemeMode.system
+            : ThemeMode.light,
+        themeAnimationDuration:
+            WidgetsBinding
+                .instance
+                .platformDispatcher
+                .accessibilityFeatures
+                .disableAnimations
+            ? Duration.zero
+            : const Duration(milliseconds: 180),
+        builder: (context, child) => _controller == null
+            ? child!
+            : ValueListenableBuilder(
+                valueListenable: _controller!.foreground,
+                child: child,
+                builder: (context, visible, child) =>
+                    TickerMode(enabled: visible, child: child!),
+              ),
+        home: Builder(
+          builder: (context) => _closing
+              ? const DesktopStartup(
+                  child: Center(child: Text('Завершаем соединение…')),
+                )
+              : _ready
+              ? SvoiShell(
+                  key: _shellKey,
+                  controller: _controller!,
+                  demo: widget.demo,
+                )
+              : DesktopStartup(
+                  child: Center(
+                    child: SizedBox(
+                      width: 520,
+                      child: Padding(
+                        padding: const EdgeInsets.all(32),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.shield_outlined,
+                              size: 44,
+                              color: appColors(context).accent,
+                            ),
+                            const SizedBox(height: 20),
+                            const Text(
+                              'SVOI',
+                              style: TextStyle(
+                                fontSize: 28,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            const SizedBox(height: 20),
+                            if (_error == null)
+                              const LinearProgressIndicator()
+                            else
+                              SelectableText(
+                                _error!,
+                                style: TextStyle(
+                                  color: appColors(context).error,
+                                ),
+                              ),
+                            const SizedBox(height: 16),
+                            Text(
+                              _error == null
+                                  ? 'Запускаем локальный сервис…'
+                                  : 'Закройте окно и запустите SVOI повторно.',
+                              style: TextStyle(color: appColors(context).muted),
+                            ),
+                          ],
                         ),
                       ),
-                      const SizedBox(height: 20),
-                      if (_error == null)
-                        const LinearProgressIndicator()
-                      else
-                        SelectableText(
-                          _error!,
-                          style: const TextStyle(color: Color(0xffffaaa6)),
-                        ),
-                      const SizedBox(height: 16),
-                      Text(
-                        _error == null
-                            ? 'Запускаем локальный сервис…'
-                            : 'Закройте окно и запустите SVOI повторно.',
-                        style: const TextStyle(color: muted),
-                      ),
-                    ],
+                    ),
                   ),
                 ),
-              ),
-            ),
-          ),
+        ),
+      ),
+    ),
   );
 }
 
@@ -405,59 +355,64 @@ class _SvoiShellState extends State<SvoiShell> {
   Widget build(BuildContext context) {
     final c = widget.controller;
     return Scaffold(
-      body: Column(
+      body: Stack(
         children: [
-          DesktopTitlebar(
-            page: page,
-            onPage: (value) => setState(() => page = value),
-            onProfiles: () => showDesktopSheet(
-              context,
-              'Профили и перенос',
-              ProfilePage(c: c),
-            ),
-          ),
-          const Divider(height: 1),
-          ValueListenableBuilder(
-            valueListenable: c.message,
-            builder: (context, message, _) => message.isEmpty
-                ? const SizedBox.shrink()
-                : Material(
-                    color: const Color(0xff382327),
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 6, 12, 6),
-                      child: Row(
-                        children: [
-                          const Icon(
-                            LucideIcons.info,
-                            size: 18,
-                            color: Color(0xffffaaa6),
+          const Positioned.fill(child: SeasonalBackdrop()),
+          Column(
+            children: [
+              DesktopTitlebar(
+                page: page,
+                onPage: (value) => setState(() => page = value),
+                onProfiles: () => showDesktopSheet(
+                  context,
+                  'Профили и перенос',
+                  ProfilePage(c: c),
+                ),
+              ),
+              const Divider(height: 1),
+              ValueListenableBuilder(
+                valueListenable: c.message,
+                builder: (context, message, _) => message.isEmpty
+                    ? const SizedBox.shrink()
+                    : Material(
+                        color: appColors(context).errorSurface,
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(20, 6, 12, 6),
+                          child: Row(
+                            children: [
+                              Icon(
+                                LucideIcons.info,
+                                size: 18,
+                                color: appColors(context).error,
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  message,
+                                  maxLines: 3,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(fontSize: 12),
+                                ),
+                              ),
+                              IconButton(
+                                tooltip: 'Закрыть сообщение',
+                                onPressed: () => c.message.value = '',
+                                icon: const Icon(LucideIcons.x, size: 18),
+                              ),
+                            ],
                           ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              message,
-                              maxLines: 3,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(fontSize: 12),
-                            ),
-                          ),
-                          IconButton(
-                            tooltip: 'Закрыть сообщение',
-                            onPressed: () => c.message.value = '',
-                            icon: const Icon(LucideIcons.x, size: 18),
-                          ),
-                        ],
+                        ),
                       ),
-                    ),
-                  ),
-          ),
-          Expanded(
-            child: switch (page) {
-              4 => ZapretPage(c: c),
-              5 => PreferencesPage(c: c),
-              6 => NetworkToolsPage(c: c),
-              _ => DesktopWorkspace(c: c),
-            },
+              ),
+              Expanded(
+                child: switch (page) {
+                  4 => ZapretPage(c: c),
+                  5 => PreferencesPage(c: c),
+                  6 => NetworkToolsPage(c: c),
+                  _ => DesktopWorkspace(c: c),
+                },
+              ),
+            ],
           ),
         ],
       ),
@@ -470,9 +425,9 @@ class Panel extends StatelessWidget {
   final Widget child;
   @override
   Widget build(BuildContext context) => Material(
-    color: surface,
+    color: appColors(context).surface,
     shape: RoundedRectangleBorder(
-      side: const BorderSide(color: edge),
+      side: BorderSide(color: appColors(context).edge),
       borderRadius: BorderRadius.circular(18),
     ),
     child: Padding(padding: const EdgeInsets.all(22), child: child),
@@ -492,9 +447,9 @@ Future<void> importDialog(BuildContext context, SvoiController c) async {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
+              Text(
                 'HTTPS-ссылка, VLESS / VMess / Trojan / SS / Hysteria2, JSON или код SVOI1. Перед переносом профиля будет показан его состав.',
-                style: TextStyle(color: muted, fontSize: 13),
+                style: TextStyle(color: appColors(context).muted, fontSize: 13),
               ),
               const SizedBox(height: 18),
               TextField(
@@ -607,7 +562,10 @@ Future<void> showConfig(
                 children: [
                   Text(
                     'Правил: ${data['rules']} · балансировщиков: ${data['balancers']}. JSON содержит ключи доступа.',
-                    style: const TextStyle(color: muted, fontSize: 12),
+                    style: TextStyle(
+                      color: appColors(context).muted,
+                      fontSize: 12,
+                    ),
                   ),
                   const TabBar(
                     tabs: [

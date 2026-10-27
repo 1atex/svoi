@@ -29,6 +29,7 @@ class _DesktopTitlebarState extends State<DesktopTitlebar> {
     final geometry = {
       'drag': [?rect(_brand), ?rect(_gap)],
       'maximize': rect(_maximize),
+      'dark': appColors(context).brightness == Brightness.dark,
     };
     final encoded = jsonEncode(geometry);
     if (encoded == _geometry) return;
@@ -66,7 +67,7 @@ class _DesktopTitlebarState extends State<DesktopTitlebar> {
           tabsWidth <= bounds.maxWidth - 403 &&
           MediaQuery.textScalerOf(context).scale(14) <= 19;
       return Material(
-        color: const Color(0xff141417),
+        color: appColors(context).titlebar,
         child: SizedBox(
           height: 64,
           child: Row(
@@ -78,14 +79,32 @@ class _DesktopTitlebarState extends State<DesktopTitlebar> {
                 child: Center(
                   child: Tooltip(
                     message: 'SVOI',
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(9),
-                      child: Image.asset(
-                        'assets/svoi-mark.png',
-                        width: 34,
-                        height: 34,
-                        semanticLabel: 'SVOI',
-                      ),
+                    child: Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(9),
+                          child: Image.asset(
+                            'assets/svoi-mark.png',
+                            width: 34,
+                            height: 34,
+                            semanticLabel: 'SVOI',
+                          ),
+                        ),
+                        if (appColors(context).halloween)
+                          Positioned(
+                            right: -5,
+                            bottom: -4,
+                            child: ExcludeSemantics(
+                              child: CustomPaint(
+                                size: const Size(17, 17),
+                                painter: PumpkinPainter(
+                                  appColors(context).accent,
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
                     ),
                   ),
                 ),
@@ -108,10 +127,10 @@ class _DesktopTitlebarState extends State<DesktopTitlebar> {
                                 : 14,
                           ),
                           foregroundColor: widget.page == index
-                              ? accent
-                              : muted,
+                              ? appColors(context).accent
+                              : appColors(context).muted,
                           backgroundColor: widget.page == index
-                              ? accent.withValues(alpha: .12)
+                              ? appColors(context).selected
                               : Colors.transparent,
                           textStyle: tabStyle,
                           shape: RoundedRectangleBorder(
@@ -241,11 +260,11 @@ class _CaptionButton extends StatelessWidget {
           foregroundColor: WidgetStateProperty.resolveWith(
             (states) => close && states.contains(WidgetState.hovered)
                 ? Colors.white
-                : muted,
+                : appColors(context).muted,
           ),
           backgroundColor: WidgetStateProperty.resolveWith(
             (states) => states.contains(WidgetState.hovered) || highlighted
-                ? (close ? const Color(0xffc42b1c) : raised)
+                ? (close ? const Color(0xffc42b1c) : appColors(context).raised)
                 : Colors.transparent,
           ),
         ),

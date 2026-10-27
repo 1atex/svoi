@@ -16,7 +16,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/1atex/svoi/releases/download/v0.6.0-beta.1/SVOI-0.6.0-beta.1-windows-x64-setup.exe"><b>↓ Скачать для Windows</b></a>
+  <a href="https://github.com/1atex/svoi/releases/download/v0.6.0-beta.3/SVOI-0.6.0-beta.3-windows-x64-setup.exe"><b>↓ Скачать для Windows</b></a>
   &nbsp; · &nbsp;
   <a href="https://github.com/1atex/svoi/releases/download/android-v0.1.0-preview.7/SVOI-Android-0.1.0-preview.7-arm64.apk"><b>↓ Android APK · Preview</b></a>
   &nbsp; · &nbsp;
@@ -46,6 +46,8 @@
 | **Маршруты из конфигурации** — полные Xray JSON-профили с правилами и балансировщиками. | **Просмотр JSON** — исходная конфигурация и конфигурация, подготовленная для подключения. |
 | **Трафик выбранных приложений** — включения и исключения для TUN. | **Перенос профиля** — кодом или файлом, с предпросмотром перед импортом. |
 | **zapret в интерфейсе** — загрузка и обновление релизов Flowseal, стратегии и проверки. | **Обновления SVOI** — проверка, скачивание, SHA-256 и запуск установки из приложения. |
+
+**Оформление:** восемь тем — классика, светлая, системная, океан, изумруд, роза, AMOLED и Хэллоуин с кнопкой-тыквой. Выбор сохраняется на устройстве; смена темы не отключает VPN.
 
 **Протоколы:** VLESS · VMess · Trojan · Shadowsocks · Hysteria2 (Windows с beta.11, Android с Preview 7). Также поддерживается импорт полных профилей Xray; доступность конкретного транспорта зависит от конфигурации и версии ядра.
 
@@ -77,11 +79,11 @@ Hysteria2: ссылки `hy2://` и `hysteria2://`, TLS, Salamander и пере�
 
 ## Первый запуск
 
-1. **Установите SVOI.** [Установщик Windows x64](https://github.com/1atex/svoi/releases/download/v0.6.0-beta.1/SVOI-0.6.0-beta.1-windows-x64-setup.exe) уже содержит Xray, Wintun и необходимые библиотеки. WebView2 не нужен.
+1. **Установите SVOI.** [Установщик Windows x64](https://github.com/1atex/svoi/releases/download/v0.6.0-beta.3/SVOI-0.6.0-beta.3-windows-x64-setup.exe) уже содержит Xray, Wintun и необходимые библиотеки. WebView2 не нужен.
 2. **Добавьте свою подписку.** Вставьте ссылку или импортируйте конфигурацию из файла / текста.
 3. **Выберите сервер и подключитесь.** На новой установке выбран TUN («Все приложения»); для него нужны права администратора. Сохранённый выбор режима при обновлении не меняется.
 
-Предпочитаете без установки? [Скачайте portable ZIP](https://github.com/1atex/svoi/releases/download/v0.6.0-beta.1/SVOI-0.6.0-beta.1-windows-x64.zip), распакуйте **весь архив** и запустите `svoi.exe`.
+Предпочитаете без установки? [Скачайте portable ZIP](https://github.com/1atex/svoi/releases/download/v0.6.0-beta.3/SVOI-0.6.0-beta.3-windows-x64.zip), распакуйте **весь архив** и запустите `svoi.exe`.
 
 Установщик предлагает запуск после установки. Ярлык на рабочем столе и запуск от имени администратора включены по умолчанию; флажки можно снять. При запуске с повышенными правами Windows покажет запрос UAC.
 
@@ -102,7 +104,7 @@ Hysteria2: ссылки `hy2://` и `hysteria2://`, TLS, Salamander и пере�
 
 ## Статус проекта
 
-**Windows: 0.6.0-beta.1 · x64. Android: 0.1.0-preview.7 · ARM64 и x86_64.** iOS пока не выпускается. SVOI использует ваши подписки; VPN-серверы в комплект не входят.
+**Windows: 0.6.0-beta.3 · x64. Android: 0.1.0-preview.7 · ARM64 и x86_64.** iOS пока не выпускается. SVOI использует ваши подписки; VPN-серверы в комплект не входят.
 
 Android — отдельная экспериментальная сборка: [APK для ARM64-телефонов](https://github.com/1atex/svoi/releases/download/android-v0.1.0-preview.7/SVOI-Android-0.1.0-preview.7-arm64.apk), [APK для эмулятора x86_64](https://github.com/1atex/svoi/releases/download/android-v0.1.0-preview.7/SVOI-Android-0.1.0-preview.7-x64.apk), [инструкция и исходники Android](https://github.com/1atex/svoi/blob/android-preview/docs/ANDROID.md). Обновления проверяются и скачиваются из приложения; установку подтверждает пользователь. Preview 7 добавляет внешний IP, настройки проверки задержки и сведения о подписках. Устанавливается поверх Preview 6 с сохранением данных. При переходе с Preview 5 сохраните коды профилей и переустановите приложение: начиная с Preview 6 используется постоянная подпись.
 

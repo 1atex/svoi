@@ -54,16 +54,19 @@ Future<void> saveScenarioDialog(BuildContext context, SvoiController c) async {
                   onChanged: saving ? null : (v) => setLocal(() => kind = v!),
                 ),
                 const SizedBox(height: 14),
-                const Text(
+                Text(
                   'Сценарий сохранится в текущем профиле. Его запуск может переключить VPN и zapret с кратким перерывом соединения.',
-                  style: TextStyle(color: muted, height: 1.5),
+                  style: TextStyle(
+                    color: appColors(context).muted,
+                    height: 1.5,
+                  ),
                 ),
                 if (error.isNotEmpty)
                   Padding(
                     padding: const EdgeInsets.only(top: 12),
                     child: Text(
                       error,
-                      style: const TextStyle(color: Color(0xffffaaa6)),
+                      style: TextStyle(color: appColors(context).error),
                     ),
                   ),
               ],
@@ -154,16 +157,20 @@ class ScenarioLauncher extends StatelessWidget {
       ],
       child: DecoratedBox(
         decoration: BoxDecoration(
-          color: raised,
+          color: appColors(context).raised,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: edge),
+          border: Border.all(color: appColors(context).edge),
         ),
-        child: const Padding(
+        child: Padding(
           padding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(LucideIcons.layers, size: 15, color: accent),
+              Icon(
+                LucideIcons.layers,
+                size: 15,
+                color: appColors(context).accent,
+              ),
               SizedBox(width: 7),
               Text('Сценарии', style: TextStyle(fontSize: 12)),
               SizedBox(width: 6),
@@ -207,10 +214,13 @@ class ScenarioManager extends StatelessWidget {
             if (c.currentScenarios.any((s) => s['id'] == c.lastScenario.value))
               Text(
                 'Последний запуск: ${c.currentScenarios.firstWhere((s) => s['id'] == c.lastScenario.value)['name']}',
-                style: const TextStyle(color: accent),
+                style: TextStyle(color: appColors(context).accent),
               ),
             if (c.currentScenarios.isEmpty)
-              const Text('Сценариев пока нет.', style: TextStyle(color: muted)),
+              Text(
+                'Сценариев пока нет.',
+                style: TextStyle(color: appColors(context).muted),
+              ),
             for (final scene in c.currentScenarios)
               ListTile(
                 contentPadding: EdgeInsets.zero,

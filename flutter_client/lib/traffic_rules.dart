@@ -98,9 +98,9 @@ class _DirectSitesPanelState extends State<DirectSitesPanel> {
               ),
               const SizedBox(height: 12),
               if (domains.isEmpty)
-                const Text(
+                Text(
                   'Список пуст. Все сайты используют маршруты профиля.',
-                  style: TextStyle(color: muted),
+                  style: TextStyle(color: appColors(context).muted),
                 ),
               for (final domain in domains)
                 ListTile(
@@ -124,7 +124,7 @@ class _DirectSitesPanelState extends State<DirectSitesPanel> {
                 c.connection.value['state'] == 'running'
                     ? 'Для применения изменений нажмите «Переключиться» на экране подключения.'
                     : 'Изменения применятся при следующем подключении.',
-                style: const TextStyle(color: muted),
+                style: TextStyle(color: appColors(context).muted),
               ),
             ],
           ),

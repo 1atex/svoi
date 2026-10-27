@@ -130,6 +130,11 @@ void FlutterWindow::CaptionHover(bool hovered) {
       std::make_unique<flutter::EncodableValue>(hovered));
 }
 
+void FlutterWindow::UpdateFrameAppearance() {
+  const BOOL dark = dark_frame_ ? TRUE : FALSE;
+  DwmSetWindowAttribute(GetHandle(), 20, &dark, sizeof(dark));
+}
+
 LRESULT CALLBACK FlutterWindow::ChildFrameProc(HWND hwnd, UINT message,
     WPARAM wparam, LPARAM lparam, UINT_PTR id, DWORD_PTR context) {
   auto* window = reinterpret_cast<FlutterWindow*>(context);
@@ -205,6 +210,12 @@ bool FlutterWindow::OnCreate() {
       }
       maximize_region_ = maximize;
       drag_regions_ = std::move(regions);
+      if (const auto* dark = MenuValue<bool>(*geometry, "dark")) {
+        if (dark_frame_ != *dark) {
+          dark_frame_ = *dark;
+          UpdateFrameAppearance();
+        }
+      }
       if (!custom_frame_) {
         custom_frame_ = true;
         const MARGINS margins{1, 1, 1, 1};
@@ -331,6 +342,10 @@ FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
                               WPARAM const wparam,
                               LPARAM const lparam) noexcept {
   if (custom_frame_) {
+    if (message == WM_DWMCOLORIZATIONCOLORCHANGED) {
+      UpdateFrameAppearance();
+      return 0;
+    }
     if (message == WM_NCCALCSIZE && wparam) {
       if (IsZoomed(hwnd)) {
         auto* params = reinterpret_cast<NCCALCSIZE_PARAMS*>(lparam);

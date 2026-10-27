@@ -91,15 +91,20 @@ class ConnectionPath extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
     decoration: BoxDecoration(
-      color: canvas.withValues(alpha: .6),
+      color: appColors(context).canvas.withValues(alpha: .6),
       borderRadius: BorderRadius.circular(12),
     ),
     child: Column(
       children: [
         Row(
           children: [
-            _step(LucideIcons.monitor, 'Ваш ПК', 'Клиент открыт', muted),
-            _line(view.running),
+            _step(
+              LucideIcons.monitor,
+              'Ваш ПК',
+              'Клиент открыт',
+              appColors(context).muted,
+            ),
+            _line(context, view.running),
             _step(
               LucideIcons.shield,
               'VPN',
@@ -108,9 +113,11 @@ class ConnectionPath extends StatelessWidget {
                   : view.running
                   ? 'Xray запущен'
                   : 'Не запущен',
-              view.running ? accent : muted,
+              view.running
+                  ? appColors(context).accent
+                  : appColors(context).muted,
             ),
-            _line(view.verified),
+            _line(context, view.verified),
             _step(
               LucideIcons.globe,
               'Интернет',
@@ -122,10 +129,10 @@ class ConnectionPath extends StatelessWidget {
                   ? 'Нет ответа'
                   : 'Не проверен',
               view.verified
-                  ? success
+                  ? appColors(context).success
                   : view.error.isNotEmpty
-                  ? const Color(0xffffaaa6)
-                  : muted,
+                  ? appColors(context).error
+                  : appColors(context).muted,
             ),
           ],
         ),
@@ -137,15 +144,17 @@ class ConnectionPath extends StatelessWidget {
               ? 'Проверка из SVOI · маршрут зависит от правил приложений'
               : 'Сквозная проверка · доступность VPN-сервера отдельно не измеряется',
           textAlign: TextAlign.center,
-          style: const TextStyle(fontSize: 10, color: muted),
+          style: TextStyle(fontSize: 10, color: appColors(context).muted),
         ),
       ],
     ),
   );
-  Widget _line(bool active) => Container(
+  Widget _line(BuildContext context, bool active) => Container(
     width: 20,
     height: 1,
-    color: active ? accent.withValues(alpha: .6) : edge,
+    color: active
+        ? appColors(context).accent.withValues(alpha: .6)
+        : appColors(context).edge,
   );
   Widget _step(IconData icon, String title, String detail, Color color) =>
       Expanded(
@@ -200,7 +209,10 @@ Future<void> showDiagnostics(
                   ),
                 ),
                 const SizedBox(height: 8),
-                Text(view.detail, style: const TextStyle(color: muted)),
+                Text(
+                  view.detail,
+                  style: TextStyle(color: appColors(context).muted),
+                ),
                 PublicIPLine(c: c),
                 TextButton.icon(
                   onPressed: () {
@@ -218,8 +230,8 @@ Future<void> showDiagnostics(
                 if (view.error.isNotEmpty) ...[
                   SelectableText(
                     view.error,
-                    style: const TextStyle(
-                      color: Color(0xffffaaa6),
+                    style: TextStyle(
+                      color: appColors(context).error,
                       fontSize: 12,
                     ),
                   ),
@@ -235,9 +247,13 @@ Future<void> showDiagnostics(
                     style: const TextStyle(fontSize: 12, height: 1.8),
                   ),
                 const SizedBox(height: 12),
-                const Text(
+                Text(
                   'Проверяется один контрольный адрес. Ошибка сама по себе не определяет причину: это может быть адрес проверки, сервер, DNS или маршрут. В TUN с выбором приложений контрольный запрос следует правилам Windows для процесса SVOI.',
-                  style: TextStyle(fontSize: 12, color: muted, height: 1.5),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: appColors(context).muted,
+                    height: 1.5,
+                  ),
                 ),
               ],
             ),

@@ -32,14 +32,14 @@ Future<void> showTCPCheck(
                       : 'TCP-соединение: ${snapshot.data!['latency']} мс',
                   style: TextStyle(
                     color: snapshot.hasError
-                        ? const Color(0xffffaaa6)
-                        : success,
+                        ? appColors(context).error
+                        : appColors(context).success,
                   ),
                 ),
               const SizedBox(height: 16),
-              const Text(
+              Text(
                 'Проверяется только соединение с адресом сервера, максимум 2 секунды. Это не проверка VPN или скорости загрузки. При включённом TUN запрос следует текущим маршрутам.',
-                style: TextStyle(color: muted, height: 1.5),
+                style: TextStyle(color: appColors(context).muted, height: 1.5),
               ),
             ],
           ),
@@ -280,16 +280,16 @@ class _DnsToolsState extends State<DnsTools> {
           style: TextStyle(fontSize: 22, fontWeight: FontWeight.w600),
         ),
         const SizedBox(height: 8),
-        const Text(
+        Text(
           'Сравнение реальными запросами к трём доменам: первый и повторный проход. Быстрый DNS не означает более высокую скорость скачивания.',
-          style: TextStyle(color: muted, height: 1.5),
+          style: TextStyle(color: appColors(context).muted, height: 1.5),
         ),
         const SizedBox(height: 16),
         Text(
           vpnRunning
               ? 'VPN включён · результаты зависят от маршрутов. TUN может перенаправлять DNS на сервер из профиля.'
               : 'VPN выключен · проверка по текущей сети Windows',
-          style: const TextStyle(color: accent),
+          style: TextStyle(color: appColors(context).accent),
         ),
         const SizedBox(height: 16),
         Wrap(
@@ -321,13 +321,16 @@ class _DnsToolsState extends State<DnsTools> {
             padding: const EdgeInsets.only(top: 12),
             child: Text(
               error,
-              style: const TextStyle(color: Color(0xffffaaa6)),
+              style: TextStyle(color: appColors(context).error),
             ),
           ),
         if (progress.isNotEmpty)
           Padding(
             padding: const EdgeInsets.only(top: 12),
-            child: Text(progress, style: const TextStyle(color: muted)),
+            child: Text(
+              progress,
+              style: TextStyle(color: appColors(context).muted),
+            ),
           ),
         const SizedBox(height: 12),
         for (final candidate in candidates.entries)
@@ -336,10 +339,12 @@ class _DnsToolsState extends State<DnsTools> {
             child: Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: surface,
+                color: appColors(context).surface,
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                  color: winner == candidate.key ? accent : edge,
+                  color: winner == candidate.key
+                      ? appColors(context).accent
+                      : appColors(context).edge,
                 ),
               ),
               child: Column(
@@ -354,24 +359,24 @@ class _DnsToolsState extends State<DnsTools> {
                     if (result['error'] != null)
                       Text(
                         result['error'].toString(),
-                        style: const TextStyle(color: Color(0xffffaaa6)),
+                        style: TextStyle(color: appColors(context).error),
                       )
                     else if (result['success'] == 0)
-                      const Text(
+                      Text(
                         'Нет ответов · 0 из 6',
-                        style: TextStyle(color: Color(0xffffaaa6)),
+                        style: TextStyle(color: appColors(context).error),
                       )
                     else
                       Text(
                         'Медиана ${(result['medianMs'] as num).toStringAsFixed(1)} мс · максимум ${(result['worstMs'] as num).toStringAsFixed(1)} мс · ответов ${result['success']}/${result['total']}',
-                        style: const TextStyle(color: muted),
+                        style: TextStyle(color: appColors(context).muted),
                       ),
                     if (winner == candidate.key)
-                      const Padding(
+                      Padding(
                         padding: EdgeInsets.only(top: 6),
                         child: Text(
                           'Лучший результат этого теста',
-                          style: TextStyle(color: accent),
+                          style: TextStyle(color: appColors(context).accent),
                         ),
                       ),
                     if (public.contains(candidate.key) &&
@@ -389,7 +394,7 @@ class _DnsToolsState extends State<DnsTools> {
                   ] else
                     Text(
                       testing ? 'Ожидает результата…' : 'Ещё не проверен',
-                      style: const TextStyle(color: muted),
+                      style: TextStyle(color: appColors(context).muted),
                     ),
                 ],
               ),
@@ -419,9 +424,13 @@ class _DnsToolsState extends State<DnsTools> {
                 : (value) => setState(() => selected = value ?? ''),
           ),
         const SizedBox(height: 12),
-        const Text(
+        Text(
           'Тест обычного DNS (UDP/TCP, IPv4). DoH, IPv6 и DNS внутри VPN не изменяются. Результат зависит от сети и кэша; перед выбором повторите тест. Для изменения DNS отключите VPN и запустите SVOI от администратора.',
-          style: TextStyle(color: muted, fontSize: 12, height: 1.5),
+          style: TextStyle(
+            color: appColors(context).muted,
+            fontSize: 12,
+            height: 1.5,
+          ),
         ),
         if (data['backup'] != null)
           Padding(

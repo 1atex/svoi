@@ -87,12 +87,12 @@ class _StartupPanelState extends State<StartupPanel> {
       ),
       if (busy) const LinearProgressIndicator(),
       if (state?['elevated'] == false)
-        const Text(
+        Text(
           'Для изменения автозапуска откройте SVOI от имени администратора.',
-          style: TextStyle(color: muted, fontSize: 12),
+          style: TextStyle(color: appColors(context).muted, fontSize: 12),
         ),
       if (error.isNotEmpty)
-        Text(error, style: const TextStyle(color: Color(0xffffaaa6))),
+        Text(error, style: TextStyle(color: appColors(context).error)),
       if (state == null && error.isNotEmpty)
         TextButton(onPressed: load, child: const Text('Повторить')),
     ],

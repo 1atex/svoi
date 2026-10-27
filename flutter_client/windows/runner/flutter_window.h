@@ -37,6 +37,7 @@ class FlutterWindow : public Win32Window {
   bool tray_added_ = false;
   bool start_hidden_ = false;
   bool custom_frame_ = false;
+  bool dark_frame_ = true;
   bool max_hovered_ = false;
   bool max_pressed_ = false;
   struct TitlebarRect { double x, y, width, height; };
@@ -48,6 +49,7 @@ class FlutterWindow : public Win32Window {
   void RestoreFromTray();
   LRESULT FrameHitTest(LPARAM position);
   void CaptionHover(bool hovered);
+  void UpdateFrameAppearance();
   static LRESULT CALLBACK ChildFrameProc(HWND hwnd, UINT message, WPARAM wparam,
       LPARAM lparam, UINT_PTR id, DWORD_PTR context);
 };

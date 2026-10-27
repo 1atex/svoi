@@ -153,9 +153,9 @@ class _ProbeSettingsPanelState extends State<ProbeSettingsPanel> {
             ],
           ),
           const SizedBox(height: 12),
-          const Text(
+          Text(
             'Тайм-аут отсчитывается после готовности ядра; подготовка занимает до 5 с. Больше одновременных проверок — выше нагрузка; для большинства ПК достаточно 4. TCP-тест остаётся в меню сервера с лимитом 2 с.',
-            style: TextStyle(color: muted, height: 1.5),
+            style: TextStyle(color: appColors(context).muted, height: 1.5),
           ),
           const SizedBox(height: 16),
           Wrap(
@@ -172,9 +172,9 @@ class _ProbeSettingsPanelState extends State<ProbeSettingsPanel> {
                   'Дождитесь проверки или остановите её в списке серверов.',
                 )
               else if (saved)
-                const Text(
+                Text(
                   'Настройки сохранены',
-                  style: TextStyle(color: accent),
+                  style: TextStyle(color: appColors(context).accent),
                 ),
             ],
           ),

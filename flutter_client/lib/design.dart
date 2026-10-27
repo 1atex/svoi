@@ -1,19 +1,23 @@
 part of 'main.dart';
 
-final _buttonTheme = ShadThemeData(
-  brightness: Brightness.dark,
+ShadThemeData _buttonTheme(BuildContext context) => ShadThemeData(
+  brightness: appColors(context).brightness,
   textTheme: ShadTextTheme(family: 'Segoe UI'),
-  colorScheme: const ShadZincColorScheme.dark().copyWith(
-    primary: accent,
-    primaryForeground: canvas,
-    background: canvas,
-    foreground: ink,
-    border: edge,
-    secondary: raised,
-    secondaryForeground: ink,
-    muted: surface,
-    mutedForeground: muted,
-  ),
+  colorScheme:
+      (appColors(context).brightness == Brightness.dark
+              ? const ShadZincColorScheme.dark()
+              : const ShadZincColorScheme.light())
+          .copyWith(
+            primary: appColors(context).accent,
+            primaryForeground: appColors(context).onAccent,
+            background: appColors(context).canvas,
+            foreground: appColors(context).ink,
+            border: appColors(context).edge,
+            secondary: appColors(context).raised,
+            secondaryForeground: appColors(context).ink,
+            muted: appColors(context).surface,
+            mutedForeground: appColors(context).muted,
+          ),
   radius: BorderRadius.circular(10),
 );
 
@@ -40,7 +44,7 @@ class AppButton extends StatelessWidget {
     );
     final leading = icon == null ? null : Icon(icon, size: 17);
     return ShadTheme(
-      data: _buttonTheme,
+      data: _buttonTheme(context),
       child: primary
           ? ShadButton(
               onPressed: onPressed,
@@ -78,13 +82,17 @@ class CountryMark extends StatelessWidget {
         width: large ? 56 : 44,
         height: large ? 56 : 44,
         decoration: BoxDecoration(
-          color: raised,
+          color: appColors(context).raised,
           borderRadius: BorderRadius.circular(13),
-          border: Border.all(color: edge),
+          border: Border.all(color: appColors(context).edge),
         ),
         alignment: Alignment.center,
         child: country.code == null
-            ? Icon(LucideIcons.globe, size: large ? 24 : 20, color: muted)
+            ? Icon(
+                LucideIcons.globe,
+                size: large ? 24 : 20,
+                color: appColors(context).muted,
+              )
             : CountryFlag.fromCountryCode(
                 country.code!,
                 theme: ImageTheme(
@@ -99,9 +107,9 @@ class CountryMark extends StatelessWidget {
 }
 
 class Eyebrow extends StatelessWidget {
-  const Eyebrow(this.text, {super.key, this.color = muted});
+  const Eyebrow(this.text, {super.key, this.color});
   final String text;
-  final Color color;
+  final Color? color;
   @override
   Widget build(BuildContext context) => Text(
     text,
@@ -109,7 +117,7 @@ class Eyebrow extends StatelessWidget {
       fontSize: 10,
       letterSpacing: 1.5,
       fontWeight: FontWeight.w600,
-      color: color,
+      color: color ?? appColors(context).muted,
     ),
   );
 }
@@ -122,8 +130,14 @@ class StatusPill extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
     decoration: BoxDecoration(
-      color: active ? success.withValues(alpha: .09) : raised,
-      border: Border.all(color: active ? success.withValues(alpha: .22) : edge),
+      color: active
+          ? appColors(context).success.withValues(alpha: .09)
+          : appColors(context).raised,
+      border: Border.all(
+        color: active
+            ? appColors(context).success.withValues(alpha: .22)
+            : appColors(context).edge,
+      ),
       borderRadius: BorderRadius.circular(30),
     ),
     child: Row(
@@ -134,14 +148,18 @@ class StatusPill extends StatelessWidget {
           height: 6,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: active ? success : muted,
+            color: active
+                ? appColors(context).success
+                : appColors(context).muted,
           ),
         ),
         const SizedBox(width: 8),
         Text(
           text,
           style: TextStyle(
-            color: active ? success : muted,
+            color: active
+                ? appColors(context).success
+                : appColors(context).muted,
             fontSize: 11,
             fontWeight: FontWeight.w500,
           ),
@@ -178,7 +196,10 @@ class BrandMark extends StatelessWidget {
             letterSpacing: -1,
           ),
         ),
-        const Text('•', style: TextStyle(fontSize: 23, color: accent)),
+        Text(
+          '•',
+          style: TextStyle(fontSize: 23, color: appColors(context).accent),
+        ),
       ],
     ),
   );
@@ -230,15 +251,21 @@ class ModePicker extends StatelessWidget {
                 },
         ),
         const SizedBox(height: 10),
-        Text(switch (c.mode.value) {
-          'tun' =>
-            c.connection.value['elevated'] == true
-                ? 'Маршруты из конфигурации сохраняются.'
-                : 'TUN требует прав администратора. Маршруты из конфигурации сохраняются.',
-          'system' =>
-            'Для браузеров и приложений, учитывающих настройки прокси Windows.',
-          _ => 'Укажите SOCKS5 или HTTP вручную в приложении. Адреса — в диагностике.',
-        }, style: const TextStyle(fontSize: 12, color: muted, height: 1.5)),
+        Text(
+          switch (c.mode.value) {
+            'tun' =>
+              c.connection.value['elevated'] == true
+                  ? 'Маршруты из конфигурации сохраняются.'
+                  : 'TUN требует прав администратора. Маршруты из конфигурации сохраняются.',
+            'system' => 'Для браузеров и приложений, учитывающих настройки прокси Windows.',
+            _ => 'Укажите SOCKS5 или HTTP вручную в приложении. Адреса — в диагностике.',
+          },
+          style: TextStyle(
+            fontSize: 12,
+            color: appColors(context).muted,
+            height: 1.5,
+          ),
+        ),
         Align(
           alignment: Alignment.centerLeft,
           child: TextButton.icon(
