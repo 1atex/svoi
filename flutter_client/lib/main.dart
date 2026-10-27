@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show ValueListenable;
 import 'package:flutter/services.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 import 'package:country_flags/country_flags.dart';
@@ -14,6 +15,8 @@ import 'controller.dart';
 import 'user_failure.dart';
 import 'demo.dart';
 import 'data_directory.dart';
+import 'release_notice.dart';
+import 'release_notice_banner.dart';
 part 'features.dart';
 part 'design.dart';
 part 'overview.dart';
@@ -36,6 +39,7 @@ part 'public_ip.dart';
 part 'scenario_widgets.dart';
 part 'traffic_rules.dart';
 part 'site_tools.dart';
+part 'onboarding.dart';
 
 const windowChannel = MethodChannel('dev.svoi/window');
 const canvas = Color(0xff101013),
@@ -72,6 +76,8 @@ class Bootstrap extends StatefulWidget {
 
 class _BootstrapState extends State<Bootstrap> with WidgetsBindingObserver {
   final _appearance = AppearanceStore();
+  late final ValueNotifier<bool> _onboardingVisible;
+  ReleaseNoticeStore? _releaseNotice;
   SvoiController? _controller;
   String? _error;
   bool _ready = false, _closing = false;
@@ -80,6 +86,7 @@ class _BootstrapState extends State<Bootstrap> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
+    _onboardingVisible = ValueNotifier(!widget.startup);
     WidgetsBinding.instance.addObserver(this);
     windowChannel.setMethodCallHandler((call) async {
       if (call.method == 'windowState') {
@@ -90,6 +97,7 @@ class _BootstrapState extends State<Bootstrap> with WidgetsBindingObserver {
       }
       if (call.method == 'requestClose') await _close();
       if (call.method == 'visibility') {
+        _onboardingVisible.value = call.arguments == true;
         _controller?.visibility(call.arguments == true);
       }
       if (call.method == 'trayAction' && call.arguments is String) {
@@ -107,6 +115,23 @@ class _BootstrapState extends State<Bootstrap> with WidgetsBindingObserver {
           : await prepareDataDirectory();
       if (!widget.demo) {
         await _appearance.load(File('${data.path}/appearance.json'));
+        final notices = ReleaseNoticeStore(
+          File('${data.path}/release-notice.json'),
+        );
+        try {
+          final previous = Platform.isWindows
+              ? await installerPreviousVersion(
+                  File(
+                    '${File(Platform.resolvedExecutable).parent.path}/launch.ini',
+                  ),
+                  clientVersion,
+                )
+              : null;
+          await notices.load(clientVersion, previousInstall: previous);
+          _releaseNotice = notices;
+        } catch (_) {
+          notices.dispose();
+        }
       }
       final api =
           widget.backend ??
@@ -174,6 +199,8 @@ class _BootstrapState extends State<Bootstrap> with WidgetsBindingObserver {
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _appearance.dispose();
+    _onboardingVisible.dispose();
+    _releaseNotice?.dispose();
     super.dispose();
   }
 
@@ -220,6 +247,8 @@ class _BootstrapState extends State<Bootstrap> with WidgetsBindingObserver {
                   key: _shellKey,
                   controller: _controller!,
                   demo: widget.demo,
+                  releaseNotice: _releaseNotice,
+                  onboardingVisible: _onboardingVisible,
                 )
               : DesktopStartup(
                   child: Center(
@@ -273,9 +302,17 @@ class _BootstrapState extends State<Bootstrap> with WidgetsBindingObserver {
 }
 
 class SvoiShell extends StatefulWidget {
-  const SvoiShell({super.key, required this.controller, this.demo = false});
+  const SvoiShell({
+    super.key,
+    required this.controller,
+    this.demo = false,
+    this.releaseNotice,
+    this.onboardingVisible,
+  });
   final SvoiController controller;
   final bool demo;
+  final ReleaseNoticeStore? releaseNotice;
+  final ValueListenable<bool>? onboardingVisible;
   @override
   State<SvoiShell> createState() => _SvoiShellState();
 }
@@ -355,67 +392,82 @@ class _SvoiShellState extends State<SvoiShell> {
   @override
   Widget build(BuildContext context) {
     final c = widget.controller;
-    return Scaffold(
-      body: Stack(
-        children: [
-          const Positioned.fill(child: SeasonalBackdrop()),
-          Column(
-            children: [
-              DesktopTitlebar(
-                page: page,
-                onPage: (value) => setState(() => page = value),
-                onProfiles: () => showDesktopSheet(
-                  context,
-                  'Профили и перенос',
-                  ProfilePage(c: c),
+    return OnboardingHost(
+      store: widget.releaseNotice,
+      controller: c,
+      visible: widget.onboardingVisible,
+      platform: Platform.isLinux ? 'linux' : 'windows',
+      child: Scaffold(
+        body: Stack(
+          children: [
+            const Positioned.fill(child: SeasonalBackdrop()),
+            Column(
+              children: [
+                DesktopTitlebar(
+                  page: page,
+                  onPage: (value) => setState(() => page = value),
+                  onProfiles: () => showDesktopSheet(
+                    context,
+                    'Профили и перенос',
+                    ProfilePage(c: c),
+                  ),
                 ),
-              ),
-              const Divider(height: 1),
-              ValueListenableBuilder(
-                valueListenable: c.message,
-                builder: (context, message, _) => message.isEmpty
-                    ? const SizedBox.shrink()
-                    : Material(
-                        color: appColors(context).errorSurface,
-                        child: Padding(
-                          padding: const EdgeInsets.fromLTRB(20, 6, 12, 6),
-                          child: Row(
-                            children: [
-                              Icon(
-                                LucideIcons.info,
-                                size: 18,
-                                color: appColors(context).error,
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Text(
-                                  message,
-                                  maxLines: 3,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(fontSize: 12),
+                const Divider(height: 1),
+                if (widget.releaseNotice != null)
+                  ReleaseNoticeBanner(
+                    store: widget.releaseNotice!,
+                    platform: Platform.isLinux ? 'linux' : 'windows',
+                    open: (uri) => windowChannel.invokeMethod<void>(
+                      'openExternal',
+                      uri.toString(),
+                    ),
+                  ),
+                ValueListenableBuilder(
+                  valueListenable: c.message,
+                  builder: (context, message, _) => message.isEmpty
+                      ? const SizedBox.shrink()
+                      : Material(
+                          color: appColors(context).errorSurface,
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(20, 6, 12, 6),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  LucideIcons.info,
+                                  size: 18,
+                                  color: appColors(context).error,
                                 ),
-                              ),
-                              IconButton(
-                                tooltip: 'Закрыть сообщение',
-                                onPressed: () => c.message.value = '',
-                                icon: const Icon(LucideIcons.x, size: 18),
-                              ),
-                            ],
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    message,
+                                    maxLines: 3,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(fontSize: 12),
+                                  ),
+                                ),
+                                IconButton(
+                                  tooltip: 'Закрыть сообщение',
+                                  onPressed: () => c.message.value = '',
+                                  icon: const Icon(LucideIcons.x, size: 18),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
-                      ),
-              ),
-              Expanded(
-                child: switch (page) {
-                  4 => ZapretPage(c: c),
-                  5 => PreferencesPage(c: c),
-                  6 => NetworkToolsPage(c: c),
-                  _ => DesktopWorkspace(c: c),
-                },
-              ),
-            ],
-          ),
-        ],
+                ),
+                Expanded(
+                  child: switch (page) {
+                    4 => ZapretPage(c: c),
+                    5 => PreferencesPage(c: c),
+                    6 => NetworkToolsPage(c: c),
+                    _ => DesktopWorkspace(c: c),
+                  },
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

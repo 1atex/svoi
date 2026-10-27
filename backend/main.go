@@ -27,7 +27,7 @@ import (
 )
 
 var appVersion = "0.4.0-prebeta.3"
-var nativeVersion = "0.6.0-beta.3"
+var nativeVersion = "0.6.0-beta.4"
 
 //go:embed web/*
 var assets embed.FS

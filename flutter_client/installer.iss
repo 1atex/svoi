@@ -1,6 +1,9 @@
 #ifndef AppVersion
   #error AppVersion is required
 #endif
+#ifndef AppIconFile
+  #define AppIconFile "..\assets\svoi.ico"
+#endif
 [Setup]
 AppId=SVOI.FlutterDesktop
 AppName=SVOI
@@ -16,7 +19,7 @@ ArchitecturesInstallIn64BitMode=x64compatible
 MinVersion=10.0
 OutputDir={#ReleaseDir}
 OutputBaseFilename=SVOI-{#AppVersion}-windows-x64-setup
-SetupIconFile=..\assets\svoi.ico
+SetupIconFile={#AppIconFile}
 UninstallDisplayIcon={app}\svoi.exe
 UninstallDisplayName=SVOI
 AppMutex=Local\SVOI.FlutterDesktop
@@ -40,6 +43,8 @@ Name: "runasadmin"; Description: "Всегда запускать от имен�
 
 [INI]
 Filename: "{app}\launch.ini"; Section: "Launch"; Key: "RunAsAdmin"; String: "{code:AdminLaunchPreference}"; Flags: uninsdeleteentry uninsdeletesectionifempty
+Filename: "{app}\launch.ini"; Section: "Updates"; Key: "PreviousVersion"; String: "{code:PreviousInstallVersion}"; Flags: uninsdeleteentry uninsdeletesectionifempty
+Filename: "{app}\launch.ini"; Section: "Updates"; Key: "InstalledVersion"; String: "{#AppVersion}"; Flags: uninsdeleteentry uninsdeletesectionifempty
 
 [Files]
 Source: "{#PayloadDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
@@ -58,6 +63,20 @@ Name: "{autodesktop}\SVOI"; Filename: "{app}\svoi.exe"; WorkingDir: "{app}"; Ico
 Filename: "{app}\svoi.exe"; Description: "Запустить SVOI"; Flags: nowait postinstall skipifsilent
 
 [Code]
+var
+  UpdateFromVersion: String;
+
+function InitializeSetup(): Boolean;
+begin
+  RegQueryStringValue(HKCU, 'Software\Microsoft\Windows\CurrentVersion\Uninstall\SVOI.FlutterDesktop_is1', 'DisplayVersion', UpdateFromVersion);
+  Result := True;
+end;
+
+function PreviousInstallVersion(Param: String): String;
+begin
+  Result := UpdateFromVersion;
+end;
+
 function DefaultInstallDir(Param: String): String;
 var
   Previous: String;

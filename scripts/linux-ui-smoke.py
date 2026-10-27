@@ -9,6 +9,7 @@ import time
 bundle = Path(sys.argv[1]).resolve()
 output = Path(sys.argv[2]).resolve()
 output.mkdir(parents=True, exist_ok=True)
+version = json.loads((Path(__file__).resolve().parents[1] / 'config/linux-release.json').read_text())['version']
 with tempfile.TemporaryDirectory(prefix='svoi-linux-ui-') as data:
     env = dict(os.environ, SVOI_DATA=data, LIBGL_ALWAYS_SOFTWARE='1', GDK_BACKEND='x11')
     with open(output / 'linux-ui.log', 'w') as log:
@@ -25,6 +26,22 @@ with tempfile.TemporaryDirectory(prefix='svoi-linux-ui-') as data:
             else: raise RuntimeError('GUI did not become ready')
             window = result.stdout.splitlines()[0]
             time.sleep(2)
+            subprocess.run(['scrot', '--overwrite', str(output / 'linux-onboarding.png')], check=True)
+            subprocess.run(['xdotool', 'windowactivate', '--sync', window], check=True)
+            subprocess.run(['xdotool', 'key', '--clearmodifiers', 'Escape'], check=True)
+            deadline = time.monotonic() + 10
+            while time.monotonic() < deadline:
+                try:
+                    notice = json.loads(Path(data, 'release-notice.json').read_text())
+                    if notice.get('onboardingVersion') == version:
+                        break
+                except (FileNotFoundError, json.JSONDecodeError):
+                    pass
+                if app.poll() is not None:
+                    raise RuntimeError('GUI exited while skipping onboarding')
+                time.sleep(.1)
+            else:
+                raise RuntimeError('First-run onboarding did not persist its completion')
             second = subprocess.run([str(bundle / 'svoi')], env=env, stdout=log, stderr=log, timeout=10)
             assert second.returncode == 0, 'Second launch did not reuse the existing window'
             subprocess.run(['scrot', '--overwrite', str(output / 'linux-first-run.png')], check=True)
@@ -37,7 +54,7 @@ with tempfile.TemporaryDirectory(prefix='svoi-linux-ui-') as data:
             for child in children:
                 assert not Path('/proc', child).exists(), 'Backend remains after GUI close'
             assert not list(Path(data).glob('*.tmp'))
-            print('PASS: GTK launch, first-run data, native window close and backend cleanup')
+            print('PASS: GTK launch, first-run onboarding, persisted completion, native window close and backend cleanup')
         finally:
             if app.poll() is None: app.terminate(); app.wait(timeout=10)
             wm.terminate(); wm.wait(timeout=10)

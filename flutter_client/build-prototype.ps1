@@ -1,8 +1,9 @@
 param(
-    [string]$Version = '0.6.0-beta.3',
+    [string]$Version = '0.6.0-beta.4',
     [string]$FlutterSdk = '',
     [string]$CrtDirectory = '',
-    [switch]$SkipChecks
+    [switch]$SkipChecks,
+    [switch]$PublicChangelog
 )
 $ErrorActionPreference = 'Stop'
 if ($Version -notmatch '^\d+\.\d+\.\d+(?:-(?:prebeta|beta|rc)\.\d+)?$') { throw 'Invalid version' }
@@ -45,7 +46,9 @@ try {
             if ($LASTEXITCODE) { throw 'Flutter tests failed' }
         }
         (Get-Item windows/runner/Runner.rc).LastWriteTime = Get-Date
-        & $flutter --no-version-check build windows --release
+        $buildOptions = @('--no-version-check', 'build', 'windows', '--release')
+        if ($PublicChangelog) { $buildOptions += '--dart-define=SVOI_PUBLIC_CHANGELOG=true' }
+        & $flutter @buildOptions
         if ($LASTEXITCODE) { throw 'Flutter release build failed' }
         & "$PSScriptRoot/verify-windows-branding.ps1" -Executable "$PSScriptRoot/build/windows/x64/runner/Release/svoi.exe"
     } finally { Pop-Location; Remove-Item Env:SVOI_BACKEND -ErrorAction SilentlyContinue }
@@ -78,7 +81,7 @@ try {
     Write-Output "SHA256=$hash"
     $iscc = 'C:/Program Files (x86)/Inno Setup 6/ISCC.exe'
     if (!(Test-Path -LiteralPath $iscc)) { throw 'Install Inno Setup 6 to build the Windows installer. ZIP is already built.' }
-    & $iscc /Qp "/DAppVersion=$Version" "/DPayloadDir=$stage" "/DReleaseDir=$release" "$PSScriptRoot/installer.iss"
+    & $iscc /Qp "/DAppVersion=$Version" "/DAppIconFile=$root/assets/svoi.ico" "/DPayloadDir=$stage" "/DReleaseDir=$release" "$PSScriptRoot/installer.iss"
     if ($LASTEXITCODE) { throw 'Flutter installer build failed' }
     $setup = Join-Path $release "SVOI-$Version-windows-x64-setup.exe"
     $setupHash = (Get-FileHash -LiteralPath $setup -Algorithm SHA256).Hash.ToLower()

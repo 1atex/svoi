@@ -15,6 +15,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"testing"
@@ -44,8 +45,18 @@ func TestMissingCoreExplainsUnavailableConnection(t *testing.T) {
 		t.Fatal(err)
 	}
 	status := engine.Status()
-	if status.Available || status.Problem != "core_missing" || !strings.Contains(status.Error, "Xray") {
+	diagnostic := strings.ToLower(status.Error)
+	if status.Available || status.Problem != "core_missing" {
 		t.Fatalf("missing actionable diagnostic: %+v", status)
+	}
+	guidance := []string{"core/xray", "setup.exe", "весь windows-архив", "перезапустите"}
+	if runtime.GOOS == "linux" {
+		guidance = []string{"xray", "переустановите", "весь linux-архив", "backend/core"}
+	}
+	for _, fragment := range guidance {
+		if !strings.Contains(diagnostic, fragment) {
+			t.Errorf("missing recovery guidance %q: %s", fragment, status.Error)
+		}
 	}
 }
 
