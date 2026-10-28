@@ -62,6 +62,12 @@ final class InterfaceTests: XCTestCase {
     capture("07-import")
     app.buttons["Отмена"].tap()
     XCTAssertTrue(add.waitForExistence(timeout: 5))
+    app.terminate()
+    let active = launch(["--empty", "--connected"])
+    XCTAssertTrue(active.buttons["vpn-toggle"].isHittable)
+    XCTAssertEqual(active.buttons["vpn-toggle"].label, "Отключить VPN")
+    active.buttons["vpn-toggle"].tap()
+    XCTAssertTrue(active.buttons["welcome-import"].waitForExistence(timeout: 5))
   }
 
   func testLargeTextAndLandscape() {

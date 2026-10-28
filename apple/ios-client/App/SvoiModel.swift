@@ -227,7 +227,7 @@ final class SvoiModel: ObservableObject {
 
   func toggleVPN() async {
     #if SVOI_UI_PREVIEW
-    vpn.setInterfacePreview(connected: !vpn.connected || vpn.serverID != selectedID, serverID: selectedID)
+    vpn.setInterfacePreview(connected: !vpn.connected || (selected != nil && vpn.serverID != selectedID), serverID: selectedID)
     return
     #else
     cancelProbes()
@@ -235,7 +235,7 @@ final class SvoiModel: ObservableObject {
     if vpn.busy { vpn.cancelStart(); return }
     error = ""
     do {
-      if vpn.active && vpn.serverID == selectedID { try await vpn.disconnect(); return }
+      if vpn.active && (vpn.serverID == selectedID || selected == nil) { try await vpn.disconnect(); return }
       guard let server = selected else { throw SvoiError("Сначала добавьте подписку и выберите сервер") }
       let token = token
       let profile = profileID

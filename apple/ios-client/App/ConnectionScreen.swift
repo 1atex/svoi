@@ -8,7 +8,7 @@ struct ConnectionScreen: View {
   let add: (Bool) -> Void
   @Environment(\.svoiAccent) private var accent
   @Environment(\.sizeCategory) private var sizeCategory
-  private var switching: Bool { vpn.connected && vpn.serverID != model.selectedID }
+  private var switching: Bool { vpn.connected && model.selected != nil && vpn.serverID != model.selectedID }
   private var busy: Bool { model.preparingVPN || vpn.busy }
   private var title: String { model.preparingVPN ? "Готовим подключение…" : vpn.title }
 
@@ -21,7 +21,7 @@ struct ConnectionScreen: View {
             SvoiIconButton(symbol: "xmark", label: "Закрыть ошибку") { model.error = "" }
           }
         }
-        if model.servers.isEmpty { welcome }
+        if model.servers.isEmpty && !vpn.active { welcome }
         else {
           connection
           ConnectionTools(vpn: vpn)
@@ -130,7 +130,7 @@ struct ConnectionScreen: View {
   }
   private var selectedServerText: some View {
     VStack(alignment: .leading, spacing: 5) {
-      Text(displayServerName(model.selected?.name ?? "Выбрать сервер"))
+      Text(displayServerName(model.selected?.name ?? (vpn.active ? "Текущее соединение" : "Выбрать сервер")))
         .font(.headline).foregroundStyle(SvoiPalette.text).fixedSize(horizontal: false, vertical: true)
       Text("\(model.selected?.kind ?? "") · Сменить сервер").font(.caption).foregroundStyle(SvoiPalette.muted)
     }

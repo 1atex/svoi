@@ -6,7 +6,11 @@ extension SvoiModel {
     guard !ready else { return }
     group = ["id": "preview", "name": "Моя сеть"]
     profiles = [SavedProfile(id: "preview", name: "Моя сеть", token: "interface-preview")]
-    guard !ProcessInfo.processInfo.arguments.contains("--empty") else { ready = true; return }
+    guard !ProcessInfo.processInfo.arguments.contains("--empty") else {
+      if ProcessInfo.processInfo.arguments.contains("--connected") { vpn.setInterfacePreview(connected: true, serverID: "previous-server") }
+      ready = true
+      return
+    }
     servers = [
       SvoiServer(["id": "fi", "name": "Finland", "protocol": "vless", "network": "tcp", "security": "reality", "subscriptionId": "demo"]),
       SvoiServer(["id": "nl", "name": "NL Автоматический", "protocol": "vless", "fullProfile": true, "subscriptionId": "demo"]),
