@@ -267,7 +267,7 @@ class _SiteCheckPanelState extends State<SiteCheckPanel> {
               alignment: Alignment.centerLeft,
               child: FilledButton.icon(
                 onPressed: working ? stop : run,
-                icon: Icon(
+                icon: SvoiIcon(
                   working ? LucideIcons.square : LucideIcons.search,
                   size: 16,
                 ),
@@ -312,7 +312,7 @@ class _SiteCheckPanelState extends State<SiteCheckPanel> {
                 for (final raw in results[route]!['steps'] as List? ?? [])
                   ListTile(
                     contentPadding: EdgeInsets.zero,
-                    leading: Icon(
+                    leading: SvoiIcon(
                       raw['ok'] == true ? LucideIcons.check : LucideIcons.info,
                       color: raw['ok'] == true
                           ? appColors(context).success
@@ -356,7 +356,7 @@ class _SiteCheckPanelState extends State<SiteCheckPanel> {
                     );
                   }
                 },
-                icon: const Icon(LucideIcons.arrowUpRight, size: 16),
+                icon: const SvoiIcon(LucideIcons.arrowUpRight, size: 16),
                 label: const Text('Добавить сайт в исключения'),
               ),
             Text(

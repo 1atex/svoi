@@ -37,7 +37,7 @@ jobs:
           cd flutter_client
           dart format --output=none --set-exit-if-changed lib test
           flutter analyze
-          flutter test test/linux_platform_test.dart test/controller_test.dart test/data_directory_test.dart test/appearance_test.dart test/community_test.dart test/onboarding_test.dart test/release_notice_test.dart test/portable_tools_test.dart
+          flutter test test/linux_platform_test.dart test/controller_test.dart test/data_directory_test.dart test/appearance_test.dart test/community_test.dart test/onboarding_test.dart test/release_notice_test.dart test/portable_tools_test.dart test/ui_icons_test.dart
       - name: Verify traffic, reconnects and window lifecycle
         run: |
           BUNDLE="$PWD/.tools/linux-package/$LINUX_VERSION/svoi"

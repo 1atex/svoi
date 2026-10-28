@@ -82,7 +82,7 @@ class SubscriptionLink extends StatelessWidget {
             }
           }
         },
-        icon: const Icon(LucideIcons.arrowUpRight, size: 14),
+        icon: const SvoiIcon(LucideIcons.arrowUpRight, size: 14),
         label: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
       ),
     );
@@ -142,7 +142,7 @@ class SubscriptionHeader extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 4),
         child: Row(
           children: [
-            Icon(
+            SvoiIcon(
               collapsed ? LucideIcons.chevronRight : LucideIcons.chevronDown,
               size: 15,
               color: appColors(context).muted,
@@ -203,7 +203,7 @@ class SubscriptionHeader extends StatelessWidget {
                 ? 'Остановить обновление $name'
                 : 'Обновить $name',
             onPressed: refreshing ? onCancelRefresh : onRefresh,
-            icon: Icon(
+            icon: SvoiIcon(
               refreshing ? LucideIcons.square : LucideIcons.refreshCw,
               size: 16,
             ),
@@ -212,13 +212,13 @@ class SubscriptionHeader extends StatelessWidget {
           IconButton(
             tooltip: 'Проверить задержку подписки',
             onPressed: onProbe,
-            icon: const Icon(LucideIcons.activity, size: 16),
+            icon: const SvoiIcon(LucideIcons.activity, size: 16),
           ),
         if (source != null)
           IconButton(
             tooltip: 'Настройки подписки',
             onPressed: onDetails,
-            icon: const Icon(LucideIcons.ellipsis, size: 18),
+            icon: const SvoiIcon(LucideIcons.ellipsis, size: 18),
           ),
       ],
     );
@@ -323,7 +323,7 @@ class SubscriptionHeader extends StatelessWidget {
                               ],
                             ),
                           ),
-                          icon: const Icon(LucideIcons.info, size: 16),
+                          icon: const SvoiIcon(LucideIcons.info, size: 16),
                         ),
                         TextButton(
                           onPressed: onRefresh,
@@ -458,7 +458,7 @@ class SubscriptionSummary extends StatelessWidget {
                         padding: EdgeInsets.zero,
                         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       ),
-                      icon: Icon(
+                      icon: SvoiIcon(
                         LucideIcons.info,
                         size: 16,
                         color: appColors(context).accent,
@@ -508,7 +508,7 @@ class SubscriptionSummary extends StatelessWidget {
                     ),
                     child: Row(
                       children: [
-                        Icon(
+                        SvoiIcon(
                           LucideIcons.messageSquare,
                           size: 14,
                           color: appColors(context).muted,

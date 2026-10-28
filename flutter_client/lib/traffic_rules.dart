@@ -94,7 +94,7 @@ class _DirectSitesPanelState extends State<DirectSitesPanel> {
                 alignment: Alignment.centerLeft,
                 child: FilledButton.icon(
                   onPressed: c.busy.value ? null : add,
-                  icon: const Icon(LucideIcons.plus, size: 16),
+                  icon: const SvoiIcon(LucideIcons.plus, size: 16),
                   label: const Text('Добавить исключение'),
                 ),
               ),
@@ -118,7 +118,7 @@ class _DirectSitesPanelState extends State<DirectSitesPanel> {
                                 .where((d) => d != domain)
                                 .toList(),
                           }),
-                    icon: const Icon(LucideIcons.x, size: 18),
+                    icon: const SvoiIcon(LucideIcons.x, size: 18),
                   ),
                 ),
               const SizedBox(height: 12),

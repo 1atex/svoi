@@ -16,30 +16,48 @@ class AppearanceStore extends ValueNotifier<AppAppearance> {
     : super(initial);
   File? file;
   Future<void> _writes = Future.value();
+  final icons = ValueNotifier<UiIconStyle>(UiIconStyle.outline);
 
   Future<void> load(File source) async {
     file = source;
     try {
       final data = jsonDecode(await source.readAsString()) as Map;
+      icons.value =
+          UiIconStyle.values
+              .where((style) => style.name == data['icons'])
+              .firstOrNull ??
+          UiIconStyle.outline;
       value =
           AppAppearance.values
               .where((choice) => choice.name == data['theme'])
               .firstOrNull ??
           AppAppearance.dark;
     } on FileSystemException {
+      icons.value = UiIconStyle.outline;
       value = AppAppearance.dark;
     } on FormatException {
+      icons.value = UiIconStyle.outline;
       value = AppAppearance.dark;
     } on TypeError {
+      icons.value = UiIconStyle.outline;
       value = AppAppearance.dark;
     }
   }
 
   Future<void> select(AppAppearance choice) {
     value = choice;
+    return _save();
+  }
+
+  Future<void> selectIcons(UiIconStyle choice) {
+    icons.value = choice;
+    return _save();
+  }
+
+  Future<void> _save() {
     final target = file;
     if (target == null) return Future.value();
-    final text = jsonEncode({'theme': choice.name});
+    final text = jsonEncode({'theme': value.name, 'icons': icons.value.name});
     return _writes = _writes.catchError((Object _) {}).then((_) async {
       final temporary = File('${target.path}.tmp');
       await temporary.writeAsString(text, flush: true);
@@ -48,14 +66,22 @@ class AppearanceStore extends ValueNotifier<AppAppearance> {
   }
 
   Future<void> flush() => _writes;
+  @override
+  void dispose() {
+    icons.dispose();
+    super.dispose();
+  }
 }
 
 class AppearanceScope extends InheritedNotifier<AppearanceStore> {
-  const AppearanceScope({
+  AppearanceScope({
     super.key,
     required AppearanceStore store,
-    required super.child,
-  }) : super(notifier: store);
+    required Widget child,
+  }) : super(
+         notifier: store,
+         child: UiIconScope(notifier: store.icons, child: child),
+       );
   static AppearanceStore? of(BuildContext context) =>
       context.dependOnInheritedWidgetOfExactType<AppearanceScope>()?.notifier;
 }
@@ -389,6 +415,8 @@ class AppearancePanel extends StatelessWidget {
       'Оформление',
       subtitle: 'Тема меняется сразу и сохраняется на этом устройстве.',
       children: [
+        IconStylePicker(store: store),
+        const SizedBox(height: 20),
         LayoutBuilder(
           builder: (context, bounds) => Wrap(
             spacing: 12,
@@ -426,6 +454,126 @@ class AppearancePanel extends StatelessWidget {
       ],
     );
   }
+}
+
+class IconStylePicker extends StatelessWidget {
+  const IconStylePicker({super.key, required this.store});
+  final AppearanceStore store;
+
+  @override
+  Widget build(BuildContext context) => ValueListenableBuilder<UiIconStyle>(
+    valueListenable: store.icons,
+    builder: (context, selected, _) => Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Иконки интерфейса',
+          style: TextStyle(fontWeight: FontWeight.w600),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Стиль применяется ко всем экранам и не меняет тему.',
+          style: TextStyle(color: appColors(context).muted),
+        ),
+        const SizedBox(height: 12),
+        LayoutBuilder(
+          builder: (context, bounds) => Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            children: [
+              for (final style in UiIconStyle.values)
+                SizedBox(
+                  width: bounds.maxWidth >= 440
+                      ? (bounds.maxWidth - 12) / 2
+                      : bounds.maxWidth,
+                  child: Semantics(
+                    button: true,
+                    selected: selected == style,
+                    label: style == UiIconStyle.outline
+                        ? 'Контурные иконки'
+                        : 'Двухцветные иконки',
+                    child: Material(
+                      color: selected == style
+                          ? appColors(context).selected
+                          : appColors(context).surface,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        side: BorderSide(
+                          color: selected == style
+                              ? appColors(context).accent
+                              : appColors(context).edge,
+                        ),
+                      ),
+                      clipBehavior: Clip.antiAlias,
+                      child: InkWell(
+                        key: ValueKey('icons-${style.name}'),
+                        onTap: () async {
+                          try {
+                            await store.selectIcons(style);
+                          } catch (_) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    'Стиль применён, но не сохранён. Выберите его ещё раз, чтобы повторить сохранение.',
+                                  ),
+                                ),
+                              );
+                            }
+                          }
+                        },
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  for (final icon in [
+                                    LucideIcons.shield,
+                                    LucideIcons.network,
+                                    LucideIcons.gauge,
+                                  ])
+                                    Padding(
+                                      padding: const EdgeInsets.only(right: 14),
+                                      child: SvoiIcon(
+                                        icon,
+                                        size: 26,
+                                        color: appColors(context).accent,
+                                        style: style,
+                                      ),
+                                    ),
+                                  const Spacer(),
+                                  if (selected == style)
+                                    SvoiIcon(
+                                      LucideIcons.check,
+                                      size: 18,
+                                      color: appColors(context).accent,
+                                    ),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
+                              Text(
+                                style == UiIconStyle.outline
+                                    ? 'Контурные'
+                                    : 'Двухцветные',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
 }
 
 class _AppearanceCard extends StatelessWidget {
@@ -512,7 +660,7 @@ class _AppearanceCard extends StatelessWidget {
                             shape: BoxShape.circle,
                             border: Border.all(color: p.accent),
                           ),
-                          child: Icon(
+                          child: SvoiIcon(
                             LucideIcons.power,
                             color: p.accent,
                             size: 15,
@@ -537,7 +685,7 @@ class _AppearanceCard extends StatelessWidget {
                     if (selected)
                       Padding(
                         padding: const EdgeInsets.only(left: 4),
-                        child: Icon(
+                        child: SvoiIcon(
                           LucideIcons.circleCheck,
                           size: 18,
                           color: current.accent,

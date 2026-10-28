@@ -314,7 +314,7 @@ class _SpeedToolsState extends State<SpeedTools> {
                     children: [
                       Row(
                         children: [
-                          Icon(Icons.speed_rounded, color: p.accent),
+                          SvoiIcon(Icons.speed_rounded, color: p.accent),
                           const SizedBox(width: 10),
                           const Expanded(
                             child: Text(
@@ -343,7 +343,7 @@ class _SpeedToolsState extends State<SpeedTools> {
                         onChanged: (v) =>
                             setState(() => query = v.trim().toLowerCase()),
                         decoration: const InputDecoration(
-                          prefixIcon: Icon(Icons.search, size: 18),
+                          prefixIcon: SvoiIcon(Icons.search, size: 18),
                           hintText: 'Найти сервер',
                         ),
                       ),
@@ -695,13 +695,13 @@ class _SpeedToolsState extends State<SpeedTools> {
                             c.connectionPhase.value.isNotEmpty
                         ? null
                         : start,
-                    icon: const Icon(Icons.play_arrow_rounded, size: 19),
+                    icon: const SvoiIcon(Icons.play_arrow_rounded, size: 19),
                     label: Text(working ? 'Идёт замер…' : 'Сравнить скорость'),
                   ),
                   if (working)
                     OutlinedButton.icon(
                       onPressed: stopping ? null : stop,
-                      icon: const Icon(Icons.stop_rounded, size: 18),
+                      icon: const SvoiIcon(Icons.stop_rounded, size: 18),
                       label: Text(stopping ? 'Останавливаем…' : 'Остановить'),
                     ),
                 ],

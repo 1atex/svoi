@@ -28,7 +28,7 @@ Future<void> showDesktopSheet(
                 IconButton(
                   tooltip: 'Закрыть',
                   onPressed: () => Navigator.pop(dialog),
-                  icon: const Icon(LucideIcons.x),
+                  icon: const SvoiIcon(LucideIcons.x),
                 ),
               ],
             ),
@@ -242,12 +242,12 @@ class _DesktopLibraryState extends State<DesktopLibrary> {
                   decoration: InputDecoration(
                     hintText: 'Поиск по имени, стране или адресу',
                     isDense: true,
-                    prefixIcon: const Icon(LucideIcons.search, size: 18),
+                    prefixIcon: const SvoiIcon(LucideIcons.search, size: 18),
                     suffixIcon: query.isEmpty
                         ? null
                         : IconButton(
                             tooltip: 'Очистить поиск',
-                            icon: const Icon(LucideIcons.x, size: 16),
+                            icon: const SvoiIcon(LucideIcons.x, size: 16),
                             onPressed: () {
                               search.clear();
                               setState(() => query = '');
@@ -267,12 +267,15 @@ class _DesktopLibraryState extends State<DesktopLibrary> {
                         decoration: InputDecoration(
                           hintText: 'Поиск по имени, стране или адресу',
                           isDense: true,
-                          prefixIcon: const Icon(LucideIcons.search, size: 18),
+                          prefixIcon: const SvoiIcon(
+                            LucideIcons.search,
+                            size: 18,
+                          ),
                           suffixIcon: query.isEmpty
                               ? null
                               : IconButton(
                                   tooltip: 'Очистить поиск',
-                                  icon: const Icon(LucideIcons.x, size: 16),
+                                  icon: const SvoiIcon(LucideIcons.x, size: 16),
                                   onPressed: () {
                                     search.clear();
                                     setState(() => query = '');
@@ -298,7 +301,7 @@ class _DesktopLibraryState extends State<DesktopLibrary> {
                 children: [
                   FilterChip(
                     label: const Text('Избранные'),
-                    avatar: const Icon(LucideIcons.star, size: 14),
+                    avatar: const SvoiIcon(LucideIcons.star, size: 14),
                     selected: favoritesOnly,
                     onSelected: (v) => setState(() => favoritesOnly = v),
                   ),
@@ -417,7 +420,7 @@ class _DesktopLibraryState extends State<DesktopLibrary> {
                               filtered.isNotEmpty
                         ? () => c.probe(filtered)
                         : null,
-                    icon: Icon(
+                    icon: SvoiIcon(
                       c.probing.value
                           ? LucideIcons.square
                           : LucideIcons.activity,
@@ -584,7 +587,7 @@ class DesktopServerRow extends StatelessWidget {
                     ),
                     PopupMenuButton<String>(
                       tooltip: 'Действия сервера',
-                      icon: Icon(
+                      icon: SvoiIcon(
                         LucideIcons.ellipsis,
                         size: 18,
                         color: appColors(context).muted,
@@ -710,7 +713,7 @@ class DesktopConnection extends StatelessWidget {
             onPressed: server == null
                 ? null
                 : () => showConfig(context, c, server),
-            icon: const Icon(LucideIcons.fileCode, size: 18),
+            icon: const SvoiIcon(LucideIcons.fileCode, size: 18),
           ),
         ],
       );
@@ -816,7 +819,10 @@ class DesktopConnection extends StatelessWidget {
                           ),
                         ),
                       ),
-                      icon: const Icon(LucideIcons.slidersHorizontal, size: 17),
+                      icon: const SvoiIcon(
+                        LucideIcons.slidersHorizontal,
+                        size: 17,
+                      ),
                     ),
                     TextButton(
                       onPressed: () => showDiagnostics(context, c),
@@ -897,7 +903,7 @@ class DesktopConnection extends StatelessWidget {
                     if (view.running)
                       TextButton.icon(
                         onPressed: locked || c.checking.value ? null : c.check,
-                        icon: const Icon(LucideIcons.refreshCw, size: 15),
+                        icon: const SvoiIcon(LucideIcons.refreshCw, size: 15),
                         label: Text(
                           c.checking.value
                               ? 'Проверяем интернет…'
@@ -908,7 +914,7 @@ class DesktopConnection extends StatelessWidget {
                       ),
                     TextButton.icon(
                       onPressed: () => showDiagnostics(context, c),
-                      icon: const Icon(LucideIcons.info, size: 15),
+                      icon: const SvoiIcon(LucideIcons.info, size: 15),
                       label: const Text('Подробнее о соединении'),
                     ),
                   ],

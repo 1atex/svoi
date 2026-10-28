@@ -136,7 +136,11 @@ void main() {
       fail = false;
       await tester.runAsync(() async {
         await tester.tap(find.text('Что нового'));
-        await Future<void>.delayed(const Duration(milliseconds: 80));
+        final deadline = DateTime.now().add(const Duration(seconds: 3));
+        while (store.pendingVersion != null &&
+            DateTime.now().isBefore(deadline)) {
+          await Future<void>.delayed(const Duration(milliseconds: 10));
+        }
       });
       await tester.pumpAndSettle();
       expect(opened, 2);

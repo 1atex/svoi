@@ -127,7 +127,7 @@ void main() {
       expect(opened, isEmpty);
       await tester.runAsync(() async {
         await tester.tap(find.byKey(const ValueKey('theme-rose')));
-        await Future<void>.delayed(const Duration(milliseconds: 80));
+        await appearance.flush();
       });
       await tester.pumpAndSettle();
       expect(appearance.value, AppAppearance.rose);

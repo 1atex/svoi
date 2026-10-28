@@ -24,7 +24,7 @@ Future<void> showServerPicker(
                 IconButton(
                   tooltip: 'Закрыть',
                   onPressed: () => Navigator.pop(dialog),
-                  icon: const Icon(LucideIcons.x),
+                  icon: const SvoiIcon(LucideIcons.x),
                 ),
               ],
             ),
@@ -141,7 +141,7 @@ class ConnectionCard extends StatelessWidget {
                               ],
                             ),
                           ),
-                          Icon(
+                          SvoiIcon(
                             LucideIcons.chevronDown,
                             size: 18,
                             color: appColors(context).muted,
@@ -157,7 +157,7 @@ class ConnectionCard extends StatelessWidget {
                   onPressed: selected == null
                       ? null
                       : () => showConfig(context, c, selected),
-                  icon: const Icon(LucideIcons.fileCode, size: 19),
+                  icon: const SvoiIcon(LucideIcons.fileCode, size: 19),
                 ),
               ],
             ),
@@ -259,7 +259,7 @@ class ConnectionCard extends StatelessWidget {
                     onPressed: c.busy.value || c.checking.value
                         ? null
                         : c.check,
-                    icon: const Icon(LucideIcons.refreshCw, size: 15),
+                    icon: const SvoiIcon(LucideIcons.refreshCw, size: 15),
                     label: Text(
                       view.error.isEmpty
                           ? 'Проверить интернет'
@@ -273,7 +273,7 @@ class ConnectionCard extends StatelessWidget {
                   ),
                 TextButton.icon(
                   onPressed: () => showDiagnostics(context, c),
-                  icon: const Icon(LucideIcons.activity, size: 15),
+                  icon: const SvoiIcon(LucideIcons.activity, size: 15),
                   label: const Text('Диагностика'),
                 ),
               ],
@@ -345,7 +345,7 @@ class QuickServers extends StatelessWidget {
                     color: appColors(context).muted,
                   ),
                 ),
-                trailing: Icon(
+                trailing: SvoiIcon(
                   s.id == c.selected.value
                       ? LucideIcons.check
                       : LucideIcons.chevronRight,

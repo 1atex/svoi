@@ -1,10 +1,11 @@
 name: svoi_flutter
 description: SVOI VPN client for Windows
 publish_to: none
-version: 0.6.0-beta.6+1
+version: 0.6.0-beta.6+2
 environment:
   sdk: ^3.13.5
 dependencies:
+  flutter_svg: 2.3.0
   country_flags: ^4.1.2
   flutter:
     sdk: flutter
@@ -17,6 +18,9 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   assets:
+    - assets/ui-icons/LICENSE.txt
+    - assets/ui-icons/outline/
+    - assets/ui-icons/duotone/
     - assets/svoi-mark.png
     - assets/svoi-tray.png
     - assets/themes/pumpkin-power.png
