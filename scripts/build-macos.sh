@@ -14,6 +14,8 @@ if [[ ! -f "$BUILD/core.zip" ]] || ! echo "$XRAY_SHA  $BUILD/core.zip" | shasum 
 fi
 echo "$XRAY_SHA  $BUILD/core.zip" | shasum -a 256 -c -
 unzip -oq "$BUILD/core.zip" -d "$BUILD/core"
+python3 scripts/prepare-macos-xray.py
+(cd .tools/macos-xray-source && CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -mod=readonly -buildvcs=false -trimpath -ldflags '-s -w -X github.com/xtls/xray-core/core.build=1b1647c-svoi-macos.1' -o "$BUILD/core/xray" ./main)
 CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -tags native_core -trimpath -ldflags "-s -w -X main.nativeVersion=$VERSION" -o "$BUILD/svoi-backend" ./backend
 xcrun swiftc -O -target arm64-apple-macos12.0 -framework SystemConfiguration -framework Security flutter_client/macos/ProxyHelper.swift -o "$BUILD/svoi-proxy"
 "$BUILD/svoi-proxy" --self-test
@@ -30,6 +32,7 @@ for file in geoip.dat geosite.dat; do
   [[ ! -f "$BUILD/core/$file" ]] || cp "$BUILD/core/$file" "$BACKEND/core/"
 done
 cp LICENSE "$APP/Contents/Resources/licenses/SVOI-MIT.txt"
+cp patches/macos-xray/README.md "$APP/Contents/Resources/licenses/Xray-macOS-patch.md"
 cp -R licenses/. "$APP/Contents/Resources/licenses/"
 [[ ! -f "$BUILD/core/LICENSE" ]] || cp "$BUILD/core/LICENSE" "$APP/Contents/Resources/licenses/Xray-LICENSE.txt"
 cp docs/MACOS.md "$APP/Contents/Resources/MACOS.md"

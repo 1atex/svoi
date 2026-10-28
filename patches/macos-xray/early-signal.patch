@@ -1,0 +1,26 @@
+--- a/main/run.go
++++ b/main/run.go
+@@ -92,6 +92,10 @@
+ 		os.Exit(0)
+ 	}
+ 
++	osSignals := make(chan os.Signal, 1)
++	signal.Notify(osSignals, os.Interrupt, syscall.SIGTERM)
++	defer signal.Stop(osSignals)
++
+ 	if err := server.Start(); err != nil {
+ 		fmt.Println("Failed to start:", err)
+ 		os.Exit(-1)
+@@ -102,11 +106,7 @@
+ 	runtime.GC()
+ 	debug.FreeOSMemory()
+ 
+-	{
+-		osSignals := make(chan os.Signal, 1)
+-		signal.Notify(osSignals, os.Interrupt, syscall.SIGTERM)
+-		<-osSignals
+-	}
++	<-osSignals
+ }
+ 
+ func dumpConfig() int {

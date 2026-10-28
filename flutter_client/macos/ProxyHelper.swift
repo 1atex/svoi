@@ -187,7 +187,9 @@ func run() throws {
       let after = before.mapValues { appliedProxy($0, port: port) }
       let snapshot: [String: Any] = ["version": 1, "pid": Int(getpid()), "original": before, "expected": after]
       try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
-      try PropertyListSerialization.data(fromPropertyList: snapshot, format: .binary, options: 0).write(to: file, options: .atomic)
+      let bytes = try PropertyListSerialization.data(fromPropertyList: snapshot, format: .binary, options: 0)
+      try require(bytes.count < 1024 * 1024, "Настройки прокси слишком большие для безопасного восстановления. Выберите ручной прокси.")
+      try bytes.write(to: file, options: .atomic)
       try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: file.path)
       snapshotWritten = true
       return after

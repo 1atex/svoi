@@ -253,7 +253,7 @@ func TestXrayVLESSRoundTrip(t *testing.T) {
 			t.Fatal(err)
 		}
 		if process.ProcessState.ExitCode() != 0 {
-			t.Fatalf("cycle %d did not shut down cleanly: %v", i, engine.Status().Logs)
+			t.Fatalf("cycle %d did not shut down cleanly: %v; logs: %v", i, process.ProcessState, engine.Status().Logs)
 		}
 		if err := engine.Start(server, "local"); err != nil {
 			t.Fatal(err)

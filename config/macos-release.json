@@ -2,6 +2,8 @@
   "version": "0.6.0-preview.1",
   "flutterVersion": "3.47.7",
   "xrayVersion": "26.10.21",
+  "xrayModuleVersion": "v1.260327.1-0.20261021115930-1b1647cd9ddf",
+  "xrayRunSha256": "71df70178c842af308879d940a817f748065ea124ed6ab29610c76059d0b405a",
   "xrayAsset": "Xray-macos-arm64-v8a.zip",
   "xraySha256": "926cc55fda2a8757dabe4f22dc98772f218ace025f101bd0b68aee232e59d5dc"
 }
