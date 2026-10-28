@@ -204,6 +204,13 @@ final class SvoiModel: ObservableObject {
 
   func refreshSubscriptions() async { await perform { try await refreshRemoteSources() } }
 
+  func refreshSubscription(_ source: SvoiSource) async {
+    await perform {
+      _ = try await api.request("subscription/refresh?id=\(source.id)", method: "POST", token: token)
+      try await reload()
+    }
+  }
+
   func switchProfile(_ profile: SavedProfile) async {
     await perform {
       connectionAttempt += 1

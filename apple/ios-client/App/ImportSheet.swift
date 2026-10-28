@@ -40,7 +40,7 @@ struct ImportSheet: View {
               .overlay(RoundedRectangle(cornerRadius: 18).strokeBorder(editing ? accent : SvoiPalette.line))
             HStack {
               PasteButton(payloadType: String.self) { values in text = values.first ?? ""; fileError = "" }
-                .labelStyle(.titleAndIcon).buttonBorderShape(.roundedRectangle).tint(accent)
+                .labelStyle(.titleAndIcon).buttonBorderShape(.roundedRectangle).tint(accent).frame(minHeight: 44)
               Spacer()
               Button { file = true } label: { Label("Из файла", systemImage: "doc") }.frame(minHeight: 44)
             }
@@ -65,6 +65,7 @@ struct ImportSheet: View {
         ToolbarItemGroup(placement: .keyboard) { Spacer(); Button("Готово") { editing = false } }
       }
       .onAppear { mode = profile ? 1 : 0 }
+      .onChange(of: text) { _ in fileError = "" }
       .interactiveDismissDisabled(model.working)
       .fileImporter(isPresented: $file, allowedContentTypes: [.plainText, .json, .data]) { result in
         do {
@@ -91,6 +92,7 @@ struct ShareProfileButton: View {
   @State private var preparing = false
   var body: some View {
     Button {
+      copied = false
       preparing = true
       Task {
         defer { preparing = false }
@@ -101,6 +103,7 @@ struct ShareProfileButton: View {
     .disabled(model.working || preparing)
     .sheet(isPresented: $showing) {
       NavigationStack {
+        ScrollView {
         VStack(alignment: .leading, spacing: 22) {
           Image(systemName: "person.2.fill").font(.system(size: 42)).foregroundStyle(SvoiPalette.gold)
           Text("Всё своё — с собой.").font(.title.bold())
@@ -109,8 +112,8 @@ struct ShareProfileButton: View {
           ShareLink(item: code) { Label("Передать код", systemImage: "square.and.arrow.up") }.buttonStyle(SvoiPrimaryButton())
           Button { UIPasteboard.general.string = code; copied = true } label: { Label(copied ? "Код скопирован" : "Скопировать код", systemImage: copied ? "checkmark" : "doc.on.doc") }
             .frame(maxWidth: .infinity, minHeight: 44)
-          Spacer()
-        }.padding(24).background(SvoiPalette.canvas).navigationTitle("Поделиться").navigationBarTitleDisplayMode(.inline)
+        }.padding(24).frame(maxWidth: 560).frame(maxWidth: .infinity)
+        }.background(SvoiPalette.canvas).navigationTitle("Поделиться").navigationBarTitleDisplayMode(.inline)
           .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Закрыть") { showing = false } } }
       }
     }

@@ -14,6 +14,9 @@ for directory, expected in [(app, 'dev.svoi.app.ios'), (extension, 'dev.svoi.app
     info = plistlib.loads((directory / 'Info.plist').read_bytes())
     assert info['CFBundleIdentifier'] == expected
     assert (directory / info['CFBundleExecutable']).stat().st_mode & stat.S_IXUSR
+    executable = (directory / info['CFBundleExecutable']).read_bytes()
+    assert b'UI preview: native VPN is not linked' not in executable, 'Do not package the interface test host'
+    assert b'interface-preview' not in executable, 'Interface fixtures must be compiled out of the device build'
     assert all((directory / 'core' / name).is_file() for name in ['geoip.dat', 'geosite.dat'])
     assert not (directory / 'embedded.mobileprovision').exists(), 'This lane must not embed signing credentials'
 output = root / 'releases' / ('ios-v' + config['version'])

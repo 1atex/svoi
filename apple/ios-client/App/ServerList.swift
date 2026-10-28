@@ -153,8 +153,8 @@ struct ServerList: View {
         Text(source.name).font(.headline)
         Spacer(minLength: 4)
         if source.remote {
-          Button { Task { await model.refreshSubscriptions() } } label: { Image(systemName: "arrow.clockwise").frame(width: 44, height: 44) }
-            .disabled(model.working).accessibilityLabel("Обновить подписки")
+          Button { Task { await model.refreshSubscription(source) } } label: { Image(systemName: "arrow.clockwise").frame(width: 44, height: 44) }
+            .disabled(model.working).accessibilityLabel("Обновить \(source.name)")
         }
       }
       if let download = source.metadata["download"] as? NSNumber {

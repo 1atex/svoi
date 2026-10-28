@@ -5,7 +5,6 @@ struct ConnectionScreen: View {
   @ObservedObject var model: SvoiModel
   @ObservedObject var vpn: VPNController
   let openServers: () -> Void
-  let openProfile: () -> Void
   let add: (Bool) -> Void
   @Environment(\.svoiAccent) private var accent
   private var switching: Bool { vpn.connected && vpn.serverID != model.selectedID }
@@ -15,12 +14,6 @@ struct ConnectionScreen: View {
   var body: some View {
     ScrollView {
       VStack(spacing: 16) {
-        HStack {
-          Text("Ваша сеть. Ваши правила.").font(.subheadline).foregroundStyle(SvoiPalette.muted)
-          Spacer(minLength: 8)
-          Button(action: openProfile) { Image(systemName: "person.2").frame(width: 44, height: 44) }
-            .accessibilityLabel("Открыть общий профиль")
-        }
         if !model.error.isEmpty {
           HStack(alignment: .top) {
             SvoiNotice(text: model.error, symbol: "exclamationmark.circle")
@@ -46,18 +39,18 @@ struct ConnectionScreen: View {
             }
           }.buttonStyle(SvoiPressStyle())
         }
-      }.padding(.horizontal, 20).padding(.bottom, 24).frame(maxWidth: 560)
+      }.padding(.horizontal, 20).padding(.top, 16).padding(.bottom, 24).frame(maxWidth: 560)
         .frame(maxWidth: .infinity)
     }.background(SvoiPalette.canvas).navigationBarTitleDisplayMode(.inline)
   }
 
   private var connection: some View {
     SvoiCard {
-      VStack(spacing: 20) {
+      VStack(spacing: 18) {
         HStack {
           SvoiSectionTitle(title: "Подключение")
           Spacer()
-          Label("TUN", systemImage: "shield.lefthalf.filled").font(.caption.weight(.medium)).foregroundStyle(SvoiPalette.muted)
+          Label("Все приложения", systemImage: "shield.lefthalf.filled").font(.caption.weight(.medium)).foregroundStyle(SvoiPalette.muted)
         }
         Button(action: openServers) {
           HStack(spacing: 12) {
@@ -79,18 +72,18 @@ struct ConnectionScreen: View {
           Task { await model.toggleVPN() }
         } label: {
           ZStack {
-            Circle().fill(RadialGradient(colors: [accent.opacity(vpn.connected ? 0.18 : 0.07), .clear], center: .center, startRadius: 35, endRadius: 98))
+            Circle().fill(RadialGradient(colors: [accent.opacity(vpn.connected ? 0.18 : 0.07), .clear], center: .center, startRadius: 35, endRadius: 90))
             Circle().stroke(accent.opacity(0.10), lineWidth: 1).padding(1)
             Circle().stroke(accent.opacity(0.22), lineWidth: 1).padding(16)
-            Circle().fill(vpn.connected ? accent : accent.opacity(0.14)).padding(32)
-            Circle().stroke(accent.opacity(0.9), lineWidth: 1.5).padding(32)
+            Circle().fill(vpn.connected ? accent : accent.opacity(0.14)).padding(26)
+            Circle().stroke(accent.opacity(0.9), lineWidth: 1.5).padding(26)
             VStack(spacing: 9) {
               if busy { ProgressView().tint(vpn.connected ? SvoiPalette.canvas : accent).scaleEffect(1.35) }
               else { Image(systemName: switching ? "arrow.triangle.2.circlepath" : "power").font(.system(size: 35, weight: .light)) }
               Text(busy ? "Отменить" : switching ? "Переключить" : vpn.active ? "Отключить" : "Подключить")
                 .font(.caption2.weight(.semibold)).lineLimit(1).minimumScaleFactor(0.75)
             }.foregroundStyle(vpn.connected ? SvoiPalette.canvas : accent).frame(width: 126)
-          }.frame(width: 198, height: 198).contentShape(Circle())
+          }.frame(width: 180, height: 180).contentShape(Circle())
         }.buttonStyle(SvoiPressStyle()).accessibilityIdentifier("vpn-toggle")
           .accessibilityLabel(busy ? "Отменить подключение" : switching ? "Переключить VPN на выбранный сервер" : vpn.active ? "Отключить VPN" : "Подключить VPN")
           .disabled(model.selected == nil && !vpn.active)
@@ -102,8 +95,9 @@ struct ConnectionScreen: View {
             .font(.footnote).foregroundStyle(SvoiPalette.muted).multilineTextAlignment(.center)
             .fixedSize(horizontal: false, vertical: true)
           if switching {
-            Button("Отключить текущий VPN") { Task { try? await vpn.disconnect() } }
-              .font(.footnote.weight(.semibold)).frame(minHeight: 44)
+            Button("Отключить текущий VPN") {
+              Task { do { try await vpn.disconnect() } catch { model.error = error.localizedDescription } }
+            }.font(.footnote.weight(.semibold)).frame(minHeight: 44).disabled(busy)
           }
         }
       }

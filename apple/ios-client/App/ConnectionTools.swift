@@ -40,7 +40,7 @@ struct ConnectionTools: View {
           Label(checking ? "Проверяем интернет…" : "Проверить интернет", systemImage: "waveform.path.ecg")
           Spacer(minLength: 8)
           if checking { ProgressView() } else { Image(systemName: "arrow.up.right").font(.caption) }
-        }.frame(minHeight: 40)
+        }.frame(minHeight: 44)
       }.font(.footnote.weight(.medium)).disabled(checking || vpn.busy)
       if !checkResult.isEmpty { Text(checkResult).font(.caption).foregroundStyle(.secondary) }
       if !vpn.error.isEmpty { Text(vpn.error).font(.footnote).foregroundStyle(.orange).textSelection(.enabled) }

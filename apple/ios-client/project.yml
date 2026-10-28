@@ -98,6 +98,9 @@ targets:
       properties:
         CFBundleDisplayName: SVOI UI Preview
         UILaunchScreen: {}
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+          UISceneConfigurations: {}
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
   SVOIInterfaceTests:
     type: bundle.ui-testing

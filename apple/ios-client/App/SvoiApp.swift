@@ -34,7 +34,7 @@ struct SvoiRoot: View {
       if model.ready {
         TabView(selection: $tab) {
           NavigationStack {
-            ConnectionScreen(model: model, vpn: vpn, openServers: { tab = 1 }, openProfile: { tab = 2 }, add: openImport)
+            ConnectionScreen(model: model, vpn: vpn, openServers: { tab = 1 }, add: openImport)
               .toolbar { brandToolbar }
           }.tabItem { Label("Подключение", systemImage: "power") }.tag(0)
           NavigationStack {
