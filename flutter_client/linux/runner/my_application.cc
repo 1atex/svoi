@@ -16,7 +16,7 @@ struct _MyApplication {
 G_DEFINE_TYPE(MyApplication, my_application, GTK_TYPE_APPLICATION)
 
 static void emit(MyApplication* self, const char* method, FlValue* value) {
-  if (self->channel != nullptr)
+  if (!self->closing && self->channel != nullptr)
     fl_method_channel_invoke_method(self->channel, method, value, nullptr, nullptr, nullptr);
 }
 static void reply(FlMethodCall* call, FlValue* value = nullptr) {
@@ -26,6 +26,7 @@ static void fail(FlMethodCall* call, const char* code, const char* message) {
   fl_method_call_respond_error(call, code, message, nullptr, nullptr);
 }
 static void show(MyApplication* self) {
+  if (!self->window || self->closing) return;
   gtk_window_deiconify(self->window);
   gtk_window_present(self->window);
 }
@@ -69,6 +70,11 @@ static GtkWidget* make_menu(MyApplication* self, FlValue* items) {
   gtk_widget_show_all(menu);
   return menu;
 }
+static gboolean close_window(gpointer data) {
+  auto self = MY_APPLICATION(data);
+  if (self->window) gtk_window_close(self->window);
+  return G_SOURCE_REMOVE;
+}
 static void handle(FlMethodChannel*, FlMethodCall* call, gpointer user_data) {
   auto self = MY_APPLICATION(user_data);
   const char* name = fl_method_call_get_name(call);
@@ -78,7 +84,11 @@ static void handle(FlMethodChannel*, FlMethodCall* call, gpointer user_data) {
   else if (g_str_equal(name, "tray") || g_str_equal(name, "minimize")) {
     gtk_window_iconify(self->window); reply(call);
   } else if (g_str_equal(name, "close")) {
-    self->closing = TRUE; reply(call); gtk_window_close(self->window);
+    const bool queued = self->closing;
+    self->closing = TRUE;
+    reply(call);
+    if (!queued)
+      g_idle_add_full(G_PRIORITY_DEFAULT_IDLE, close_window, g_object_ref(self), g_object_unref);
   } else if (g_str_equal(name, "requestWindowClose")) {
     emit(self, "requestClose", nullptr); reply(call);
   } else if (g_str_equal(name, "updateTray")) {
