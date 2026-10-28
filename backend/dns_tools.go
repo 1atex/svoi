@@ -33,7 +33,14 @@ type dnsResult struct {
 	CheckedAt time.Time `json:"checkedAt"`
 }
 
-var publicDNS = []dnsCandidate{{"Cloudflare", "1.1.1.1"}, {"Google", "8.8.8.8"}, {"Quad9", "9.9.9.9"}}
+var publicDNS = func() []dnsCandidate {
+	data, err := assets.ReadFile("web/dns-providers.json")
+	var candidates []dnsCandidate
+	if err != nil || json.Unmarshal(data, &candidates) != nil || len(candidates) == 0 {
+		panic("invalid embedded DNS catalog")
+	}
+	return candidates
+}()
 var dnsProbeSlots = make(chan struct{}, 3)
 
 type dnsHost interface {
@@ -105,6 +112,10 @@ func (a *App) dnsRoute() string {
 }
 
 func (a *App) dnsAPI(w http.ResponseWriter, r *http.Request) error {
+	if r.Method == "GET" && r.URL.Path == "/api/dns/catalog" {
+		writeJSON(w, 200, map[string]any{"candidates": publicDNS})
+		return nil
+	}
 	if r.Method == "POST" && r.URL.Path == "/api/dns/benchmark" {
 		var in struct {
 			Address string `json:"address"`

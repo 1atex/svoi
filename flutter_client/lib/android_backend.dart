@@ -36,7 +36,10 @@ class AndroidBackend extends Backend {
   }) async {
     if (cancellation?.cancelled == true) throw ApiException('Запрос отменён.');
     final probeID =
-        (path.endsWith('/probe') || path == 'connection/ip') && method == 'POST'
+        (path.endsWith('/probe') ||
+                path == 'connection/ip' ||
+                path == 'dns/benchmark') &&
+            method == 'POST'
         ? '${++_nextProbe}'
         : null;
     if (probeID != null && cancellation != null) {

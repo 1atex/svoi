@@ -98,13 +98,21 @@ class _MobileShellState extends State<MobileShell> {
                       ],
                     ),
                   )
-                : Text(['SVOI', 'Серверы', 'Профиль', 'Настройки'][page]),
+                : Text(
+                    [
+                      'SVOI',
+                      'Серверы',
+                      'Инструменты',
+                      'Профиль',
+                      'Настройки',
+                    ][page],
+                  ),
             actions: [
               const CommunityButton(),
               if (updates?.available == true)
                 IconButton(
                   tooltip: 'Доступно обновление SVOI',
-                  onPressed: () => setState(() => page = 3),
+                  onPressed: () => setState(() => page = 4),
                   icon: Icon(
                     Icons.system_update,
                     color: appColors(context).accent,
@@ -132,6 +140,10 @@ class _MobileShellState extends State<MobileShell> {
                 NavigationDestination(
                   icon: Icon(LucideIcons.globe, size: 22),
                   label: 'Серверы',
+                ),
+                NavigationDestination(
+                  icon: Icon(LucideIcons.gauge, size: 22),
+                  label: 'Инструменты',
                 ),
                 NavigationDestination(
                   icon: Icon(LucideIcons.users, size: 22),
@@ -170,7 +182,8 @@ class _MobileShellState extends State<MobileShell> {
                   child: switch (page) {
                     0 => home(),
                     1 => servers(),
-                    2 => profile(),
+                    2 => PortableToolsPage(c: c),
+                    3 => profile(),
                     _ => settings(),
                   },
                 ),
@@ -564,23 +577,6 @@ class _MobileShellState extends State<MobileShell> {
   Widget settings() => ListView(
     padding: const EdgeInsets.all(20),
     children: [
-      ListTile(
-        contentPadding: EdgeInsets.zero,
-        leading: const Icon(Icons.speed),
-        title: const Text('Интернетометр'),
-        subtitle: const Text('Без VPN и через выбранные серверы'),
-        trailing: const Icon(Icons.chevron_right),
-        onTap: () => Navigator.push(
-          context,
-          MaterialPageRoute<void>(
-            builder: (_) => Scaffold(
-              appBar: AppBar(title: const Text('Скорость интернета')),
-              body: SafeArea(child: SpeedTools(c: c)),
-            ),
-          ),
-        ),
-      ),
-
       ListTile(
         contentPadding: EdgeInsets.zero,
         leading: const Icon(Icons.palette_outlined),

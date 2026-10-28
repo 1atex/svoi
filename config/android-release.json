@@ -1,6 +1,6 @@
 {
-  "versionName": "0.1.0-preview.9",
-  "versionCode": 9,
+  "versionName": "0.1.0-preview.10",
+  "versionCode": 10,
   "minSdk": 26,
   "packageName": "dev.svoi.app.preview",
   "signingCertificateSha256": "7539f8cff95480263b5da0b9e8ef401bb01f95d721975814b63019aad6568d77"

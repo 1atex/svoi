@@ -7,6 +7,7 @@ import android.os.Bundle
 import android.os.IBinder
 import android.os.Process
 import mobile.Mobile
+import mobile.DNSRequest
 import mobile.ProbeRequest
 import mobile.PublicIPRequest
 import org.json.JSONObject
@@ -20,6 +21,7 @@ class BackendEndpoint(private val service: SvoiVpnService) : IBackendService.Stu
     private class Client(val binder: IBinder, val death: IBinder.DeathRecipient) {
         val probes = HashMap<String, ProbeRequest>()
         val ips = HashMap<String, PublicIPRequest>()
+        val dns = HashMap<String, DNSRequest>()
         val cancelled = LinkedHashSet<String>()
         var dead = false
     }
@@ -36,7 +38,7 @@ class BackendEndpoint(private val service: SvoiVpnService) : IBackendService.Stu
         val client = synchronized(clients) { clients.remove(binder) } ?: return
         synchronized(client) {
             Mobile.cancelSpeed()
-            client.dead = true; client.probes.values.forEach { it.cancel() }; client.ips.values.forEach { it.cancel() }; client.cancelled.clear()
+            client.dead = true; client.probes.values.forEach { it.cancel() }; client.ips.values.forEach { it.cancel() }; client.dns.values.forEach { it.cancel() }; client.cancelled.clear()
         }
         runCatching { binder.unlinkToDeath(client.death, 0) }
     }
@@ -53,7 +55,7 @@ class BackendEndpoint(private val service: SvoiVpnService) : IBackendService.Stu
                 "android/detach" -> { detach(owner); response(JSONObject()) }
                 "android/cancel-probe" -> {
                     synchronized(client) {
-                        client.probes[id]?.cancel(); client.ips[id]?.cancel()
+                        client.probes[id]?.cancel(); client.ips[id]?.cancel(); client.dns[id]?.cancel()
                         client.cancelled.add(id)
                         if (client.cancelled.size > 128) client.cancelled.remove(client.cancelled.first())
                     }
@@ -71,6 +73,18 @@ class BackendEndpoint(private val service: SvoiVpnService) : IBackendService.Stu
                             check(cm.getNetworkCapabilities(cm.activeNetwork)?.hasTransport(android.net.NetworkCapabilities.TRANSPORT_VPN) != true) { "Отключите VPN перед сравнением скорости" }
                             check(VpnRuntime.status().optString("state") !in listOf("starting", "running", "stopping")) { "Отключите VPN перед сравнением скорости" }
                             parcels.reply(VpnRuntime.session!!.request(method, "/api/$path", token, body))
+                        }
+                        path == "dns/benchmark" && method == "POST" -> {
+                            val cm = service.getSystemService(android.net.ConnectivityManager::class.java)
+                            check(cm.getNetworkCapabilities(cm.activeNetwork)?.hasTransport(android.net.NetworkCapabilities.TRANSPORT_VPN) != true) { "Отключите VPN перед сравнением DNS" }
+                            check(VpnRuntime.status().optString("state") !in listOf("starting", "running", "stopping")) { "Отключите VPN перед сравнением DNS" }
+                            val dns = synchronized(client) {
+                                check(!client.dead && !client.cancelled.remove(id)) { "Проверка отменена" }
+                                check(client.dns.size < 3 && !client.dns.containsKey(id)) { "Завершается предыдущая проверка DNS" }
+                                VpnRuntime.session!!.newDNSRequest(token, body).also { client.dns[id] = it }
+                            }
+                            try { parcels.reply(dns.run()) }
+                            finally { dns.cancel(); synchronized(client) { client.dns.remove(id); client.cancelled.remove(id) } }
                         }
                         path == "connection/start" -> {
                             val input = JSONObject(body)

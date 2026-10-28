@@ -1,6 +1,7 @@
 package backend
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -23,10 +24,13 @@ func OpenMobile(directory string) (*MobileApp, error) {
 }
 
 func (m *MobileApp) Request(method, path, token, body string) string {
+	return m.RequestContext(context.Background(), method, path, token, body)
+}
+func (m *MobileApp) RequestContext(ctx context.Context, method, path, token, body string) string {
 	if !strings.HasPrefix(path, "/api/") || len(body) > 16*1024*1024 {
 		return `{"status":400,"body":{"error":"Некорректный запрос"}}`
 	}
-	req := httptest.NewRequest(method, path, strings.NewReader(body))
+	req := httptest.NewRequest(method, path, strings.NewReader(body)).WithContext(ctx)
 	req.RemoteAddr = "127.0.0.1:1"
 	req.Header.Set("Authorization", "Bearer "+token)
 	req.Header.Set("Content-Type", "application/json")
