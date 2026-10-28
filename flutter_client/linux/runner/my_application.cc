@@ -166,7 +166,8 @@ static void activate(GApplication* application) {
   g_autofree char* folder = exe ? g_path_get_dirname(exe) : g_get_current_dir();
   g_autofree char* icon = g_build_filename(folder, "data", "flutter_assets", "assets", "svoi-mark.png", nullptr);
   gtk_window_set_icon_from_file(self->window, icon, nullptr);
-  self->indicator = app_indicator_new("svoi", icon, APP_INDICATOR_CATEGORY_COMMUNICATIONS);
+  g_autofree char* tray_icon = g_build_filename(folder, "data", "flutter_assets", "assets", "svoi-tray.png", nullptr);
+  self->indicator = app_indicator_new("svoi", tray_icon, APP_INDICATOR_CATEGORY_COMMUNICATIONS);
   app_indicator_set_status(self->indicator, APP_INDICATOR_STATUS_ACTIVE);
   self->menu = gtk_menu_new();
   g_object_ref_sink(self->menu);
