@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct ServerList: View {
+  @Environment(\.svoiColors) private var colors
   @ObservedObject var model: SvoiModel
   @ObservedObject var vpn: VPNController
   let onSelect: () -> Void
@@ -30,7 +31,7 @@ struct ServerList: View {
           .accessibilityIdentifier("server-search")
         if !search.isEmpty { SvoiIconButton(symbol: "xmark.circle.fill", label: "Очистить поиск") { search = "" } }
       }.padding(.horizontal, 14).frame(minHeight: 50)
-        .background(SvoiPalette.surface, in: RoundedRectangle(cornerRadius: 16))
+        .background(colors.surface, in: RoundedRectangle(cornerRadius: 16))
         .padding(.horizontal, 20).padding(.bottom, 12)
       ScrollView {
         LazyVStack(alignment: .leading, spacing: 12) {
@@ -78,12 +79,12 @@ struct ServerList: View {
         }.padding(.horizontal, 20).padding(.bottom, 16).frame(maxWidth: 600).frame(maxWidth: .infinity)
       }.scrollDismissesKeyboard(.interactively)
         .refreshable { await model.refreshSubscriptions() }
-    }.background(SvoiPalette.canvas)
+    }.background(colors.canvas)
       .safeAreaInset(edge: .bottom, spacing: 0) { probeBar }
       .sheet(isPresented: $showingConfig) {
         NavigationStack {
           ScrollView { Text(config ?? "Готовим конфигурацию…").font(.system(.footnote, design: .monospaced)).textSelection(.enabled).padding(20) }
-            .background(SvoiPalette.canvas).navigationTitle("Конфигурация").navigationBarTitleDisplayMode(.inline)
+            .background(colors.canvas).navigationTitle("Конфигурация").navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Готово") { showingConfig = false } } }
         }
       }
@@ -103,8 +104,8 @@ struct ServerList: View {
             .font(.subheadline.weight(.semibold)).frame(minHeight: 44)
         }.disabled(vpn.busy || vpn.active || filtered.isEmpty)
       }
-    }.padding(.horizontal, 20).padding(.top, 10).padding(.bottom, 4).background(SvoiPalette.canvas)
-      .overlay(alignment: .top) { Rectangle().fill(SvoiPalette.line).frame(height: 1) }
+    }.padding(.horizontal, 20).padding(.top, 10).padding(.bottom, 4).background(colors.canvas)
+      .overlay(alignment: .top) { Rectangle().fill(colors.line).frame(height: 1) }
   }
 
   private func row(_ server: SvoiServer) -> some View {
@@ -144,7 +145,7 @@ struct ServerList: View {
         } else { HStack { serverDetail(server); Spacer(minLength: 4); probeButton(server) } }
       }
     }.padding(.horizontal, 14).padding(.top, 12).padding(.bottom, 4)
-      .background(selected ? accent.opacity(0.09) : SvoiPalette.surface, in: RoundedRectangle(cornerRadius: 20))
+      .background(selected ? accent.opacity(0.09) : colors.surface, in: RoundedRectangle(cornerRadius: 20))
       .overlay(RoundedRectangle(cornerRadius: 20).strokeBorder(selected ? accent.opacity(0.55) : .clear))
   }
 

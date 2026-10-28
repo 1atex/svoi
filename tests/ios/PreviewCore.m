@@ -6,6 +6,7 @@ NSString *SvoiCoreRequest(NSString *method, NSString *path, NSString *token, NSS
 NSString *SvoiCoreConfig(NSString *token, NSString *serverID) { return unavailable(); }
 NSString *SvoiCoreProbe(NSString *token, NSString *serverID, NSString *requestID) { return unavailable(); }
 void SvoiCoreCancelProbe(NSString *requestID) {}
+void SvoiCoreCancelSpeed(void) {}
 NSString *SvoiCoreStart(NSString *config, int32_t descriptor, NSString *assets) { return @"UI preview only"; }
 NSString *SvoiCoreStop(void) { return @""; }
 NSString *SvoiCoreVersion(void) { return @"UI preview"; }

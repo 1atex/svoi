@@ -46,9 +46,38 @@ final class InterfaceTests: XCTestCase {
     capture("04-profile")
     app.tabBars.buttons["Настройки"].tap()
     XCTAssertTrue(app.buttons["Тема Лунная"].waitForExistence(timeout: 5))
+    if !app.buttons["Тема Лунная"].isHittable { app.swipeUp() }
     app.buttons["Тема Лунная"].tap()
     capture("05-settings")
     app.buttons["Тема SVOI"].tap()
+  }
+
+  func testAMOLEDAndTools() {
+    let app = launch()
+    app.tabBars.buttons["Настройки"].tap()
+    let amoled = app.segmentedControls["theme-mode"].buttons["AMOLED"]
+    XCTAssertTrue(amoled.waitForExistence(timeout: 5))
+    amoled.tap()
+    app.tabBars.buttons["Подключение"].tap()
+    capture("11-amoled")
+    app.terminate()
+    let restored = launch()
+    restored.tabBars.buttons["Настройки"].tap()
+    XCTAssertTrue(restored.segmentedControls["theme-mode"].buttons["AMOLED"].isSelected)
+    restored.tabBars.buttons["Инструменты"].tap()
+    XCTAssertTrue(restored.buttons["tool-speed"].waitForExistence(timeout: 5))
+    capture("12-tools")
+    restored.buttons["tool-speed"].tap()
+    XCTAssertTrue(restored.buttons["speed-start"].waitForExistence(timeout: 5))
+    capture("13-speed")
+    restored.navigationBars.buttons.element(boundBy: 0).tap()
+    restored.buttons["tool-dns"].tap()
+    XCTAssertTrue(restored.buttons["dns-start"].waitForExistence(timeout: 5))
+    capture("14-dns")
+    restored.tabBars.buttons["Подключение"].tap()
+    restored.buttons["vpn-toggle"].tap()
+    restored.tabBars.buttons["Инструменты"].tap()
+    XCTAssertFalse(restored.buttons["dns-start"].isEnabled)
   }
 
   func testFirstRunImportIsImmediatelyAvailable() {
@@ -76,6 +105,7 @@ final class InterfaceTests: XCTestCase {
     capture("08-accessibility-text")
     app.swipeUp()
     app.tabBars.buttons["Настройки"].tap()
+    if !app.buttons["Тема SVOI"].isHittable { app.swipeUp() }
     XCTAssertTrue(app.buttons["Тема SVOI"].waitForExistence(timeout: 5))
     capture("09-accessibility-settings")
     app.terminate()

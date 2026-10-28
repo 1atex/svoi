@@ -1,5 +1,22 @@
 import SwiftUI
 
+struct SvoiThemeColors {
+  let canvas: Color
+  let surface: Color
+  let inset: Color
+  let line: Color
+  static let dark = SvoiThemeColors(canvas: SvoiPalette.canvas, surface: SvoiPalette.surface, inset: SvoiPalette.inset, line: SvoiPalette.line)
+  static let amoled = SvoiThemeColors(canvas: .black, surface: Color(red: 8/255, green: 8/255, blue: 10/255), inset: .black, line: .white.opacity(0.15))
+}
+
+private struct SvoiColorsKey: EnvironmentKey { static let defaultValue = SvoiThemeColors.dark }
+extension EnvironmentValues {
+  var svoiColors: SvoiThemeColors {
+    get { self[SvoiColorsKey.self] }
+    set { self[SvoiColorsKey.self] = newValue }
+  }
+}
+
 enum SvoiPalette {
   static let canvas = Color(red: 0.055, green: 0.055, blue: 0.063)
   static let surface = Color(red: 0.102, green: 0.102, blue: 0.114)
@@ -28,22 +45,24 @@ extension EnvironmentValues {
 }
 
 struct SvoiCard<Content: View>: View {
+  @Environment(\.svoiColors) private var colors
   private let content: Content
   init(@ViewBuilder content: () -> Content) { self.content = content() }
   var body: some View {
     content.padding(20).frame(maxWidth: .infinity, alignment: .leading)
-      .background(SvoiPalette.surface, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
-      .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).strokeBorder(SvoiPalette.line))
+      .background(colors.surface, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+      .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).strokeBorder(colors.line))
   }
 }
 
 struct SvoiPrimaryButton: ButtonStyle {
+  @Environment(\.svoiColors) private var colors
   @Environment(\.svoiAccent) private var accent
   @Environment(\.isEnabled) private var enabled
   func makeBody(configuration: Configuration) -> some View {
     configuration.label.font(.headline).multilineTextAlignment(.center)
       .frame(maxWidth: .infinity).padding(.horizontal, 18).padding(.vertical, 16)
-      .foregroundStyle(SvoiPalette.canvas)
+      .foregroundStyle(colors.canvas)
       .background(accent.opacity(enabled ? configuration.isPressed ? 0.75 : 1 : 0.38), in: RoundedRectangle(cornerRadius: 16))
       .contentShape(RoundedRectangle(cornerRadius: 16))
   }
@@ -105,6 +124,7 @@ struct SvoiNotice: View {
 }
 
 struct ServerFlag: View {
+  @Environment(\.svoiColors) private var colors
   let name: String
   var size: CGFloat = 44
   var body: some View {
@@ -113,7 +133,7 @@ struct ServerFlag: View {
       else { Image(systemName: "globe.europe.africa").font(.system(size: size * 0.48)).foregroundStyle(SvoiPalette.muted) }
     }.frame(width: size, height: size)
       .background(Color.white.opacity(0.045), in: RoundedRectangle(cornerRadius: 14))
-      .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(SvoiPalette.line)).accessibilityHidden(true)
+      .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(colors.line)).accessibilityHidden(true)
   }
 }
 

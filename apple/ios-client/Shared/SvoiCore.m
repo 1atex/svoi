@@ -66,3 +66,4 @@ NSString *SvoiCoreStop(void) {
     return error.localizedDescription ?: @"";
 }
 NSString *SvoiCoreVersion(void) { return SvoiMobileVersion(); }
+void SvoiCoreCancelSpeed(void) { SvoiMobileCancelSpeed(); }

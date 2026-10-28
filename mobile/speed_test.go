@@ -53,6 +53,12 @@ func TestMobileSpeedCancelAndDuplicateStart(t *testing.T) {
 		t.Fatal("no request")
 	}
 	speedCall(t, s, "POST", "/api/tools/speed/start", token, map[string]any{"serverIds": []string{}}, 429)
+	speedCall(t, s, "POST", "/api/tools/speed/cancel?id=wrong", token, nil, 404)
+	select {
+	case <-s.speed.done:
+		t.Fatal("a different job ID cancelled the active measurement")
+	default:
+	}
 	speedCall(t, s, "POST", "/api/tools/speed/cancel", token, nil, 200)
 	select {
 	case <-s.speed.done:

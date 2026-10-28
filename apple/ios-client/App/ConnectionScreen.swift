@@ -2,6 +2,7 @@ import SwiftUI
 import UIKit
 
 struct ConnectionScreen: View {
+  @Environment(\.svoiColors) private var colors
   @ObservedObject var model: SvoiModel
   @ObservedObject var vpn: VPNController
   let openServers: () -> Void
@@ -42,7 +43,7 @@ struct ConnectionScreen: View {
         }
       }.padding(.horizontal, 20).padding(.top, 16).padding(.bottom, 24).frame(maxWidth: 560)
         .frame(maxWidth: .infinity)
-    }.background(SvoiPalette.canvas).toolbar(.hidden, for: .navigationBar)
+    }.background(colors.canvas).toolbar(.hidden, for: .navigationBar)
       .safeAreaInset(edge: .top, spacing: 0) {
         HStack(spacing: 10) {
           SvoiBrandMark(size: 36)
@@ -51,8 +52,8 @@ struct ConnectionScreen: View {
             .accessibilityLabel("SVOI")
           Spacer()
           SvoiIconButton(symbol: "plus", label: "Добавить подписку") { add(false) }
-            .background(SvoiPalette.surface, in: Circle()).disabled(model.working)
-        }.padding(.horizontal, 20).padding(.vertical, 8).background(SvoiPalette.canvas)
+            .background(colors.surface, in: Circle()).disabled(model.working)
+        }.padding(.horizontal, 20).padding(.vertical, 8).background(colors.canvas)
       }
   }
 
@@ -81,7 +82,7 @@ struct ConnectionScreen: View {
               }
             }
           }.padding(14).frame(maxWidth: .infinity, alignment: .leading)
-            .background(SvoiPalette.inset, in: RoundedRectangle(cornerRadius: 18))
+            .background(colors.inset, in: RoundedRectangle(cornerRadius: 18))
         }.buttonStyle(SvoiPressStyle()).accessibilityIdentifier("selected-server")
 
         Button {
@@ -95,12 +96,12 @@ struct ConnectionScreen: View {
             Circle().fill(vpn.connected ? accent : accent.opacity(0.14)).padding(26)
             Circle().stroke(accent.opacity(0.9), lineWidth: 1.5).padding(26)
             VStack(spacing: 9) {
-              if busy { ProgressView().tint(vpn.connected ? SvoiPalette.canvas : accent).scaleEffect(1.35) }
+              if busy { ProgressView().tint(vpn.connected ? colors.canvas : accent).scaleEffect(1.35) }
               else { Image(systemName: switching ? "arrow.triangle.2.circlepath" : "power").font(.system(size: 35, weight: .light)) }
               Text(busy ? "Отменить" : switching ? "Переключить" : vpn.active ? "Отключить" : "Подключить")
                 .font(.caption2.weight(.semibold)).dynamicTypeSize(...DynamicTypeSize.xxxLarge)
                 .lineLimit(1).minimumScaleFactor(0.75)
-            }.foregroundStyle(vpn.connected ? SvoiPalette.canvas : accent).frame(width: 126)
+            }.foregroundStyle(vpn.connected ? colors.canvas : accent).frame(width: 126)
           }.frame(width: 180, height: 180).contentShape(Circle())
         }.buttonStyle(SvoiPressStyle()).accessibilityIdentifier("vpn-toggle")
           .accessibilityLabel(busy ? "Отменить подключение" : switching ? "Переключить VPN на выбранный сервер" : vpn.active ? "Отключить VPN" : "Подключить VPN")

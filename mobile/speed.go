@@ -113,6 +113,9 @@ func (s *Session) speedRequest(method, path, token, body string) string {
 		return speedError(404, "Замер ещё не запускался")
 	}
 	if method == "POST" && u.Path == "/api/tools/speed/cancel" {
+		if job.group != group || (u.Query().Get("id") != "" && u.Query().Get("id") != job.id) {
+			return speedError(404, "Замер недоступен")
+		}
 		job.cancel()
 		return speedReply(200, map[string]string{"state": "cancelling"})
 	}

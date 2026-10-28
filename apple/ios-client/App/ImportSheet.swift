@@ -3,6 +3,7 @@ import UniformTypeIdentifiers
 import UIKit
 
 struct ImportSheet: View {
+  @Environment(\.svoiColors) private var colors
   @ObservedObject var model: SvoiModel
   var profile = false
   @Environment(\.dismiss) private var dismiss
@@ -36,8 +37,8 @@ struct ImportSheet: View {
                 .accessibilityLabel(mode == 1 ? "Код профиля" : "Ссылка или конфигурация")
                 .accessibilityIdentifier("import-text")
             }
-            .padding(10).background(SvoiPalette.inset, in: RoundedRectangle(cornerRadius: 18))
-              .overlay(RoundedRectangle(cornerRadius: 18).strokeBorder(editing ? accent : SvoiPalette.line))
+            .padding(10).background(colors.inset, in: RoundedRectangle(cornerRadius: 18))
+              .overlay(RoundedRectangle(cornerRadius: 18).strokeBorder(editing ? accent : colors.line))
             HStack {
               PasteButton(payloadType: String.self) { values in text = values.first ?? ""; fileError = "" }
                 .labelStyle(.titleAndIcon).buttonBorderShape(.roundedRectangle).tint(accent).frame(minHeight: 44)
@@ -54,11 +55,11 @@ struct ImportSheet: View {
             editing = false
             Task { await model.add(text); if model.error.isEmpty { dismiss() } }
           } label: {
-            HStack(spacing: 10) { if model.working { ProgressView().tint(SvoiPalette.canvas) }; Text(model.working ? "Импортируем…" : "Добавить в SVOI") }
+            HStack(spacing: 10) { if model.working { ProgressView().tint(colors.canvas) }; Text(model.working ? "Импортируем…" : "Добавить в SVOI") }
           }.buttonStyle(SvoiPrimaryButton()).disabled(model.working || text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             .accessibilityIdentifier("confirm-import")
         }.padding(24).frame(maxWidth: 560).frame(maxWidth: .infinity)
-      }.scrollDismissesKeyboard(.interactively).background(SvoiPalette.canvas)
+      }.scrollDismissesKeyboard(.interactively).background(colors.canvas)
       .navigationTitle("Добавить").navigationBarTitleDisplayMode(.inline)
       .toolbar {
         ToolbarItem(placement: .cancellationAction) { Button("Отмена") { dismiss() }.disabled(model.working) }
@@ -85,6 +86,7 @@ struct ImportSheet: View {
 }
 
 struct ShareProfileButton: View {
+  @Environment(\.svoiColors) private var colors
   @ObservedObject var model: SvoiModel
   @State private var code = ""
   @State private var showing = false
@@ -113,7 +115,7 @@ struct ShareProfileButton: View {
           Button { UIPasteboard.general.string = code; copied = true } label: { Label(copied ? "Код скопирован" : "Скопировать код", systemImage: copied ? "checkmark" : "doc.on.doc") }
             .frame(maxWidth: .infinity, minHeight: 44)
         }.padding(24).frame(maxWidth: 560).frame(maxWidth: .infinity)
-        }.background(SvoiPalette.canvas).navigationTitle("Поделиться").navigationBarTitleDisplayMode(.inline)
+        }.background(colors.canvas).navigationTitle("Поделиться").navigationBarTitleDisplayMode(.inline)
           .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Закрыть") { showing = false } } }
       }
     }
@@ -121,6 +123,7 @@ struct ShareProfileButton: View {
 }
 
 struct IdentitySettings: View {
+  @Environment(\.svoiColors) private var colors
   @ObservedObject var model: SvoiModel
   @State private var fields: [String: String] = [:]
   @State private var sendDevice = true
@@ -139,7 +142,7 @@ struct IdentitySettings: View {
           }.padding(.vertical, 5)
         }
       } footer: { Text("Эти значения используются при запросе подписки. Импорт профиля сохраняет параметры отправителя.") }
-      .listRowBackground(SvoiPalette.surface)
+      .listRowBackground(colors.surface)
       if !message.isEmpty { Section { Text(message).foregroundStyle(.orange) } }
       Button(saving ? "Сохраняем…" : "Сохранить") {
         let profile = model.profileID
@@ -156,7 +159,7 @@ struct IdentitySettings: View {
         }
       }.disabled(saving || model.working)
     }
-    .scrollContentBackground(.hidden).background(SvoiPalette.canvas)
+    .scrollContentBackground(.hidden).background(colors.canvas)
     .navigationTitle("Данные устройства").navigationBarTitleDisplayMode(.inline)
     .onAppear {
       guard fields.isEmpty else { return }

@@ -3,6 +3,7 @@ import SwiftUI
 import UIKit
 
 struct ConnectionTools: View {
+  @Environment(\.svoiColors) private var colors
   @ObservedObject var vpn: VPNController
   @Environment(\.scenePhase) private var scenePhase
   @Environment(\.svoiAccent) private var accent
@@ -25,7 +26,7 @@ struct ConnectionTools: View {
       }
       if !baseline.isEmpty && vpn.connected && !ip.isEmpty { Text(ip == baseline ? "IP совпадает с адресом до подключения" : "IP изменился после подключения").font(.caption).foregroundStyle(.secondary) }
       if !ipError.isEmpty { Text(ipError).font(.caption).foregroundStyle(.orange) }
-      Divider().overlay(SvoiPalette.line)
+      Divider().overlay(colors.line)
       Button {
         checkTask?.cancel()
         checkTask = Task { await checkInternet() }
@@ -38,8 +39,8 @@ struct ConnectionTools: View {
       }.font(.footnote.weight(.medium)).disabled(checking || vpn.busy)
       if !checkResult.isEmpty { Text(checkResult).font(.caption).foregroundStyle(.secondary) }
       if !vpn.error.isEmpty { Text(vpn.error).font(.footnote).foregroundStyle(.orange).textSelection(.enabled) }
-    }.padding(20).background(SvoiPalette.surface, in: RoundedRectangle(cornerRadius: 24))
-      .overlay(RoundedRectangle(cornerRadius: 24).strokeBorder(SvoiPalette.line))
+    }.padding(20).background(colors.surface, in: RoundedRectangle(cornerRadius: 24))
+      .overlay(RoundedRectangle(cornerRadius: 24).strokeBorder(colors.line))
       .task(id: "\(vpn.status.rawValue):\(vpn.serverID):\(scenePhase)") {
         checkTask?.cancel()
         checkResult = ""

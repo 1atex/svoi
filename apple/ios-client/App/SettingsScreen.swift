@@ -2,14 +2,24 @@ import SwiftUI
 import UIKit
 
 struct SettingsScreen: View {
+  @Environment(\.svoiColors) private var colors
   @ObservedObject var model: SvoiModel
   @AppStorage("appearance") private var appearance = "amber"
+  @AppStorage("colorScheme") private var colorScheme = "dark"
   @Environment(\.svoiAccent) private var accent
   @Environment(\.sizeCategory) private var sizeCategory
   private let themes = [("amber", "SVOI"), ("blue", "Лунная"), ("green", "Лесная")]
 
   var body: some View {
     Form {
+      Section {
+        Picker("Тема приложения", selection: $colorScheme) {
+          Text("Графит").tag("dark")
+          Text("AMOLED").tag("amoled")
+        }.pickerStyle(.segmented).accessibilityIdentifier("theme-mode")
+        Text(colorScheme == "amoled" ? "Чистый чёрный фон, тёмные карточки и мягкий контраст текста." : "Тёмный графитовый фон SVOI.")
+          .font(.footnote).foregroundStyle(SvoiPalette.muted)
+      } header: { Text("Тема") }.listRowBackground(colors.surface)
       Section {
         VStack(alignment: .leading, spacing: 16) {
           Text("Ваш SVOI").font(.title3.bold())
@@ -19,12 +29,12 @@ struct SettingsScreen: View {
               Button { appearance = key } label: {
                 VStack(spacing: 12) {
                   RoundedRectangle(cornerRadius: 12).fill(SvoiPalette.accent(key)).frame(height: 40)
-                    .overlay(Image(systemName: "power").foregroundStyle(SvoiPalette.canvas))
+                    .overlay(Image(systemName: "power").foregroundStyle(colors.canvas))
                   HStack(spacing: 4) {
                     Text(title).font(.footnote.weight(.medium))
                     if appearance == key { Image(systemName: "checkmark.circle.fill").font(.caption) }
                   }.foregroundStyle(appearance == key ? accent : SvoiPalette.muted)
-                }.padding(10).background(SvoiPalette.inset, in: RoundedRectangle(cornerRadius: 16))
+                }.padding(10).background(colors.inset, in: RoundedRectangle(cornerRadius: 16))
                   .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(appearance == key ? accent : .clear))
               }.buttonStyle(SvoiPressStyle()).accessibilityLabel("Тема \(title)")
                 .accessibilityAddTraits(appearance == key ? .isSelected : [])
@@ -32,7 +42,7 @@ struct SettingsScreen: View {
           }
         }.padding(.vertical, 6)
       } header: { Text("Оформление") }
-      .listRowBackground(SvoiPalette.surface)
+      .listRowBackground(colors.surface)
 
       Section {
         Toggle(isOn: Binding(get: { model.autoRefresh }, set: { enabled in Task { await model.setAutoRefresh(enabled) } })) {
@@ -46,15 +56,15 @@ struct SettingsScreen: View {
           }.frame(minHeight: 36)
         }.disabled(model.working)
       } header: { Text("Подписки") } footer: { Text("Обновление выполняется в фоне и не включает VPN.") }
-        .listRowBackground(SvoiPalette.surface)
+        .listRowBackground(colors.surface)
 
-      if !model.error.isEmpty { Section { SvoiNotice(text: model.error) }.listRowBackground(SvoiPalette.surface) }
+      if !model.error.isEmpty { Section { SvoiNotice(text: model.error) }.listRowBackground(colors.surface) }
 
       Section {
         Button { openTelegram(model) } label: { Label("Новости и обсуждения", systemImage: "paperplane") }.frame(minHeight: 36)
         Link(destination: URL(string: "https://svoi.space/")!) { Label("Сайт SVOI", systemImage: "globe") }.frame(minHeight: 36)
         Link(destination: URL(string: "https://github.com/1atex/svoi")!) { Label("Исходный код", systemImage: "chevron.left.forwardslash.chevron.right") }.frame(minHeight: 36)
-      } header: { Text("На связи со своими") }.listRowBackground(SvoiPalette.surface)
+      } header: { Text("На связи со своими") }.listRowBackground(colors.surface)
 
       Section {
         HStack(spacing: 14) {
@@ -66,12 +76,13 @@ struct SettingsScreen: View {
           }
         }.padding(.vertical, 6)
         Text("Тестовая версия. Установка обновлений выполняется вручную.").font(.footnote).foregroundStyle(SvoiPalette.muted)
-      }.listRowBackground(SvoiPalette.surface)
-    }.scrollContentBackground(.hidden).background(SvoiPalette.canvas)
+      }.listRowBackground(colors.surface)
+    }.scrollContentBackground(.hidden).background(colors.canvas)
   }
 }
 
 struct ProfileScreen: View {
+  @Environment(\.svoiColors) private var colors
   @ObservedObject var model: SvoiModel
   @ObservedObject var vpn: VPNController
   let onImport: () -> Void
@@ -114,7 +125,7 @@ struct ProfileScreen: View {
                 }.padding(.vertical, 10).contentShape(Rectangle())
               }.buttonStyle(SvoiPressStyle()).disabled(model.working || vpn.busy)
             }
-            Divider().overlay(SvoiPalette.line)
+            Divider().overlay(colors.line)
             NavigationLink { IdentitySettings(model: model) } label: {
               Label("HWID и данные устройства", systemImage: "fingerprint").font(.subheadline).frame(minHeight: 48)
             }
@@ -122,7 +133,7 @@ struct ProfileScreen: View {
         }
         if !model.error.isEmpty { SvoiNotice(text: model.error, symbol: "exclamationmark.circle") }
       }.padding(20).frame(maxWidth: 560).frame(maxWidth: .infinity)
-    }.background(SvoiPalette.canvas)
+    }.background(colors.canvas)
       .confirmationDialog("Сменить профиль? Текущее VPN-соединение будет отключено.", isPresented: $confirming, titleVisibility: .visible) {
         Button("Сменить профиль") { if let profile = pending { Task { await model.switchProfile(profile) } } }
         Button("Отмена", role: .cancel) { pending = nil }

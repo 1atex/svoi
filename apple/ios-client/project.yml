@@ -7,7 +7,7 @@ settings:
   base:
     SWIFT_VERSION: '5.0'
     MARKETING_VERSION: '0.1.0'
-    CURRENT_PROJECT_VERSION: '2'
+    CURRENT_PROJECT_VERSION: '3'
     CODE_SIGNING_ALLOWED: 'NO'
     TARGETED_DEVICE_FAMILY: '1,2'
     ENABLE_BITCODE: 'NO'
@@ -24,6 +24,8 @@ targets:
         buildPhase: resources
       - path: Resources/licenses
         type: folder
+        buildPhase: resources
+      - path: Resources/dns-providers.json
         buildPhase: resources
     settings:
       base:
@@ -90,6 +92,8 @@ targets:
       - path: Shared/Assets.swift
       - path: Shared/SvoiCore.h
       - path: ../../tests/ios/PreviewCore.m
+      - path: Resources/dns-providers.json
+        buildPhase: resources
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: dev.svoi.interfacepreview
@@ -108,6 +112,16 @@ targets:
           UIApplicationSupportsMultipleScenes: false
           UISceneConfigurations: {}
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
+  SVOINetworkTests:
+    type: bundle.unit-testing
+    platform: iOS
+    sources:
+      - path: App/NetworkChecks.swift
+      - path: ../../tests/ios/NetworkTests.swift
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.svoi.networktests
+        GENERATE_INFOPLIST_FILE: 'YES'
   SVOIInterfaceTests:
     type: bundle.ui-testing
     platform: iOS
@@ -126,7 +140,7 @@ schemes:
       targets:
         SVOIInterfacePreview: all
     test:
-      targets: [SVOIInterfaceTests]
+      targets: [SVOINetworkTests, SVOIInterfaceTests]
   SVOI:
     build:
       targets:

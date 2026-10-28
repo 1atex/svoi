@@ -93,6 +93,11 @@ final class SvoiModel: ObservableObject {
   private var connectionAttempt = 0
   var selected: SvoiServer? { servers.first { $0.id == selectedID } }
   var profileID: String { group["id"] as? String ?? "" }
+  var lastSpeedResults: [SpeedRoute] = []
+
+  func toolsRequest(_ path: String, method: String = "GET", body: [String: Any] = [:]) async throws -> [String: Any] {
+    try await api.request(path, method: method, token: token, body: body)
+  }
 
   func initialize() async {
     #if SVOI_UI_PREVIEW
@@ -168,6 +173,8 @@ final class SvoiModel: ObservableObject {
       let text = value.trimmingCharacters(in: .whitespacesAndNewlines)
       guard !text.isEmpty, text.utf8.count <= 4 * 1024 * 1024 else { throw SvoiError("Вставьте ссылку или профиль размером до 4 МБ") }
       if text.hasPrefix("SVOI1.") {
+        SvoiCoreCancelSpeed()
+        lastSpeedResults = []
         guard !vpn.busy else { throw SvoiError("Дождитесь завершения переключения VPN") }
         connectionAttempt += 1
         preparingVPN = false
@@ -213,6 +220,8 @@ final class SvoiModel: ObservableObject {
 
   func switchProfile(_ profile: SavedProfile) async {
     await perform {
+      SvoiCoreCancelSpeed()
+      lastSpeedResults = []
       connectionAttempt += 1
       preparingVPN = false
       if vpn.active { try await vpn.disconnect() }
@@ -226,6 +235,7 @@ final class SvoiModel: ObservableObject {
   }
 
   func toggleVPN() async {
+    SvoiCoreCancelSpeed()
     #if SVOI_UI_PREVIEW
     vpn.setInterfacePreview(connected: !vpn.connected || (selected != nil && vpn.serverID != selectedID), serverID: selectedID)
     return

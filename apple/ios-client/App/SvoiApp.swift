@@ -11,7 +11,7 @@ struct SvoiApp: App {
         .preferredColorScheme(.dark)
         .task { await model.initialize() }
         .onChange(of: scenePhase) { phase in
-          if phase != .active { model.cancelProbes() }
+          if phase != .active { model.cancelProbes(); SvoiCoreCancelSpeed() }
           #if !SVOI_UI_PREVIEW
           if phase == .active && model.ready { Task { await model.vpn.initialize() } }
           #endif
@@ -24,10 +24,12 @@ struct SvoiRoot: View {
   @ObservedObject var model: SvoiModel
   @ObservedObject var vpn: VPNController
   @AppStorage("appearance") private var appearance = "amber"
+  @AppStorage("colorScheme") private var colorScheme = "dark"
   @State private var tab = 0
   @State private var importing = false
   @State private var importProfile = false
   private var accent: Color { SvoiPalette.accent(appearance) }
+  private var colors: SvoiThemeColors { colorScheme == "amoled" ? .amoled : .dark }
 
   var body: some View {
     Group {
@@ -46,14 +48,17 @@ struct SvoiRoot: View {
               }
           }.tabItem { Label("Серверы", systemImage: "globe.europe.africa") }.tag(1)
           NavigationStack {
+            ToolsScreen(model: model, vpn: vpn).navigationTitle("Инструменты")
+          }.tabItem { Label("Инструменты", systemImage: "square.grid.2x2") }.tag(4)
+          NavigationStack {
             ProfileScreen(model: model, vpn: vpn, onImport: { openImport(true) }).navigationTitle("Общий профиль")
           }.tabItem { Label("Профиль", systemImage: "person.2") }.tag(2)
           NavigationStack {
             SettingsScreen(model: model).navigationTitle("Настройки")
           }.tabItem { Label("Настройки", systemImage: "slider.horizontal.3") }.tag(3)
         }
-        .toolbarBackground(SvoiPalette.canvas, for: .tabBar)
-        .toolbarBackground(.visible, for: .tabBar)
+        .toolbarBackground(colors.canvas, for: .tabBar, .navigationBar)
+        .toolbarBackground(.visible, for: .tabBar, .navigationBar)
         .sheet(isPresented: $importing) { ImportSheet(model: model, profile: importProfile) }
       } else {
         VStack(spacing: 24) {
@@ -64,10 +69,10 @@ struct SvoiRoot: View {
             SvoiNotice(text: model.error, symbol: "exclamationmark.circle")
             Button("Повторить") { Task { await model.initialize() } }.buttonStyle(SvoiPrimaryButton())
           }
-        }.padding(28).frame(maxWidth: .infinity, maxHeight: .infinity).background(SvoiPalette.canvas)
+        }.padding(28).frame(maxWidth: .infinity, maxHeight: .infinity).background(colors.canvas)
       }
     }
-    .tint(accent).environment(\.svoiAccent, accent).background(SvoiPalette.canvas)
+    .tint(accent).environment(\.svoiAccent, accent).environment(\.svoiColors, colors).background(colors.canvas)
     #if SVOI_UI_PREVIEW
     .environment(\.sizeCategory, ProcessInfo.processInfo.arguments.contains("--large-type") ? .accessibilityExtraExtraExtraLarge : .large)
     #endif
