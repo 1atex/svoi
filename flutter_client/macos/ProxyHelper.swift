@@ -18,6 +18,14 @@ func same(_ a: [String: Any], _ b: [String: Any]) -> Bool {
   NSDictionary(dictionary: a).isEqual(to: b)
 }
 
+let managedKeys = Set([
+  kSCPropNetProxiesHTTPEnable as String, kSCPropNetProxiesHTTPProxy as String,
+  kSCPropNetProxiesHTTPPort as String, kSCPropNetProxiesHTTPSEnable as String,
+  kSCPropNetProxiesHTTPSProxy as String, kSCPropNetProxiesHTTPSPort as String,
+  kSCPropNetProxiesProxyAutoConfigEnable as String,
+  kSCPropNetProxiesProxyAutoDiscoveryEnable as String, kSCPropNetProxiesSOCKSEnable as String,
+])
+
 func appliedProxy(_ original: [String: Any], port: Int) -> [String: Any] {
   var next = original
   next[kSCPropNetProxiesHTTPEnable as String] = 1
@@ -35,8 +43,11 @@ func appliedProxy(_ original: [String: Any], port: Int) -> [String: Any] {
 func restoreChanges(current: ProxyMap, original: ProxyMap, expected: ProxyMap) -> ProxyMap {
   var changes: ProxyMap = [:]
   for (id, value) in original {
-    if let actual = current[id], let wanted = expected[id], same(actual, wanted) {
-      changes[id] = value
+    if let actual = current[id], let wanted = expected[id],
+       same(actual.filter { managedKeys.contains($0.key) }, wanted.filter { managedKeys.contains($0.key) }) {
+      var restored = actual
+      for key in managedKeys { restored[key] = value[key] }
+      changes[id] = restored
     }
   }
   return changes
@@ -137,6 +148,12 @@ func selfTest() throws {
   var userChanged = next
   userChanged["HTTPPort"] = 54321
   try require(restoreChanges(current: ["wifi": userChanged], original: ["wifi": old], expected: ["wifi": next]).isEmpty, "preserve user changes")
+  var changedExclusions = next
+  changedExclusions["ExceptionsList"] = ["new.example"]
+  changedExclusions["FutureSystemKey"] = true
+  let restored = restoreChanges(current: ["wifi": changedExclusions], original: ["wifi": old], expected: ["wifi": next])["wifi"]!
+  try require(restored["HTTPEnable"] as? Int == 0 && restored["HTTPPort"] == nil, "restore only managed keys")
+  try require(restored["ExceptionsList"] as? [String] == ["new.example"] && restored["FutureSystemKey"] as? Bool == true, "preserve unrelated keys")
   try require(restoreChanges(current: [:], original: ["wifi": old], expected: ["wifi": next]).isEmpty, "removed service")
   let file = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
   defer { try? FileManager.default.removeItem(at: file) }
