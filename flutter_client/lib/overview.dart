@@ -41,7 +41,7 @@ class Overview extends StatelessWidget {
                       children: [
                         TextButton.icon(
                           onPressed: onServers,
-                          icon: const Icon(LucideIcons.globe, size: 16),
+                          icon: const SvoiIcon(LucideIcons.globe, size: 16),
                           label: Text('Серверы · ${c.servers.value.length}'),
                         ),
                         ValueListenableBuilder(
@@ -75,7 +75,7 @@ class Overview extends StatelessWidget {
                   const SizedBox(height: 20),
                   Row(
                     children: [
-                      Icon(
+                      SvoiIcon(
                         LucideIcons.flaskConical,
                         size: 14,
                         color: appColors(context).muted,
@@ -116,7 +116,7 @@ class Overview extends StatelessWidget {
           children: [
             Row(
               children: [
-                Icon(
+                SvoiIcon(
                   LucideIcons.layers,
                   color: appColors(context).accent,
                   size: 18,
@@ -195,13 +195,13 @@ class Overview extends StatelessWidget {
                                       onPressed: busy
                                           ? null
                                           : () => c.refreshSource(s['id']),
-                                      icon: const Icon(
+                                      icon: const SvoiIcon(
                                         LucideIcons.refreshCw,
                                         size: 16,
                                       ),
                                     ),
                                   )
-                                : Icon(
+                                : SvoiIcon(
                                     LucideIcons.chevronRight,
                                     color: appColors(context).muted,
                                     size: 16,
@@ -299,7 +299,7 @@ class _ImportWelcomeState extends State<ImportWelcome> {
                             link.text = data!.text!.trim();
                           }
                         },
-                  icon: const Icon(LucideIcons.clipboardPaste, size: 18),
+                  icon: const SvoiIcon(LucideIcons.clipboardPaste, size: 18),
                 ),
               ),
               validator: (value) {
@@ -320,14 +320,14 @@ class _ImportWelcomeState extends State<ImportWelcome> {
                       height: 16,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
-                  : const Icon(LucideIcons.plus, size: 18),
+                  : const SvoiIcon(LucideIcons.plus, size: 18),
               label: Text(busy ? 'Добавляем…' : 'Добавить подписку'),
             ),
             const SizedBox(height: 12),
             OutlinedButton.icon(
               key: const ValueKey('welcome-import'),
               onPressed: busy ? null : () => importDialog(context, widget.c),
-              icon: const Icon(LucideIcons.fileInput, size: 18),
+              icon: const SvoiIcon(LucideIcons.fileInput, size: 18),
               label: const Text('Импортировать профиль / файл'),
             ),
             if (widget.c.subscriptions.value.any(
@@ -336,7 +336,7 @@ class _ImportWelcomeState extends State<ImportWelcome> {
               const SizedBox(height: 12),
               TextButton.icon(
                 onPressed: busy ? null : widget.c.refreshSubscriptions,
-                icon: const Icon(LucideIcons.refreshCw, size: 16),
+                icon: const SvoiIcon(LucideIcons.refreshCw, size: 16),
                 label: const Text('Обновить существующие подписки'),
               ),
             ],

@@ -164,7 +164,12 @@ void main() {
 
       Focus.of(
         tester.element(
-          find.descendant(of: connect, matching: find.byType(Icon)).first,
+          find
+              .descendant(
+                of: connect,
+                matching: find.byWidgetPredicate((widget) => widget is Icon),
+              )
+              .first,
         ),
       ).requestFocus();
       await tester.pumpAndSettle();

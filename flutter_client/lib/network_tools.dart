@@ -302,7 +302,7 @@ class _DnsToolsState extends State<DnsTools> {
                   : disabled || candidates.isEmpty
                   ? null
                   : benchmark,
-              icon: Icon(testing ? Icons.stop : Icons.speed),
+              icon: SvoiIcon(testing ? Icons.stop : Icons.speed),
               label: Text(testing ? 'Остановить' : 'Сравнить DNS'),
             ),
             OutlinedButton(

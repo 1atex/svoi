@@ -170,7 +170,7 @@ class MobileUpdatesPanel extends StatelessWidget {
                       onPressed: model.busy
                           ? null
                           : () => model.call('install'),
-                      icon: const Icon(Icons.system_update),
+                      icon: const SvoiIcon(Icons.system_update),
                       label: Text(
                         d['canInstall'] == true
                             ? 'Установить обновление'
@@ -182,7 +182,7 @@ class MobileUpdatesPanel extends StatelessWidget {
                       onPressed: model.busy
                           ? null
                           : () => model.call('download'),
-                      icon: const Icon(Icons.download),
+                      icon: const SvoiIcon(Icons.download),
                       label: const Text('Скачать обновление'),
                     ),
                   if (downloading || ready)
@@ -197,7 +197,7 @@ class MobileUpdatesPanel extends StatelessWidget {
                       onPressed: model.busy || model.active
                           ? null
                           : () => model.call('check', {'force': true}),
-                      icon: const Icon(Icons.refresh),
+                      icon: const SvoiIcon(Icons.refresh),
                       label: const Text('Проверить обновления'),
                     ),
                 ],

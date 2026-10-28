@@ -1,3 +1,5 @@
+import 'ui_icons.dart';
+
 import 'package:flutter/material.dart';
 
 import 'release_notice.dart';
@@ -61,7 +63,7 @@ class _ReleaseNoticeBannerState extends State<ReleaseNoticeBanner> {
             builder: (context, bounds) {
               final title = Row(
                 children: [
-                  Icon(
+                  SvoiIcon(
                     Icons.auto_awesome_outlined,
                     size: 18,
                     color: theme.colorScheme.primary,
@@ -107,7 +109,7 @@ class _ReleaseNoticeBannerState extends State<ReleaseNoticeBanner> {
               final close = IconButton(
                 tooltip: 'Скрыть до следующего обновления',
                 onPressed: _busy ? null : () => _act(),
-                icon: const Icon(Icons.close, size: 18),
+                icon: const SvoiIcon(Icons.close, size: 18),
               );
               return bounds.maxWidth >= 640
                   ? Row(

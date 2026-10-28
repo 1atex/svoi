@@ -150,7 +150,7 @@ class ConnectionPath extends StatelessWidget {
       Expanded(
         child: Column(
           children: [
-            Icon(icon, size: 20, color: color),
+            SvoiIcon(icon, size: 20, color: color),
             const SizedBox(height: 7),
             Text(
               title,

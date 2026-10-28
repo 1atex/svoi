@@ -260,7 +260,11 @@ class _OnboardingDialogState extends State<OnboardingDialog> {
                         padding: const EdgeInsets.fromLTRB(24, 14, 12, 0),
                         child: Row(
                           children: [
-                            Icon(Icons.tune_rounded, color: p.accent, size: 20),
+                            SvoiIcon(
+                              Icons.tune_rounded,
+                              color: p.accent,
+                              size: 20,
+                            ),
                             const SizedBox(width: 10),
                             Expanded(
                               child: Text(
@@ -277,7 +281,7 @@ class _OnboardingDialogState extends State<OnboardingDialog> {
                             IconButton(
                               tooltip: 'Пропустить знакомство',
                               onPressed: () => _close(false),
-                              icon: const Icon(Icons.close, size: 19),
+                              icon: const SvoiIcon(Icons.close, size: 19),
                             ),
                           ],
                         ),
@@ -425,7 +429,7 @@ class _OnboardingDialogState extends State<OnboardingDialog> {
             color: p.selected,
             borderRadius: BorderRadius.circular(18),
           ),
-          child: Icon(Icons.check_rounded, size: 34, color: p.accent),
+          child: SvoiIcon(Icons.check_rounded, size: 34, color: p.accent),
         ),
       ),
       const SizedBox(height: 24),
@@ -483,14 +487,14 @@ class _OnboardingDialogState extends State<OnboardingDialog> {
                             platform: widget.platform,
                           ),
                         ),
-                  icon: const Icon(Icons.open_in_new, size: 16),
+                  icon: const SvoiIcon(Icons.open_in_new, size: 16),
                   label: Text(_opening ? 'Открываем…' : 'Посмотреть изменения'),
                 ),
                 TextButton.icon(
                   onPressed: _opening
                       ? null
                       : () => _openLink(sourceRepositoryUri),
-                  icon: const Icon(Icons.code_rounded, size: 16),
+                  icon: const SvoiIcon(Icons.code_rounded, size: 16),
                   label: const Text('GitHub'),
                 ),
               ],
@@ -569,7 +573,7 @@ class _OnboardingPreview extends StatelessWidget {
                   color: p.powerOff,
                   border: Border.all(color: p.accent),
                 ),
-                child: Icon(LucideIcons.power, color: p.accent, size: 29),
+                child: SvoiIcon(LucideIcons.power, color: p.accent, size: 29),
               ),
           ],
         ),

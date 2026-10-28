@@ -30,12 +30,12 @@ class ConfigPane extends StatelessWidget {
                 );
               }
             },
-            icon: const Icon(Icons.copy, size: 18),
+            icon: const SvoiIcon(Icons.copy, size: 18),
             label: const Text('Копировать'),
           ),
           TextButton.icon(
             onPressed: () => c.action(() => saveText(name, text)),
-            icon: const Icon(Icons.save_alt, size: 18),
+            icon: const SvoiIcon(Icons.save_alt, size: 18),
             label: const Text('Сохранить файл'),
           ),
         ],
@@ -384,7 +384,7 @@ class ProfilePage extends StatelessWidget {
               for (final session in c.sessions.value)
                 ListTile(
                   contentPadding: EdgeInsets.zero,
-                  leading: Icon(
+                  leading: SvoiIcon(
                     session['token'] == c.api.token
                         ? Icons.check_circle
                         : Icons.account_circle_outlined,
@@ -431,14 +431,14 @@ class ProfilePage extends StatelessWidget {
                               await c.createProfile(fields['name']!.trim());
                             }
                           },
-                    icon: const Icon(Icons.add),
+                    icon: const SvoiIcon(Icons.add),
                     label: const Text('Создать'),
                   ),
                   OutlinedButton.icon(
                     onPressed: c.busy.value
                         ? null
                         : () => importDialog(context, c),
-                    icon: const Icon(Icons.move_to_inbox_outlined),
+                    icon: const SvoiIcon(Icons.move_to_inbox_outlined),
                     label: const Text('Получить профиль'),
                   ),
                   FilledButton.icon(
@@ -515,7 +515,7 @@ class ProfilePage extends StatelessWidget {
                               );
                             });
                           },
-                    icon: const Icon(Icons.ios_share),
+                    icon: const SvoiIcon(Icons.ios_share),
                     label: const Text('Поделиться'),
                   ),
                 ],
@@ -578,7 +578,7 @@ class ProfilePage extends StatelessWidget {
                             );
                           }
                         },
-                  icon: const Icon(Icons.edit_outlined),
+                  icon: const SvoiIcon(Icons.edit_outlined),
                   label: const Text('Изменить параметры'),
                 ),
               ),
@@ -591,7 +591,7 @@ class ProfilePage extends StatelessWidget {
               for (final device in group['devices'] ?? [])
                 ListTile(
                   contentPadding: EdgeInsets.zero,
-                  leading: const Icon(Icons.computer),
+                  leading: const SvoiIcon(Icons.computer),
                   title: Text(
                     device['name'] == 'Windows · Flutter'
                         ? 'Windows'
@@ -602,7 +602,7 @@ class ProfilePage extends StatelessWidget {
                       ? const Text('Владелец')
                       : IconButton(
                           tooltip: 'Отозвать доступ',
-                          icon: const Icon(Icons.person_remove_outlined),
+                          icon: const SvoiIcon(Icons.person_remove_outlined),
                           onPressed: c.busy.value
                               ? null
                               : () async {
@@ -651,7 +651,7 @@ class RoutingPage extends StatelessWidget {
               }.entries)
                 ListTile(
                   contentPadding: EdgeInsets.zero,
-                  leading: Icon(
+                  leading: SvoiIcon(
                     routing['mode'] == entry.key
                         ? Icons.radio_button_checked
                         : Icons.radio_button_off,
@@ -676,11 +676,11 @@ class RoutingPage extends StatelessWidget {
               for (final process in processes)
                 ListTile(
                   contentPadding: EdgeInsets.zero,
-                  leading: const Icon(Icons.apps),
+                  leading: const SvoiIcon(Icons.apps),
                   title: Text(process),
                   trailing: IconButton(
                     tooltip: 'Убрать из списка',
-                    icon: const Icon(Icons.close),
+                    icon: const SvoiIcon(Icons.close),
                     onPressed: c.busy.value
                         ? null
                         : () {
@@ -720,7 +720,7 @@ class RoutingPage extends StatelessWidget {
                               );
                             }
                           }),
-                    icon: const Icon(Icons.add),
+                    icon: const SvoiIcon(Icons.add),
                     label: const Text('Выбрать EXE'),
                   ),
                   OutlinedButton(
@@ -943,7 +943,7 @@ class PreferencesPage extends StatelessWidget {
             alignment: Alignment.centerLeft,
             child: OutlinedButton.icon(
               onPressed: c.refreshSubscriptions,
-              icon: const Icon(Icons.refresh),
+              icon: const SvoiIcon(Icons.refresh),
               label: const Text('Обновить подписки сейчас'),
             ),
           ),
@@ -1068,7 +1068,7 @@ class PreferencesPage extends StatelessWidget {
                 'Сетевые инструменты',
                 DnsTools(c: c),
               ),
-              icon: const Icon(Icons.dns_outlined),
+              icon: const SvoiIcon(Icons.dns_outlined),
               label: const Text('Подобрать DNS'),
             ),
           ),
