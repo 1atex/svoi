@@ -171,7 +171,11 @@ struct SvoiRoot: View {
         Text("Preview 0.1.0 · Xray \(SvoiCoreVersion())").font(.footnote)
         Text("Разделение по отдельным приложениям и автоматические обновления в этой версии не реализованы.").font(.footnote).foregroundStyle(.secondary)
         Button("Новости в Telegram") {
-          if let url = URL(string: "tg://resolve?domain=SVOI_client") { UIApplication.shared.open(url) }
+          if let url = URL(string: "tg://resolve?domain=SVOI_client") {
+            UIApplication.shared.open(url) { opened in
+              if !opened { model.error = "Не удалось открыть Telegram. Канал SVOI: @SVOI_client" }
+            }
+          }
         }
         Link("Сайт SVOI", destination: URL(string: "https://svoi.space/")!)
       }

@@ -10,6 +10,7 @@ settings:
     CODE_SIGNING_ALLOWED: 'NO'
     TARGETED_DEVICE_FAMILY: '1,2'
     ENABLE_BITCODE: 'NO'
+    OTHER_LDFLAGS: ['$(inherited)', '-ObjC', '-lresolv']
 targets:
   SVOI:
     type: application
@@ -18,6 +19,9 @@ targets:
       - path: App
       - path: Shared
       - path: Resources/core
+        type: folder
+        buildPhase: resources
+      - path: Resources/licenses
         type: folder
         buildPhase: resources
     settings:

@@ -18,6 +18,7 @@
 /node_modules/
 /backend/node_modules/
 /.tools/
+/scripts/__pycache__/
 /flutter_client/android/app/libs/*.aar
 /flutter_client/android/app/src/main/assets/core/*.dat
 /mobile/*.aar

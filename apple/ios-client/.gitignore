@@ -1,5 +1,7 @@
 /Frameworks/
 /Resources/core/
+/Resources/licenses/
+/App/Assets.xcassets/
 /SVOI.xcodeproj/
 /*.entitlements
 /*-Info.plist

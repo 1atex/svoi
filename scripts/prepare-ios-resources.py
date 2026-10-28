@@ -1,6 +1,7 @@
 import hashlib
 import json
 from pathlib import Path
+import shutil
 import subprocess
 import zipfile
 
@@ -18,6 +19,12 @@ assets.mkdir(parents=True, exist_ok=True)
 with zipfile.ZipFile(archive) as data:
     for name in ['geoip.dat', 'geosite.dat']:
         (assets / name).write_bytes(data.read(name))
+    licenses = root / 'apple/ios-client/Resources/licenses'
+    licenses.mkdir(parents=True, exist_ok=True)
+    (licenses / 'Xray-LICENSE.txt').write_bytes(data.read('LICENSE'))
+    (licenses / 'Xray-SOURCE.txt').write_text('Xray-core 1b1647c\nhttps://github.com/XTLS/Xray-core/tree/1b1647cd9ddf\nSVOI applies mobile/patches/xray-tun-close.json; source and build scripts: https://github.com/1atex/svoi/tree/ios-preview\n')
+    shutil.copy2(root / 'LICENSE', licenses / 'SVOI-MIT.txt')
+    shutil.copytree(root / 'licenses', licenses, dirs_exist_ok=True)
 icons = root / 'apple/ios-client/App/Assets.xcassets/AppIcon.appiconset'
 icons.mkdir(parents=True, exist_ok=True)
 images = []

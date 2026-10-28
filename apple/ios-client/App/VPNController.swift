@@ -80,7 +80,7 @@ final class VPNController: ObservableObject {
       self.manager = manager
       let configuration = NETunnelProviderProtocol()
       configuration.providerBundleIdentifier = try providerID()
-      configuration.serverAddress = server.name
+      configuration.serverAddress = "svoi"
       configuration.providerConfiguration = ["config": config, "serverID": server.id, "profileID": profileID]
       configuration.disconnectOnSleep = false
       manager.protocolConfiguration = configuration
