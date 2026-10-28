@@ -1,0 +1,9 @@
+{
+  "version": "0.1.0-preview.1",
+  "build": 1,
+  "minimumIOS": "16.0",
+  "goVersion": "1.27.3",
+  "gomobileVersion": "v0.0.0-20261011034528-197770444867",
+  "assetUrl": "https://github.com/XTLS/Xray-core/releases/download/v26.10.21/Xray-macos-arm64-v8a.zip",
+  "assetSha256": "926cc55fda2a8757dabe4f22dc98772f218ace025f101bd0b68aee232e59d5dc"
+}

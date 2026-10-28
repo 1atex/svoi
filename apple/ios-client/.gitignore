@@ -1,0 +1,5 @@
+/Frameworks/
+/Resources/core/
+/SVOI.xcodeproj/
+/*.entitlements
+/*-Info.plist

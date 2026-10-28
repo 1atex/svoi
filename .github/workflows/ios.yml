@@ -1,0 +1,41 @@
+name: iOS client preview
+on:
+  push:
+    branches: [ios-preview]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: svoi-ios-preview
+  cancel-in-progress: true
+jobs:
+  ios:
+    runs-on: macos-26
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.27.3'
+          cache-dependency-path: mobile/go.sum
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install XcodeGen
+        run: command -v xcodegen >/dev/null || brew install xcodegen
+      - name: Prepare and check backend
+        run: |
+          python3 scripts/prepare-xray-patch.py
+          go test ./...
+          (cd mobile && go test -ldflags=-checklinkname=0 ./...)
+      - name: Build client and Packet Tunnel
+        run: bash scripts/build-ios.sh
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: iOS-client-build-log
+          path: .tools/ios-client-build.log
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SVOI-iOS-client-unsigned
+          path: releases/ios-v*/*

@@ -305,6 +305,9 @@ func (a *App) dispatch(w http.ResponseWriter, r *http.Request) error {
 				if in.Platform == "Android" {
 					identityOS = "Android"
 				}
+				if in.Platform == "iOS" {
+					identityOS = "iOS"
+				}
 				g := Group{ID: secret(), Name: strings.TrimSpace(in.Name), Identity: Identity{HWID: digest(secret())[:32], OS: identityOS, Model: "SVOI Group", Locale: "ru-RU", UserAgent: "SVOI/0.2"}, Devices: []Member{member}}
 				a.state.Groups = append(a.state.Groups, g)
 				result = snapshot(&g, &member)
