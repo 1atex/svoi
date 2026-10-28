@@ -56,7 +56,9 @@ Future<void> saveScenarioDialog(BuildContext context, SvoiController c) async {
                 ),
                 const SizedBox(height: 14),
                 Text(
-                  'Сценарий сохранится в текущем профиле. Его запуск может переключить VPN и zapret с кратким перерывом соединения.',
+                  Platform.isWindows
+                      ? 'Сценарий сохранится в текущем профиле. Его запуск может переключить VPN и zapret с кратким перерывом соединения.'
+                      : 'Сценарий сохранится в текущем профиле. Его запуск может переключить VPN с кратким перерывом соединения.',
                   style: TextStyle(
                     color: appColors(context).muted,
                     height: 1.5,
@@ -199,7 +201,9 @@ class ScenarioManager extends StatelessWidget {
       children: [
         Section(
           'Сценарии текущего профиля',
-          subtitle: 'Сохраните сервер, режим и правила VPN или стратегию zapret. Запуск доступен здесь и в трее.',
+          subtitle: Platform.isWindows
+              ? 'Сохраните сервер, режим и правила VPN или стратегию zapret. Запуск доступен здесь и в трее.'
+              : 'Сохраните сервер, режим и правила VPN. Запуск доступен здесь и в меню SVOI.',
           children: [
             Align(
               alignment: Alignment.centerLeft,

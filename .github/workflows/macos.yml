@@ -34,7 +34,9 @@ jobs:
           flutter analyze
           flutter test
       - name: Verify local proxy traffic and reconnects
-        run: python3 scripts/linux-backend-smoke.py flutter_client/build/macos/Build/Products/Release/SVOI.app/Contents/MacOS
+        run: |
+          python3 scripts/macos-helper-smoke.py .tools/macos-package/0.6.0-preview.1/svoi-proxy
+          python3 scripts/linux-backend-smoke.py flutter_client/build/macos/Build/Products/Release/SVOI.app/Contents/MacOS
       - name: Verify packaged disk image
         run: |
           shasum -a 256 -c releases/macos-v*/SVOI-*.sha256

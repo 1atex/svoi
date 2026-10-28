@@ -89,8 +89,9 @@ final class NetworkPreferences {
       guard let interface = SCNetworkServiceGetInterface(service),
             let type = SCNetworkInterfaceGetInterfaceType(interface),
             type == kSCNetworkInterfaceTypeEthernet || type == kSCNetworkInterfaceTypeIEEE80211,
+            let serviceID = SCNetworkServiceGetServiceID(service),
             let proxy = SCNetworkServiceCopyProtocol(service, kSCNetworkProtocolTypeProxies) else { continue }
-      let id = SCNetworkServiceGetServiceID(service) as String
+      let id = serviceID as String
       protocols[id] = proxy
       current[id] = SCNetworkProtocolGetConfiguration(proxy) as? [String: Any] ?? [:]
     }
@@ -149,6 +150,10 @@ func selfTest() throws {
 func run() throws {
   let args = CommandLine.arguments
   if args.count == 2 && args[1] == "--self-test" { try selfTest(); return }
+  if args.count == 3 && args[1] == "watch", let child = Int32(args[2]), child > 1 {
+    if readLine() != "release" { kill(-child, SIGTERM) }
+    return
+  }
   try require(args.count >= 3 && ["session", "recover"].contains(args[1]), "Неверный запуск помощника SVOI.")
   let directory = URL(fileURLWithPath: args[2], isDirectory: true)
   let file = directory.appendingPathComponent("macos-proxy.plist")

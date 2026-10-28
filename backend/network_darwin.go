@@ -14,11 +14,35 @@ import (
 	"time"
 )
 
-func hideCommand(cmd *exec.Cmd)              { cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true} }
-func protectChild(*exec.Cmd) (func(), error) { return func() {}, nil }
-func isElevated() bool                       { return os.Geteuid() == 0 }
-func canCreateTun(string) bool               { return false }
-func watchProxy(int, string) error           { return nil }
+func hideCommand(cmd *exec.Cmd) { cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true} }
+func protectChild(child *exec.Cmd) (func(), error) {
+	watcher := exec.Command(macProxyHelper(), "watch", strconv.Itoa(child.Process.Pid))
+	input, err := watcher.StdinPipe()
+	if err != nil {
+		return nil, err
+	}
+	if err = watcher.Start(); err != nil {
+		input.Close()
+		return nil, err
+	}
+	done := make(chan struct{})
+	go func() { _ = watcher.Wait(); close(done) }()
+	var once sync.Once
+	return func() {
+		once.Do(func() {
+			_, _ = input.Write([]byte("release\n"))
+			_ = input.Close()
+			select {
+			case <-done:
+			case <-time.After(2 * time.Second):
+				_ = watcher.Process.Kill()
+			}
+		})
+	}, nil
+}
+func isElevated() bool             { return os.Geteuid() == 0 }
+func canCreateTun(string) bool     { return false }
+func watchProxy(int, string) error { return nil }
 
 func macProxyHelper() string {
 	exe, _ := os.Executable()
