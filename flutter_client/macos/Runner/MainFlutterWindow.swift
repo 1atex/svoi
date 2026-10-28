@@ -29,8 +29,9 @@ class MainFlutterWindow: NSWindow, NSWindowDelegate {
       })
     }
     statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
-    if let image = NSImage(named: NSImage.Name("AppIcon"))?.copy() as? NSImage {
+    if let image = NSImage(named: NSImage.Name("TrayMark"))?.copy() as? NSImage {
       image.size = NSSize(width: 18, height: 18)
+      image.isTemplate = true
       statusItem.button?.image = image
     } else { statusItem.button?.title = "S" }
     super.awakeFromNib()

@@ -69,6 +69,15 @@ if 'macos' in platforms:
     for size in [16, 32, 64, 128, 256, 512, 1024]:
         save(render(svg(tile='macos', scale=1), size), target / f'app_icon_{size}.png')
 
+    tray = target.parent / 'TrayMark.imageset'
+    tray.mkdir(parents=True, exist_ok=True)
+    images = []
+    for scale in [1,2]:
+        name = f'tray-{scale}.png'
+        save(render(svg(mono=True, scale=1.28),18*scale), tray / name)
+        images.append({'idiom':'mac','scale':f'{scale}x','filename':name})
+    (tray / 'Contents.json').write_text(json.dumps({'images':images,'info':{'version':1,'author':'xcode'},'properties':{'template-rendering-intent':'template'}},indent=2)+'\n')
+
 if 'linux' in platforms:
     for size in [16, 24, 32, 48, 64, 128, 256, 512]:
         save(render(svg(tile=True), size), f'assets/brand/linux/{size}.png')

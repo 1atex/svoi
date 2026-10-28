@@ -1,0 +1,21 @@
+{
+  "images": [
+    {
+      "idiom": "mac",
+      "scale": "1x",
+      "filename": "tray-1.png"
+    },
+    {
+      "idiom": "mac",
+      "scale": "2x",
+      "filename": "tray-2.png"
+    }
+  ],
+  "info": {
+    "version": 1,
+    "author": "xcode"
+  },
+  "properties": {
+    "template-rendering-intent": "template"
+  }
+}
