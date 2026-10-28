@@ -163,16 +163,38 @@ void main() {
   }
 
   testWidgets(
+    'speed selection and results render asset flags without raw prefixes',
+    (tester) async {
+      final api = SpeedBackend()..complete = true;
+      final c = await setup(tester, api);
+      final choices = tester.widgetList<CountryMark>(find.byType(CountryMark));
+      expect(
+        choices.map((flag) => flag.country.code),
+        containsAll(['NL', 'DE', 'FI', 'FR']),
+      );
+      expect(find.text('NL Нидерланды · 1'), findsNothing);
+      await tester.ensureVisible(find.text('Сравнить скорость'));
+      await tester.tap(find.text('Сравнить скорость'));
+      await tester.pumpAndSettle();
+      final flag = find.byKey(const ValueKey('speed-result-flag-0'));
+      await tester.ensureVisible(flag);
+      expect(tester.widget<CountryMark>(flag).country.code, 'NL');
+      expect(find.byKey(const ValueKey('speed-result-flag-')), findsNothing);
+      expect(find.text('Нидерланды · 1'), findsOneWidget);
+      expect(find.text('Через профиль · VLESS'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+      await c.close();
+    },
+  );
+
+  testWidgets(
     'does not run automatically, limits choices and renders measured comparison',
     (tester) async {
       final api = SpeedBackend();
       final c = await setup(tester, api);
       expect(api.calls, isEmpty);
-      for (final name in [
-        'DE Германия · 2',
-        'FI Финляндия · 3',
-        'FR Франция · 4',
-      ]) {
+      for (final name in ['Германия · 2', 'Финляндия · 3', 'Франция · 4']) {
         await tester.tap(find.text(name));
         await tester.pump();
       }

@@ -495,87 +495,9 @@ class Panel extends StatelessWidget {
 }
 
 Future<void> importDialog(BuildContext context, SvoiController c) async {
-  var text = '', localError = '';
   final value = await showDialog<String>(
     context: context,
-    builder: (context) => StatefulBuilder(
-      builder: (context, setLocal) => AlertDialog(
-        title: const Text('Добавить подписку'),
-        content: SizedBox(
-          width: 560,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'HTTPS-ссылка, VLESS / VMess / Trojan / SS / Hysteria2, JSON или код SVOI1. Перед переносом профиля будет показан его состав.',
-                style: TextStyle(color: appColors(context).muted, fontSize: 13),
-              ),
-              const SizedBox(height: 18),
-              TextField(
-                onChanged: (value) => text = value,
-                autofocus: true,
-                minLines: 4,
-                maxLines: 8,
-                decoration: InputDecoration(
-                  errorText: localError.isEmpty ? null : localError,
-                  hintText: 'Вставьте ссылку или конфигурацию',
-                ),
-                enableSuggestions: false,
-                autocorrect: false,
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton.icon(
-            onPressed: () async {
-              try {
-                final path = await windowChannel.invokeMethod<String>(
-                  'openFile',
-                );
-                if (path == null || !context.mounted) return;
-                final file = File(path);
-                if (await file.length() > 12 * 1024 * 1024) {
-                  setLocal(
-                    () => localError =
-                        'Файл больше 12 МБ. Выберите меньший файл.',
-                  );
-                  return;
-                }
-                final content = await file.readAsString();
-                if (context.mounted) Navigator.pop(context, content);
-              } catch (e) {
-                if (context.mounted) {
-                  setLocal(
-                    () => localError = 'Не удалось прочитать файл. Проверьте, что он доступен и содержит текст.',
-                  );
-                }
-              }
-            },
-            icon: const SvoiIcon(Icons.file_open_outlined),
-            label: const Text('Из файла'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Отмена'),
-          ),
-          FilledButton(
-            onPressed: () {
-              if (text.trim().isNotEmpty) {
-                Navigator.pop(context, text);
-              } else {
-                setLocal(
-                  () => localError =
-                      'Вставьте ссылку, конфигурацию или код профиля.',
-                );
-              }
-            },
-            child: const Text('Добавить'),
-          ),
-        ],
-      ),
-    ),
+    builder: (_) => const _SubscriptionImportDialog(),
   );
   if (value != null && context.mounted) {
     if (value.trim().startsWith('SVOI1.')) {
@@ -584,6 +506,133 @@ Future<void> importDialog(BuildContext context, SvoiController c) async {
       await c.importText(value);
     }
   }
+}
+
+class _SubscriptionImportDialog extends StatefulWidget {
+  const _SubscriptionImportDialog();
+  @override
+  State<_SubscriptionImportDialog> createState() =>
+      _SubscriptionImportDialogState();
+}
+
+class _SubscriptionImportDialogState extends State<_SubscriptionImportDialog> {
+  final input = TextEditingController();
+  var text = '', localError = '';
+  @override
+  void dispose() {
+    input.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+    scrollable: true,
+    title: const Text('Добавить подписку'),
+    content: SizedBox(
+      width: 560,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'HTTPS-ссылка, VLESS / VMess / Trojan / SS / Hysteria2, JSON или код SVOI1. Перед переносом профиля будет показан его состав.',
+            style: TextStyle(color: appColors(context).muted, fontSize: 13),
+          ),
+          const SizedBox(height: 18),
+          TextField(
+            controller: input,
+            onChanged: (value) => text = value,
+            autofocus: true,
+            minLines: 4,
+            maxLines: 8,
+            decoration: InputDecoration(
+              errorText: localError.isEmpty ? null : localError,
+              hintText: 'Вставьте ссылку или конфигурацию',
+            ),
+            enableSuggestions: false,
+            autocorrect: false,
+          ),
+        ],
+      ),
+    ),
+    actions: [
+      TextButton.icon(
+        onPressed: () async {
+          try {
+            final value =
+                (await Clipboard.getData(Clipboard.kTextPlain))?.text ?? '';
+            if (!context.mounted) return;
+            if (value.trim().isEmpty || value.length > 12 * 1024 * 1024) {
+              setState(
+                () => localError = value.trim().isEmpty
+                    ? 'Буфер обмена пуст. Скопируйте ссылку или код профиля.'
+                    : 'Текст больше 12 МБ. Вставьте меньшую конфигурацию.',
+              );
+              return;
+            }
+            setState(() {
+              text = value;
+              input.value = TextEditingValue(
+                text: value,
+                selection: TextSelection.collapsed(offset: value.length),
+              );
+              localError = '';
+            });
+          } catch (_) {
+            if (context.mounted) {
+              setState(
+                () => localError = 'Не удалось прочитать буфер обмена. Вставьте ссылку в поле вручную.',
+              );
+            }
+          }
+        },
+        icon: const SvoiIcon(LucideIcons.clipboardPaste, size: 18),
+        label: const Text('Вставить'),
+      ),
+      TextButton.icon(
+        onPressed: () async {
+          try {
+            final path = await windowChannel.invokeMethod<String>('openFile');
+            if (path == null || !context.mounted) return;
+            final file = File(path);
+            if (await file.length() > 12 * 1024 * 1024) {
+              setState(
+                () => localError = 'Файл больше 12 МБ. Выберите меньший файл.',
+              );
+              return;
+            }
+            final content = await file.readAsString();
+            if (context.mounted) Navigator.pop(context, content);
+          } catch (e) {
+            if (context.mounted) {
+              setState(
+                () => localError = 'Не удалось прочитать файл. Проверьте, что он доступен и содержит текст.',
+              );
+            }
+          }
+        },
+        icon: const SvoiIcon(Icons.file_open_outlined),
+        label: const Text('Из файла'),
+      ),
+      TextButton(
+        onPressed: () => Navigator.pop(context),
+        child: const Text('Отмена'),
+      ),
+      FilledButton(
+        onPressed: () {
+          if (text.trim().isNotEmpty) {
+            Navigator.pop(context, text);
+          } else {
+            setState(
+              () =>
+                  localError = 'Вставьте ссылку, конфигурацию или код профиля.',
+            );
+          }
+        },
+        child: const Text('Добавить'),
+      ),
+    ],
+  );
 }
 
 Future<void> showConfig(
