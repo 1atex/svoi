@@ -13,6 +13,8 @@ extension = app / 'PlugIns/PacketTunnel.appex'
 for directory, expected in [(app, 'dev.svoi.app.ios'), (extension, 'dev.svoi.app.ios.PacketTunnel')]:
     info = plistlib.loads((directory / 'Info.plist').read_bytes())
     assert info['CFBundleIdentifier'] == expected
+    assert info['CFBundleShortVersionString'] == config['version'].split('-')[0]
+    assert str(info['CFBundleVersion']) == str(config['build'])
     assert (directory / info['CFBundleExecutable']).stat().st_mode & stat.S_IXUSR
     executable = (directory / info['CFBundleExecutable']).read_bytes()
     assert b'UI preview: native VPN is not linked' not in executable, 'Do not package the interface test host'

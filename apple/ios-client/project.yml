@@ -34,6 +34,8 @@ targets:
       path: App-Info.plist
       properties:
         CFBundleDisplayName: SVOI
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         UILaunchScreen: {}
         UIApplicationSceneManifest:
           UIApplicationSupportsMultipleScenes: false
@@ -68,6 +70,8 @@ targets:
       path: PacketTunnel-Info.plist
       properties:
         CFBundleDisplayName: SVOI VPN
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         NSExtension:
           NSExtensionPointIdentifier: com.apple.networkextension.packet-tunnel
           NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).PacketTunnelProvider
@@ -97,6 +101,8 @@ targets:
       path: InterfacePreview-Info.plist
       properties:
         CFBundleDisplayName: SVOI UI Preview
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         UILaunchScreen: {}
         UIApplicationSceneManifest:
           UIApplicationSupportsMultipleScenes: false

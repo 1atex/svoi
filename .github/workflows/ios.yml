@@ -3,6 +3,12 @@ on:
   push:
     branches: [ios-preview]
   workflow_dispatch:
+    inputs:
+      package_only:
+        description: 'Rebuild the package without repeating unchanged interface tests'
+        required: false
+        default: false
+        type: boolean
 permissions:
   contents: read
 concurrency:
@@ -10,6 +16,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   interface:
+    if: inputs.package_only != true
     runs-on: macos-26
     timeout-minutes: 30
     strategy:
