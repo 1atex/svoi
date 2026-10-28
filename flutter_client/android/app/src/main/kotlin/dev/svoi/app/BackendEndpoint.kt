@@ -100,6 +100,7 @@ class BackendEndpoint(private val service: SvoiVpnService) : IBackendService.Stu
                             if (method == "PUT") VpnRuntime.saveRouting(service, JSONObject(body))
                             response(VpnRuntime.routing(service))
                         }
+                        path == "android/goroutines" && service.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0 -> response(JSONObject().put("stack", Mobile.goroutineDump()))
                         path == "android/diagnostics" && service.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0 -> response(diagnostics())
                         path == "android/test-echo" && service.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0 -> response(JSONObject(body))
                         path.endsWith("/probe") && path.startsWith("servers/") && method == "POST" -> {

@@ -167,3 +167,9 @@ func Diagnostics() string {
 	data, _ := json.Marshal(map[string]any{"heapBytes": stats.HeapAlloc, "heapInuseBytes": stats.HeapInuse, "goroutines": runtime.NumGoroutine(), "gcCount": stats.NumGC})
 	return string(data)
 }
+
+func GoroutineDump() string {
+	buffer := make([]byte, 256<<10)
+	n := runtime.Stack(buffer, true)
+	return string(buffer[:n])
+}

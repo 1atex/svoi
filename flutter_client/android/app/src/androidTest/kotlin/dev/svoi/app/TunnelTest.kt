@@ -119,6 +119,9 @@ class TunnelTest {
                 if (cycle == 5) warm = stopped
                 if (cycle == 20) {
                     assertTrue("Descriptors grow after warmup: $warm -> $stopped", stopped.getInt("fds") <= warm!!.getInt("fds") + 4)
+                    if (stopped.getJSONObject("go").getInt("goroutines") > warm!!.getJSONObject("go").getInt("goroutines") + 6) {
+                        request("android/goroutines").getString("stack").chunked(3000).forEach { android.util.Log.e("SvoiGoStacks", it) }
+                    }
                     assertTrue("Goroutines grow after warmup: $warm -> $stopped", stopped.getJSONObject("go").getInt("goroutines") <= warm!!.getJSONObject("go").getInt("goroutines") + 6)
                 }
             }

@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"runtime"
 	"strconv"
 	"sync"
 	"testing"
@@ -122,5 +123,27 @@ func TestCancelledProbeNeverLoadsProfile(t *testing.T) {
 	}
 	if _, err := p.Run(); err == nil {
 		t.Fatal("a probe cannot be reused")
+	}
+}
+
+func TestRepeatedProbeCoreCleanup(t *testing.T) {
+	node := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(204) }))
+	defer node.Close()
+	config := probeFixture(t, node.URL)
+	baseline := runtime.NumGoroutine()
+	for i := 0; i < 20; i++ {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		_, err := probeConfig(ctx, config, node.URL)
+		cancel()
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	deadline := time.Now().Add(time.Second)
+	for runtime.NumGoroutine() > baseline+6 && time.Now().Before(deadline) {
+		time.Sleep(20 * time.Millisecond)
+	}
+	if runtime.NumGoroutine() > baseline+6 {
+		t.Fatalf("probe cores leak goroutines: %s", GoroutineDump())
 	}
 }
