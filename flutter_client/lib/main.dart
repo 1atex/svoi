@@ -34,6 +34,7 @@ part 'tray.dart';
 part 'startup_panel.dart';
 part 'network_tools.dart';
 part 'speed_tools.dart';
+part 'portable_tools.dart';
 part 'speed_chart.dart';
 part 'subscription_details.dart';
 part 'probe_settings.dart';

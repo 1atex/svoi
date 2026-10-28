@@ -1,5 +1,5 @@
 param(
-    [string]$Version = '0.6.0-beta.5',
+    [string]$Version = '0.6.0-beta.6',
     [string]$FlutterSdk = '',
     [string]$CrtDirectory = '',
     [switch]$SkipChecks
