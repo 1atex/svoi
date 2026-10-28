@@ -9,6 +9,12 @@ on:
         required: false
         default: ''
         type: string
+      validation_runner:
+        description: 'macOS version for validating an existing package'
+        required: false
+        default: macos-26
+        type: choice
+        options: [macos-15, macos-26]
 permissions:
   contents: read
   actions: read
@@ -92,7 +98,7 @@ jobs:
           path: releases/macos-v*/*
   installed-app:
     if: inputs.reuse_run != ''
-    runs-on: macos-26
+    runs-on: ${{ inputs.validation_runner || 'macos-26' }}
     timeout-minutes: 8
     steps:
       - uses: actions/checkout@v4
@@ -111,6 +117,11 @@ jobs:
           trap 'hdiutil detach "$PWD/.tools/mounted"' EXIT
           ditto .tools/mounted/SVOI.app .tools/installed/SVOI.app
           codesign --verify --deep --strict .tools/installed/SVOI.app
+          mkdir -p .tools/macos-diagnostics
+          sw_vers > .tools/macos-diagnostics/system.txt
+          uname -m >> .tools/macos-diagnostics/system.txt
+          codesign --display --verbose=4 .tools/installed/SVOI.app > .tools/macos-diagnostics/signature.txt 2>&1
+          spctl --assess --type execute --verbose=4 .tools/installed/SVOI.app > .tools/macos-diagnostics/gatekeeper.txt 2>&1 || true
           python3 scripts/macos-app-smoke.py .tools/installed/SVOI.app .tools/macos-diagnostics
       - uses: actions/upload-artifact@v4
         if: always()
