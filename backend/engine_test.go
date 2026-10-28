@@ -53,6 +53,9 @@ func TestMissingCoreExplainsUnavailableConnection(t *testing.T) {
 	if runtime.GOOS == "linux" {
 		guidance = []string{"xray", "переустановите", "весь linux-архив", "backend/core"}
 	}
+	if runtime.GOOS == "darwin" {
+		guidance = []string{"xray", "svoi.app", "dmg", "программы"}
+	}
 	for _, fragment := range guidance {
 		if !strings.Contains(diagnostic, fragment) {
 			t.Errorf("missing recovery guidance %q: %s", fragment, status.Error)
