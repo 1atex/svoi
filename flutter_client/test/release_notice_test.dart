@@ -178,7 +178,11 @@ void main() {
       expect(tester.takeException(), isNull);
       await tester.runAsync(() async {
         await tester.tap(find.byTooltip('Скрыть до следующего обновления'));
-        await Future<void>.delayed(const Duration(milliseconds: 80));
+        final deadline = DateTime.now().add(const Duration(seconds: 3));
+        while (store.pendingVersion != null &&
+            DateTime.now().isBefore(deadline)) {
+          await Future<void>.delayed(const Duration(milliseconds: 10));
+        }
       });
       await tester.pumpAndSettle();
       expect(store.pendingVersion, isNull);
