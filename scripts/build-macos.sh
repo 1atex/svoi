@@ -20,7 +20,7 @@ CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -tags native_core -trimpath -ldf
 xcrun swiftc -O -target arm64-apple-macos13.0 -framework SystemConfiguration -framework Security flutter_client/macos/ProxyHelper.swift -o "$BUILD/svoi-proxy"
 "$BUILD/svoi-proxy" --self-test
 for size in 16 32 64 128 256 512 1024; do
-  sips -z "$size" "$size" flutter_client/assets/svoi-mark.png --out "flutter_client/macos/Runner/Assets.xcassets/AppIcon.appiconset/app_icon_$size.png" >/dev/null
+  sips -z "$size" "$size" assets/brand/app-icon-macos.png --out "flutter_client/macos/Runner/Assets.xcassets/AppIcon.appiconset/app_icon_$size.png" >/dev/null
 done
 (cd flutter_client && flutter pub get && flutter build macos --release --build-name="${VERSION%%-*}" --build-number="${VERSION##*.}" --dart-define=SVOI_VERSION="$VERSION")
 APP="$ROOT/flutter_client/build/macos/Build/Products/Release/SVOI.app"

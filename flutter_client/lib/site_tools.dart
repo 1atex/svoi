@@ -5,14 +5,14 @@ class NetworkToolsPage extends StatelessWidget {
   final SvoiController c;
   @override
   Widget build(BuildContext context) => DefaultTabController(
-    length: Platform.isWindows ? 3 : 2,
+    length: 3,
     child: Column(
       children: [
         TabBar(
           tabs: [
             const Tab(text: 'Скорость'),
             const Tab(text: 'Проверить сайт'),
-            if (Platform.isWindows) const Tab(text: 'DNS'),
+            const Tab(text: 'DNS'),
           ],
         ),
         Expanded(
@@ -20,7 +20,7 @@ class NetworkToolsPage extends StatelessWidget {
             children: [
               SpeedTools(c: c),
               SiteCheckPanel(c: c),
-              if (Platform.isWindows) DnsTools(c: c),
+              Platform.isWindows ? DnsTools(c: c) : DnsComparePanel(c: c),
             ],
           ),
         ),
