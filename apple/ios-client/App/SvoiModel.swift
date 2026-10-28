@@ -234,6 +234,26 @@ final class SvoiModel: ObservableObject {
     }
   }
 
+  func removeSubscription(_ source: SvoiSource) async {
+    await perform {
+      guard !vpn.busy && !preparingVPN else { throw SvoiError("Дождитесь завершения подключения и повторите удаление.") }
+      SvoiCoreCancelSpeed()
+      cancelProbes()
+      let removedIDs = Set(servers.filter { $0.subscriptionID == source.id }.map(\.id))
+      if vpn.active && removedIDs.contains(vpn.serverID) { try await vpn.disconnect() }
+      #if SVOI_UI_PREVIEW
+      sources.removeAll { $0.id == source.id }
+      servers.removeAll { removedIDs.contains($0.id) }
+      if selected == nil { selectedID = servers.first?.id ?? "" }
+      #else
+      _ = try await api.request("subscriptions/\(source.id)", method: "DELETE", token: token)
+      try await reload()
+      #endif
+      lastSpeedResults.removeAll { removedIDs.contains($0.serverId) }
+      latencies = latencies.filter { !removedIDs.contains($0.key) }
+    }
+  }
+
   func toggleVPN() async {
     SvoiCoreCancelSpeed()
     #if SVOI_UI_PREVIEW

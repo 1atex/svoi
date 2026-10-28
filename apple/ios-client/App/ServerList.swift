@@ -17,6 +17,9 @@ struct ServerList: View {
   @State private var checkingAll = false
   @State private var checked = 0
   @State private var batchCount = 0
+  @State private var collapsed = Set<String>()
+  @State private var removing: SvoiSource?
+  @State private var confirmingRemoval = false
 
   private var filtered: [SvoiServer] {
     let result = model.servers.filter { search.isEmpty || "\($0.name) \($0.kind) \($0.detail)".localizedCaseInsensitiveContains(search) }
@@ -36,7 +39,7 @@ struct ServerList: View {
       ScrollView {
         LazyVStack(alignment: .leading, spacing: 12) {
           if !model.error.isEmpty { SvoiNotice(text: model.error, symbol: "exclamationmark.circle") }
-          if model.servers.isEmpty {
+          if model.servers.isEmpty && model.sources.isEmpty {
             SvoiCard {
               VStack(alignment: .leading, spacing: 16) {
                 SvoiGlyph("square.stack.3d.up", size: 34).foregroundStyle(accent)
@@ -45,7 +48,7 @@ struct ServerList: View {
                 Button("Добавить подписку", action: onImport).buttonStyle(SvoiPrimaryButton())
               }
             }
-          } else if filtered.isEmpty {
+          } else if filtered.isEmpty && (!search.isEmpty || model.sources.isEmpty) {
             VStack(spacing: 12) {
               SvoiGlyph("magnifyingglass", size: 28).foregroundStyle(SvoiPalette.muted)
               Text("Ничего не найдено").font(.headline)
@@ -64,9 +67,12 @@ struct ServerList: View {
             else {
               let groups = Dictionary(grouping: filtered, by: \.subscriptionID)
               ForEach(model.sources) { source in
-                if let servers = groups[source.id], !servers.isEmpty {
+                let servers = groups[source.id] ?? []
+                if search.isEmpty || !servers.isEmpty {
                   sourceHeader(source).padding(.top, 6)
-                  ForEach(servers) { row($0) }
+                  if !collapsed.contains(source.id) || !search.isEmpty {
+                    ForEach(servers) { row($0) }
+                  }
                 }
               }
               let ungrouped = filtered.filter { server in !model.sources.contains { $0.id == server.subscriptionID } }
@@ -90,6 +96,17 @@ struct ServerList: View {
       }
       .onDisappear { cancelBatch() }
       .onChange(of: scenePhase) { if $0 != .active { cancelBatch() } }
+      .onChange(of: model.profileID) { _ in collapsed = []; removing = nil }
+      .confirmationDialog("Удалить подписку?", isPresented: $confirmingRemoval, titleVisibility: .visible) {
+        Button("Удалить подписку", role: .destructive) {
+          guard let source = removing else { return }
+          cancelBatch()
+          Task { await model.removeSubscription(source); removing = nil }
+        }
+        Button("Отмена", role: .cancel) { removing = nil }
+      } message: {
+        Text("Подписка «\(removing?.name ?? "")» и её серверы будут удалены из текущего профиля. Если через неё работает VPN, он будет отключён. У провайдера подписка останется.")
+      }
   }
 
   private var probeBar: some View {
@@ -171,12 +188,29 @@ struct ServerList: View {
   private func sourceHeader(_ source: SvoiSource) -> some View {
     VStack(alignment: .leading, spacing: 10) {
       HStack {
-        Text(source.name).font(.headline)
+        Button {
+          if collapsed.contains(source.id) { collapsed.remove(source.id) }
+          else { collapsed.insert(source.id) }
+        } label: {
+          HStack(spacing: 8) {
+            SvoiGlyph("chevron.down", size: 14).rotationEffect(.degrees(collapsed.contains(source.id) ? -90 : 0))
+            Text(source.name).font(.headline).multilineTextAlignment(.leading)
+            Text("\(source.count)").font(.caption).foregroundStyle(SvoiPalette.muted)
+          }.frame(minHeight: 44).contentShape(Rectangle())
+        }.buttonStyle(.plain).accessibilityIdentifier("subscription-toggle-\(source.id)")
+          .accessibilityLabel("\(collapsed.contains(source.id) ? "Развернуть" : "Свернуть") подписку \(source.name)")
         Spacer(minLength: 4)
         if source.remote {
           Button { Task { await model.refreshSubscription(source) } } label: { SvoiGlyph( "arrow.clockwise").frame(width: 44, height: 44) }
             .disabled(model.working).accessibilityLabel("Обновить \(source.name)")
         }
+        Menu {
+          Button(role: .destructive) { removing = source; confirmingRemoval = true } label: {
+            SvoiLabel("Удалить подписку", systemImage: "trash")
+          }.disabled(model.working || vpn.busy || model.preparingVPN)
+        } label: {
+          SvoiGlyph("ellipsis").frame(width: 44, height: 44).contentShape(Rectangle())
+        }.accessibilityLabel("Действия подписки \(source.name)").accessibilityIdentifier("subscription-actions-\(source.id)")
       }
       if let download = source.metadata["download"] as? NSNumber {
         let used = download.int64Value + ((source.metadata["upload"] as? NSNumber)?.int64Value ?? 0)

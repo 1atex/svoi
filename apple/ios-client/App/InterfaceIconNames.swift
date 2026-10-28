@@ -44,5 +44,9 @@ extension SvoiIconAssets {
     "wifi": "wifi-high",
     "server.rack": "hard-drives",
     "wrench.and.screwdriver": "toolbox",
+    "doc.on.doc": "copy",
+    "link": "link-simple",
+    "doc.on.clipboard": "clipboard-text",
+    "trash": "trash",
   ]
 }

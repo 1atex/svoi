@@ -41,15 +41,40 @@ final class InterfaceTests: XCTestCase {
     XCTAssertEqual(app.buttons["vpn-toggle"].label, "Отключить VPN")
     app.buttons["vpn-toggle"].tap()
     XCTAssertTrue(app.staticTexts["VPN выключен"].waitForExistence(timeout: 5))
-    app.tabBars.buttons["Профиль"].tap()
+    XCTAssertEqual(app.tabBars.buttons.count, 4)
+    app.tabBars.buttons["Настройки"].tap()
+    app.buttons["settings-profile"].tap()
     XCTAssertTrue(app.staticTexts["Свои — рядом."].waitForExistence(timeout: 5))
     capture("04-profile")
-    app.tabBars.buttons["Настройки"].tap()
+    app.navigationBars.buttons.element(boundBy: 0).tap()
     for _ in 0..<4 where !app.buttons["Тема Лунная"].isHittable { app.swipeUp() }
     XCTAssertTrue(app.buttons["Тема Лунная"].waitForExistence(timeout: 5))
     app.buttons["Тема Лунная"].tap()
     capture("05-settings")
     app.buttons["Тема SVOI"].tap()
+  }
+
+  func testSubscriptionCollapseAndRemoval() {
+    let app = launch(["--connected"])
+    app.tabBars.buttons["Серверы"].tap()
+    let toggle = app.buttons["subscription-toggle-demo"]
+    XCTAssertTrue(toggle.waitForExistence(timeout: 5))
+    toggle.tap()
+    XCTAssertFalse(app.buttons["server-fi"].exists)
+    capture("18-collapsed-subscription")
+    toggle.tap()
+    XCTAssertTrue(app.buttons["server-fi"].waitForExistence(timeout: 5))
+    app.buttons["subscription-actions-demo"].tap()
+    app.buttons["Удалить подписку"].tap()
+    app.buttons["Отмена"].tap()
+    XCTAssertTrue(app.buttons["server-fi"].exists)
+    app.buttons["subscription-actions-demo"].tap()
+    app.buttons["Удалить подписку"].tap()
+    app.buttons["Удалить подписку"].tap()
+    XCTAssertTrue(app.staticTexts["Здесь будут ваши серверы"].waitForExistence(timeout: 5))
+    app.tabBars.buttons["Подключение"].tap()
+    XCTAssertTrue(app.buttons["welcome-import"].waitForExistence(timeout: 5))
+    capture("19-removed-subscription")
   }
 
   func testAMOLEDAndTools() {
@@ -69,6 +94,7 @@ final class InterfaceTests: XCTestCase {
     capture("12-tools")
     restored.buttons["tool-speed"].tap()
     XCTAssertTrue(restored.buttons["speed-start"].waitForExistence(timeout: 5))
+    XCTAssertTrue(restored.staticTexts["speed-route-explanation"].exists)
     capture("13-speed")
     restored.navigationBars.buttons.element(boundBy: 0).tap()
     restored.buttons["tool-dns"].tap()

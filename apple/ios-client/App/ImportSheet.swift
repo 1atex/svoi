@@ -40,8 +40,11 @@ struct ImportSheet: View {
             .padding(10).background(colors.inset, in: RoundedRectangle(cornerRadius: 18))
               .overlay(RoundedRectangle(cornerRadius: 18).strokeBorder(editing ? accent : colors.line))
             HStack {
-              PasteButton(payloadType: String.self) { values in text = values.first ?? ""; fileError = "" }
-                .labelStyle(.titleAndIcon).buttonBorderShape(.roundedRectangle).tint(accent).frame(minHeight: 44)
+              HStack(spacing: 8) {
+                SvoiGlyph("doc.on.clipboard").foregroundStyle(accent)
+                PasteButton(payloadType: String.self) { values in text = values.first ?? ""; fileError = "" }
+                  .labelStyle(.titleOnly).buttonBorderShape(.roundedRectangle).tint(accent).frame(minHeight: 44)
+              }
               Spacer()
               Button { file = true } label: { SvoiLabel("Из файла", systemImage: "doc") }.frame(minHeight: 44)
             }

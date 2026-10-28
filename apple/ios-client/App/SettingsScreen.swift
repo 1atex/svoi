@@ -4,6 +4,8 @@ import UIKit
 struct SettingsScreen: View {
   @Environment(\.svoiColors) private var colors
   @ObservedObject var model: SvoiModel
+  @ObservedObject var vpn: VPNController
+  let onImport: () -> Void
   @AppStorage("uiIconStyle") private var iconStyle = "outline"
   @AppStorage("appearance") private var appearance = "amber"
   @AppStorage("colorScheme") private var colorScheme = "dark"
@@ -13,6 +15,14 @@ struct SettingsScreen: View {
 
   var body: some View {
     Form {
+      Section {
+        NavigationLink {
+          ProfileScreen(model: model, vpn: vpn, onImport: onImport).navigationTitle("Общий профиль")
+        } label: {
+          SvoiLabel("Общий профиль", systemImage: "person.2").frame(minHeight: 36)
+        }.accessibilityIdentifier("settings-profile")
+      } footer: { Text("Сохранённые профили, перенос подписок и параметры устройства.") }
+        .listRowBackground(colors.surface)
       Section {
         Picker("Тема приложения", selection: $colorScheme) {
           Text("Графит").tag("dark")

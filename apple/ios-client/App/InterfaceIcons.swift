@@ -12,7 +12,8 @@ extension EnvironmentValues {
 
 enum SvoiIconAssets {
   static func name(_ symbol: String, style: SvoiIconStyle) -> String {
-    "UiIcon-\(style.rawValue)-\(names[symbol] ?? "info")"
+    assert(names[symbol] != nil, "Missing interface icon: \(symbol)")
+    return "UiIcon-\(style.rawValue)-\(names[symbol] ?? "info")"
   }
 }
 

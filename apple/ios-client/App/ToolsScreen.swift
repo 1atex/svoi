@@ -12,7 +12,7 @@ struct ToolsScreen: View {
       VStack(alignment: .leading, spacing: 16) {
         Text("Понятные проверки вашей сети.").foregroundStyle(SvoiPalette.muted).padding(.bottom, 8)
         NavigationLink { SpeedToolScreen(model: model, vpn: vpn) } label: {
-          tool("Интернетометр", detail: "Без VPN и через выбранные серверы", symbol: "speedometer")
+          tool("Интернетометр", detail: "Напрямую и через выбранные профили", symbol: "speedometer")
         }.accessibilityIdentifier("tool-speed")
         NavigationLink { SiteToolScreen(vpn: vpn) } label: {
           tool("Проверить сайт", detail: "Ответ сайта в текущем подключении", symbol: "globe")
@@ -151,13 +151,15 @@ struct SpeedToolScreen: View {
       VStack(alignment: .leading, spacing: 20) {
         Text("Сравните прямое соединение и до трёх серверов. Все маршруты проверяются до одного узла: svoi.space.")
           .font(.subheadline).foregroundStyle(SvoiPalette.muted)
+        Text("Через профиль идёт только трафик замера. Системный VPN не включается: результат не проверяет подключение других приложений.")
+          .font(.footnote).foregroundStyle(SvoiPalette.muted).accessibilityIdentifier("speed-route-explanation")
         if vpn.active || vpn.busy || model.preparingVPN {
           SvoiNotice(text: "Отключите VPN перед сравнением. SVOI проверит выбранные профили самостоятельно, без включения системного туннеля.")
         }
         SvoiSectionTitle(title: "Серверы для сравнения")
         SvoiCard {
           LazyVStack(spacing: 0) {
-            SvoiLabel("Без VPN · включён в каждый тест", systemImage: "iphone").font(.footnote).foregroundStyle(SvoiPalette.muted).padding(.bottom, 16)
+            SvoiLabel("Напрямую · включено в каждый тест", systemImage: "iphone").font(.footnote).foregroundStyle(SvoiPalette.muted).padding(.bottom, 16)
             ForEach(model.servers) { server in
               Button {
                 if selected.contains(server.id) { selected.remove(server.id) }
@@ -199,7 +201,12 @@ struct SpeedToolScreen: View {
     SvoiCard {
       VStack(alignment: .leading, spacing: 16) {
         HStack(alignment: .top) {
-          VStack(alignment: .leading, spacing: 5) { Text(displayServerName(result.name)).font(.headline); Text(result.protocol).font(.caption).foregroundStyle(SvoiPalette.muted) }
+          if !result.serverId.isEmpty { ServerFlag(name: result.name, size: 36) }
+          else { SvoiGlyph("iphone", size: 24).foregroundStyle(accent).frame(width: 36, height: 36) }
+          VStack(alignment: .leading, spacing: 5) {
+            Text(result.serverId.isEmpty ? "Напрямую" : displayServerName(result.name)).font(.headline)
+            Text(result.serverId.isEmpty ? "Без подключения SVOI" : "Через профиль · \(result.protocol)").font(.caption).foregroundStyle(SvoiPalette.muted)
+          }
           Spacer(minLength: 4)
           Text(result.title).font(.caption).foregroundStyle(result.state == "error" ? SvoiPalette.warning : SvoiPalette.muted)
         }

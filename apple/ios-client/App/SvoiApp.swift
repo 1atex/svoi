@@ -53,10 +53,7 @@ struct SvoiRoot: View {
             ToolsScreen(model: model, vpn: vpn).navigationTitle("Инструменты")
           }.tabItem { Label("Инструменты", image: SvoiIconAssets.name("wrench.and.screwdriver", style: iconStyle)) }.tag(4)
           NavigationStack {
-            ProfileScreen(model: model, vpn: vpn, onImport: { openImport(true) }).navigationTitle("Общий профиль")
-          }.tabItem { Label("Профиль", image: SvoiIconAssets.name("person.2", style: iconStyle)) }.tag(2)
-          NavigationStack {
-            SettingsScreen(model: model).navigationTitle("Настройки")
+            SettingsScreen(model: model, vpn: vpn, onImport: { openImport(true) }).navigationTitle("Настройки")
           }.tabItem { Label("Настройки", image: SvoiIconAssets.name("slider.horizontal.3", style: iconStyle)) }.tag(3)
         }
         .toolbarBackground(colors.canvas, for: .tabBar, .navigationBar)
