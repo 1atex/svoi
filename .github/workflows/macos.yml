@@ -3,13 +3,21 @@ on:
   push:
     branches: ['macos-preview']
   workflow_dispatch:
+    inputs:
+      reuse_run:
+        description: 'Validate an already built package from this workflow run'
+        required: false
+        default: ''
+        type: string
 permissions:
   contents: read
+  actions: read
 concurrency:
   group: macos-preview-${{ github.ref }}
   cancel-in-progress: true
 jobs:
   ios-capability-check:
+    if: inputs.reuse_run == ''
     runs-on: macos-26
     timeout-minutes: 20
     steps:
@@ -29,6 +37,7 @@ jobs:
           name: SVOI-iOS-tunnel-capability-check
           path: releases/ios-tunnel-check/*
   macos:
+    if: inputs.reuse_run == ''
     runs-on: macos-26
     timeout-minutes: 40
     steps:
@@ -81,3 +90,29 @@ jobs:
         with:
           name: SVOI-macOS-development-preview
           path: releases/macos-v*/*
+  installed-app:
+    if: inputs.reuse_run != ''
+    runs-on: macos-26
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: SVOI-macOS-development-preview
+          path: .tools/package
+          run-id: ${{ inputs.reuse_run }}
+          github-token: ${{ github.token }}
+      - name: Verify copied application and native backend together
+        run: |
+          (cd .tools/package && shasum -a 256 -c *.sha256)
+          mkdir -p .tools/mounted .tools/installed
+          hdiutil attach -readonly -nobrowse -mountpoint "$PWD/.tools/mounted" .tools/package/*.dmg
+          trap 'hdiutil detach "$PWD/.tools/mounted"' EXIT
+          ditto .tools/mounted/SVOI.app .tools/installed/SVOI.app
+          codesign --verify --deep --strict .tools/installed/SVOI.app
+          python3 scripts/macos-app-smoke.py .tools/installed/SVOI.app .tools/macos-diagnostics
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: macOS-installed-app-diagnostics
+          path: .tools/macos-diagnostics/
