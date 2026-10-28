@@ -20,7 +20,7 @@ xcrun swiftc -O -target arm64-apple-macos12.0 -framework SystemConfiguration -fr
 for size in 16 32 64 128 256 512 1024; do
   sips -z "$size" "$size" flutter_client/assets/svoi-mark.png --out "flutter_client/macos/Runner/Assets.xcassets/AppIcon.appiconset/app_icon_$size.png" >/dev/null
 done
-(cd flutter_client && flutter pub get && flutter build macos --release --dart-define=SVOI_VERSION="$VERSION")
+(cd flutter_client && flutter pub get && flutter build macos --release --build-name="${VERSION%%-*}" --build-number="${VERSION##*.}" --dart-define=SVOI_VERSION="$VERSION")
 APP="$ROOT/flutter_client/build/macos/Build/Products/Release/SVOI.app"
 BACKEND="$APP/Contents/MacOS/backend"
 mkdir -p "$BACKEND/core" "$APP/Contents/Resources/licenses"

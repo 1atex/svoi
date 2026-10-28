@@ -94,6 +94,7 @@ void main() {
     final api = NetworkBackend()..conflict = 'external';
     final c = SvoiController(api);
     await c.initialize();
+    c.mode.value = 'tun';
     await c.toggleConnection();
     expect(api.started, false);
     expect(c.connectionIssue.value, contains('сторонний zapret'));
@@ -105,6 +106,7 @@ void main() {
       final api = NetworkBackend()..conflict = 'managed';
       final c = SvoiController(api);
       await c.initialize();
+      c.mode.value = 'tun';
       c.approveZapretPause = () async => 'cancel';
       await c.toggleConnection();
       expect(api.started, false);

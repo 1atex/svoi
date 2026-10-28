@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:svoi_flutter/backend.dart';
@@ -172,13 +174,14 @@ void main() {
     expect(item('disconnect')['enabled'], true);
     await bridge.handle('connect');
     expect(backend.starts, 1);
-    await bridge.handle('mode:system');
-    expect(c.mode.value, 'system');
+    final nextMode = Platform.isWindows ? 'system' : 'local';
+    await bridge.handle('mode:$nextMode');
+    expect(c.mode.value, nextMode);
     expect(c.pendingConnectionChoice, true);
     expect(item('apply')['enabled'], true);
     await bridge.handle('apply');
     expect(backend.starts, 2);
-    expect(backend.state['mode'], 'system');
+    expect(backend.state['mode'], nextMode);
     await bridge.handle('server:deleted');
     expect(c.selected.value, 'one');
     backend.failCheck = true;

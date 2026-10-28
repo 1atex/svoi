@@ -15,6 +15,7 @@ class MainFlutterWindow: NSWindow, NSWindowDelegate {
     setContentSize(NSSize(width: 1220, height: 840))
     minSize = NSSize(width: 800, height: 600)
     title = "SVOI"
+    appearance = NSAppearance(named: .darkAqua)
     center()
     delegate = self
     isReleasedWhenClosed = false
@@ -86,8 +87,17 @@ class MainFlutterWindow: NSWindow, NSWindowDelegate {
     case "minimize": miniaturize(nil); result(nil)
     case "maximize": zoom(nil); result(nil)
     case "requestWindowClose": requestQuit(); result(nil)
-    case "close": closing = true; result(nil); NSApp.terminate(nil)
-    case "titlebar": result(nil)
+    case "close":
+      closing = true
+      result(nil)
+      if let delegate = NSApp.delegate as? AppDelegate, delegate.quitRequested {
+        NSApp.reply(toApplicationShouldTerminate: true)
+      } else { NSApp.terminate(nil) }
+    case "titlebar":
+      if let data = call.arguments as? [String: Any], let dark = data["dark"] as? Bool {
+        appearance = NSAppearance(named: dark ? .darkAqua : .aqua)
+      }
+      result(nil)
     case "updateTray":
       if let data = call.arguments as? [String: Any] {
         statusItem.menu = menu(data["items"] as? [[String: Any]] ?? [])

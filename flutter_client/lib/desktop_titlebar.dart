@@ -18,7 +18,7 @@ class _DesktopTitlebarState extends State<DesktopTitlebar> {
   String _geometry = '';
 
   void _reportFrame() {
-    if (!mounted || !Platform.isWindows) return;
+    if (!mounted || (!Platform.isWindows && !Platform.isMacOS)) return;
     List<double>? rect(GlobalKey key) {
       final box = key.currentContext?.findRenderObject();
       if (box is! RenderBox || !box.hasSize) return null;

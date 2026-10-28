@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:svoi_flutter/backend.dart';
@@ -140,7 +142,7 @@ void main() {
         home: SvoiShell(controller: c),
       ),
     );
-    for (final page in [4, 5, 0]) {
+    for (final page in [if (Platform.isWindows) 4, 6, 5, 0]) {
       final nav = find.byKey(ValueKey('desktop-tab-$page'));
       await tester.ensureVisible(nav);
       await tester.tap(nav);

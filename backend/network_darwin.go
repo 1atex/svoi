@@ -115,6 +115,9 @@ func enableSystemProxy(dir string, port int) (func() error, error) {
 			in.Close()
 			select {
 			case stopped = <-done:
+				if stopped != nil {
+					stopped = fmt.Errorf("macOS не восстановила прокси. Разрешите изменение сети при повторном запуске SVOI или отключите прокси в настройках Wi-Fi/Ethernet: %w", stopped)
+				}
 			case <-time.After(30 * time.Second):
 				stopped = fmt.Errorf("macOS ещё восстанавливает прокси. Дождитесь запроса системы или перезапустите SVOI")
 			}

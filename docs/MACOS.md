@@ -34,6 +34,6 @@ Workflow `macOS development preview` создаёт артефакт для ру
 
 ## Следующий этап Apple VPN
 
-Для macOS вне App Store требуется отдельный Packet Tunnel System Extension с корректной подписью и provisioning. Для iOS — Packet Tunnel App Extension, общий движок в XCFramework и связь с Flutter через Swift. Поддержка установки IPA зависит от фактически выданного Network Extension entitlement, а не только от названия установщика.
+При реализации через Apple Network Extension для распространения macOS вне App Store нужен Packet Tunnel System Extension с корректной подписью и provisioning. Альтернатива для прямого распространения — имеющийся в Xray utun с отдельным привилегированным помощником; в этой preview он ещё не включён и требует проверки выдачи прав и восстановления маршрутов на Mac. Для iOS — Packet Tunnel App Extension, общий движок в XCFramework и связь с Flutter через Swift. Поддержка установки IPA зависит от фактически выданного Network Extension entitlement, а не только от названия установщика.
 
 TrollStore не заявляет поддержку iOS 17.0.1+; для проверочного iPhone 17 Pro с iOS 27 этот способ не подходит. Работа собственного туннеля при подписи бесплатным Apple ID через Bullfrog/Sideloadly не подтверждена. Перед переносом всего iOS-интерфейса нужен тест минимального расширения на реальном телефоне с выбранным provisioning profile.
