@@ -97,7 +97,7 @@ struct ServerList: View {
       .onDisappear { cancelBatch() }
       .onChange(of: scenePhase) { if $0 != .active { cancelBatch() } }
       .onChange(of: model.profileID) { _ in collapsed = []; removing = nil }
-      .confirmationDialog("Удалить подписку?", isPresented: $confirmingRemoval, titleVisibility: .visible) {
+      .alert("Удалить подписку?", isPresented: $confirmingRemoval) {
         Button("Удалить подписку", role: .destructive) {
           guard let source = removing else { return }
           cancelBatch()

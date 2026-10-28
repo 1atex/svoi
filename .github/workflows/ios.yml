@@ -4,6 +4,11 @@ on:
     branches: [ios-preview]
   workflow_dispatch:
     inputs:
+      subscription_only:
+        description: 'Check subscription collapse and removal only'
+        required: false
+        default: false
+        type: boolean
       interface_only:
         description: 'Check the interface without rebuilding the device package'
         required: false
@@ -65,6 +70,8 @@ jobs:
       - name: Prepare interface assets
         run: python3 scripts/prepare-ios-resources.py
       - name: Check small and large iPhones
+        env:
+          SVOI_SUBSCRIPTION_CHECK: ${{ inputs.subscription_only && '1' || '0' }}
         run: python3 scripts/check-ios-interface.py "${{ matrix.device }}"
       - uses: actions/upload-artifact@v4
         if: always()
