@@ -49,9 +49,16 @@ Terminal=false
 Categories=Network;Security;
 StartupWMClass=dev.svoi.app
 """, encoding='utf-8')
-icons = package / 'usr/share/icons/hicolor/256x256/apps'
+for size in [16, 24, 32, 48, 64, 128, 256, 512]:
+    icons = package / f'usr/share/icons/hicolor/{size}x{size}/apps'
+    icons.mkdir(parents=True)
+    shutil.copy2(ROOT / f'assets/brand/linux/{size}.png', icons / 'dev.svoi.app.png')
+icons = package / 'usr/share/icons/hicolor/scalable/apps'
 icons.mkdir(parents=True)
-shutil.copy2(ROOT / 'flutter_client/assets/svoi-mark.png', icons / 'dev.svoi.app.png')
+shutil.copy2(ROOT / 'assets/brand/linux/scalable.svg', icons / 'dev.svoi.app.svg')
+icons = package / 'usr/share/icons/hicolor/symbolic/apps'
+icons.mkdir(parents=True)
+shutil.copy2(ROOT / 'assets/brand/linux/symbolic.svg', icons / 'dev.svoi.app-symbolic.svg')
 control = package / 'DEBIAN'
 control.mkdir()
 (control / 'control').write_text(f"""Package: svoi

@@ -189,9 +189,9 @@ class SvoiColors extends ThemeExtension<SvoiColors> {
   static final mono = _night(
     accent: const Color(0xffe7eaee),
     canvas: Colors.black,
-    surface: const Color(0xff101114),
-    raised: const Color(0xff1d1f23),
-    edge: const Color(0xff35383e),
+    surface: const Color(0xff08080a),
+    raised: const Color(0xff121215),
+    edge: const Color(0xff29292e),
     muted: const Color(0xffb0b5bd),
     ink: const Color(0xfff5f6f8),
   );
