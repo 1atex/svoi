@@ -18,7 +18,7 @@
 <p align="center">
   <a href="https://github.com/1atex/svoi/releases/download/v0.6.0-beta.5/SVOI-0.6.0-beta.5-windows-x64-setup.exe"><b>↓ Скачать для Windows</b></a>
   &nbsp; · &nbsp;
-  <a href="https://github.com/1atex/svoi/releases/download/android-v0.1.0-preview.8/SVOI-Android-0.1.0-preview.8-arm64.apk"><b>↓ Android APK · Preview</b></a>
+  <a href="https://github.com/1atex/svoi/releases/download/android-v0.1.0-preview.9/SVOI-Android-0.1.0-preview.9-arm64.apk"><b>↓ Android APK · Preview</b></a>
   &nbsp; · &nbsp;
   <a href="https://github.com/1atex/svoi/releases/tag/linux-v0.6.0-preview.3"><b>↓ Linux · Preview</b></a>
   &nbsp; · &nbsp;
@@ -116,9 +116,9 @@ Hysteria2: ссылки `hy2://` и `hysteria2://`, TLS, Salamander и пере�
 
 ## Статус проекта
 
-**Windows: 0.6.0-beta.5 · x64. Android: 0.1.0-preview.8 · ARM64 и x86_64. Linux: 0.6.0-preview.3 · x64.** iOS пока не выпускается. SVOI использует ваши подписки; VPN-серверы в комплект не входят.
+**Windows: 0.6.0-beta.5 · x64. Android: 0.1.0-preview.9 · ARM64 и x86_64. Linux: 0.6.0-preview.3 · x64.** iOS пока не выпускается. SVOI использует ваши подписки; VPN-серверы в комплект не входят.
 
-Android — отдельная экспериментальная сборка: [APK для ARM64-телефонов](https://github.com/1atex/svoi/releases/download/android-v0.1.0-preview.8/SVOI-Android-0.1.0-preview.8-arm64.apk), [APK для эмулятора x86_64](https://github.com/1atex/svoi/releases/download/android-v0.1.0-preview.8/SVOI-Android-0.1.0-preview.8-x64.apk), [инструкция и исходники Android](https://github.com/1atex/svoi/blob/android-preview/docs/ANDROID.md). Обновления проверяются и скачиваются из приложения; установку подтверждает пользователь. Preview 8 добавляет восемь тем, хэллоуинскую кнопку и Telegram. Устанавливается поверх Preview 7 с сохранением данных. При переходе с Preview 5 сохраните коды профилей и переустановите приложение: начиная с Preview 6 используется постоянная подпись.
+Android — отдельная экспериментальная сборка: [APK для ARM64-телефонов](https://github.com/1atex/svoi/releases/download/android-v0.1.0-preview.9/SVOI-Android-0.1.0-preview.9-arm64.apk), [APK для эмулятора x86_64](https://github.com/1atex/svoi/releases/download/android-v0.1.0-preview.9/SVOI-Android-0.1.0-preview.9-x64.apk), [инструкция и исходники Android](https://github.com/1atex/svoi/blob/android-preview/docs/ANDROID.md). Обновления проверяются и скачиваются из приложения; установку подтверждает пользователь. Preview 9 добавляет интернетометр с графиками и короткое знакомство после обновления; исправлено завершение UDP-потоков при отключении. Устанавливается поверх Preview 8 с сохранением данных. При переходе с Preview 5 сохраните коды профилей и переустановите приложение: начиная с Preview 6 используется постоянная подпись.
 
 Linux Preview: [`.deb` и переносимый архив](https://github.com/1atex/svoi/releases/tag/linux-v0.6.0-preview.3), [инструкция](docs/LINUX.md). Поддерживаются TUN, локальный прокси, подписки, темы и перенос профилей. Системный DNS остаётся под управлением Linux; выбор приложений, Windows zapret и автоустановка обновлений в Linux пока отсутствуют. Сборки проверяются на Ubuntu 22.04, в изолированной сети и под Xvfb/Openbox.
 
