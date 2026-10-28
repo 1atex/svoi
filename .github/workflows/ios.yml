@@ -4,6 +4,17 @@ on:
     branches: [ios-preview]
   workflow_dispatch:
     inputs:
+      interface_only:
+        description: 'Check the interface without rebuilding the device package'
+        required: false
+        default: false
+        type: boolean
+      ui_device:
+        description: 'Simulator size to check'
+        required: false
+        default: all
+        type: choice
+        options: [all, compact, pro]
       package_only:
         description: 'Rebuild the package without repeating unchanged interface tests'
         required: false
@@ -46,7 +57,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        device: [compact, pro]
+        device: ${{ fromJSON(inputs.ui_device == 'pro' && '["pro"]' || inputs.ui_device == 'compact' && '["compact"]' || '["compact","pro"]') }}
     steps:
       - uses: actions/checkout@v4
       - name: Install XcodeGen
@@ -64,6 +75,7 @@ jobs:
             .tools/ios-ui/**/*.json
             .tools/ios-ui/*.log
   ios:
+    if: inputs.interface_only != true
     runs-on: macos-26
     timeout-minutes: 45
     steps:

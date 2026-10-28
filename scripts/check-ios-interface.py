@@ -39,12 +39,20 @@ for name, preferred in [('compact', ['iPhone 13 mini', 'iPhone SE (3rd generatio
                 subprocess.run(['xcrun', 'simctl', 'io', udid, 'screenshot', str(output / f'{name}-{state}.png')], check=True, timeout=30)
             continue
         with (output / f'{name}.log').open('w') as log:
+            build = subprocess.run(['xcodebuild', '-project', 'apple/ios-client/SVOI.xcodeproj', '-scheme', 'SVOIInterfacePreview',
+                '-sdk', 'iphonesimulator', '-destination', f'platform=iOS Simulator,id={udid}',
+                '-derivedDataPath', str(root / '.tools/ios-ui-build'), 'CODE_SIGNING_ALLOWED=NO', 'build-for-testing'],
+                cwd=root, stdout=log, stderr=subprocess.STDOUT, timeout=600)
+        if build.returncode:
+            print((output / f'{name}.log').read_text()[-20000:])
+            raise SystemExit(build.returncode)
+        with (output / f'{name}.log').open('a') as log:
             test = subprocess.run(['xcodebuild', '-project', 'apple/ios-client/SVOI.xcodeproj', '-scheme', 'SVOIInterfacePreview',
                 '-sdk', 'iphonesimulator', '-destination', f'platform=iOS Simulator,id={udid}',
                 '-derivedDataPath', str(root / '.tools/ios-ui-build'), '-resultBundlePath', str(result),
                 '-parallel-testing-enabled', 'NO', '-test-timeouts-enabled', 'YES',
                 '-default-test-execution-time-allowance', '90', '-maximum-test-execution-time-allowance', '120',
-                'CODE_SIGNING_ALLOWED=NO', 'test'], cwd=root, stdout=log, stderr=subprocess.STDOUT, timeout=600)
+                'CODE_SIGNING_ALLOWED=NO', 'test-without-building'], cwd=root, stdout=log, stderr=subprocess.STDOUT, timeout=600)
         if result.exists():
             subprocess.run(['xcrun', 'xcresulttool', 'export', 'attachments', '--path', str(result), '--output-path', str(output / name)], check=True)
         if test.returncode:
