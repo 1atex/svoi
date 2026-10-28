@@ -4,6 +4,7 @@ import FlutterMacOS
 class MainFlutterWindow: NSWindow, NSWindowDelegate {
   private var channel: FlutterMethodChannel!
   private var statusItem: NSStatusItem!
+  private var visibilityObservers: [NSObjectProtocol] = []
   var closing = false
 
   override func awakeFromNib() {
@@ -20,6 +21,12 @@ class MainFlutterWindow: NSWindow, NSWindowDelegate {
     RegisterGeneratedPlugins(registry: controller)
     channel = FlutterMethodChannel(name: "dev.svoi/window", binaryMessenger: controller.engine.binaryMessenger)
     channel.setMethodCallHandler { [weak self] call, result in self?.handle(call, result) }
+    for event in [NSApplication.didHideNotification, NSApplication.didUnhideNotification] {
+      visibilityObservers.append(NotificationCenter.default.addObserver(forName: event, object: NSApp, queue: .main) { [weak self] _ in
+        guard let self = self else { return }
+        self.channel.invokeMethod("visibility", arguments: self.isVisible && !self.isMiniaturized && !NSApp.isHidden)
+      })
+    }
     statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
     if let image = NSImage(named: NSImage.Name("AppIcon"))?.copy() as? NSImage {
       image.size = NSSize(width: 18, height: 18)
@@ -27,6 +34,8 @@ class MainFlutterWindow: NSWindow, NSWindowDelegate {
     } else { statusItem.button?.title = "S" }
     super.awakeFromNib()
   }
+
+  deinit { for observer in visibilityObservers { NotificationCenter.default.removeObserver(observer) } }
 
   func requestQuit() { channel.invokeMethod("requestClose", arguments: nil) }
 
