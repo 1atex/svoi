@@ -33,6 +33,7 @@ final class VPNController: ObservableObject {
   deinit { if let observer = observer { NotificationCenter.default.removeObserver(observer) } }
 
   func initialize() async {
+    guard !busy else { return }
     do { try await loadManager() }
     catch { self.error = Self.explain(error) }
   }
@@ -125,6 +126,7 @@ final class VPNController: ObservableObject {
   func disconnect() async throws {
     guard !busy else { cancelStart(); return }
     busy = true
+    error = ""
     defer { busy = false; refresh() }
     attempt += 1
     try await stopAndWait()

@@ -26,7 +26,9 @@ struct ServerList: View {
     .listStyle(.insetGrouped)
     .searchable(text: $search, prompt: "Название или протокол")
     .safeAreaInset(edge: .bottom) {
-      HStack {
+      VStack(alignment: .leading, spacing: 7) {
+        if vpn.active { Text("Для сравнения серверов отключите VPN").font(.caption).foregroundStyle(.secondary) }
+        HStack {
         Text("\(filtered.count) серверов").font(.caption).foregroundStyle(.secondary)
         Spacer()
         Button(checkingAll ? "Остановить проверку" : "Проверить задержку") {
@@ -44,7 +46,8 @@ struct ServerList: View {
               }
             }
           }
-        }.font(.footnote).disabled(vpn.busy || filtered.isEmpty)
+        }.font(.footnote).disabled(vpn.busy || vpn.active || filtered.isEmpty)
+        }
       }.padding(16).background(.bar)
     }
     .sheet(isPresented: $showingConfig) {
@@ -77,7 +80,7 @@ struct ServerList: View {
       Button { Task { await model.probe(server) } } label: {
         if model.checking.contains(server.id) { ProgressView() }
         else { Text(model.latencies[server.id] ?? "Пинг").font(.caption).frame(minWidth: 44) }
-      }.buttonStyle(.borderless).disabled(model.checking.contains(server.id) || model.checking.count >= 2 || vpn.busy)
+      }.buttonStyle(.borderless).disabled(model.checking.contains(server.id) || model.checking.count >= 2 || vpn.busy || vpn.active)
     }
     .padding(.vertical, 5)
     .contextMenu {

@@ -163,6 +163,9 @@ final class SvoiModel: ObservableObject {
       let text = value.trimmingCharacters(in: .whitespacesAndNewlines)
       guard !text.isEmpty, text.utf8.count <= 4 * 1024 * 1024 else { throw SvoiError("Вставьте ссылку или профиль размером до 4 МБ") }
       if text.hasPrefix("SVOI1.") {
+        guard !vpn.busy else { throw SvoiError("Дождитесь завершения переключения VPN") }
+        connectionAttempt += 1
+        preparingVPN = false
         if vpn.active { try await vpn.disconnect() }
         cancelProbes()
         let result = try await api.request("transfer/import", method: "POST", token: token,
@@ -234,7 +237,7 @@ final class SvoiModel: ObservableObject {
   }
 
   func probe(_ server: SvoiServer) async {
-    guard checking.count < 2, !checking.contains(server.id), !vpn.busy else { return }
+    guard checking.count < 2, !checking.contains(server.id), !vpn.busy, !vpn.active else { return }
     let requestID = UUID().uuidString
     let token = token
     let profile = profileID
