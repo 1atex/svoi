@@ -24,7 +24,7 @@ class MacOSPreferences extends StatelessWidget {
           ),
           OutlinedButton.icon(
             onPressed: c.refreshSubscriptions,
-            icon: const Icon(Icons.refresh),
+            icon: const SvoiIcon(Icons.refresh),
             label: const Text('Обновить подписки'),
           ),
         ],
@@ -46,7 +46,7 @@ class MacOSPreferences extends StatelessWidget {
           const SizedBox(height: 12),
           TextButton.icon(
             onPressed: () => showLogs(context, c),
-            icon: const Icon(Icons.article_outlined),
+            icon: const SvoiIcon(Icons.article_outlined),
             label: const Text('Журнал Xray'),
           ),
         ],

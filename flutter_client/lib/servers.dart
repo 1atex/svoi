@@ -56,13 +56,16 @@ class _ServerPageState extends State<ServerPage> {
                       controller: search,
                       decoration: InputDecoration(
                         hintText: 'Поиск сервера или страны',
-                        prefixIcon: const Icon(LucideIcons.search, size: 18),
+                        prefixIcon: const SvoiIcon(
+                          LucideIcons.search,
+                          size: 18,
+                        ),
                         isDense: true,
                         suffixIcon: query.isEmpty
                             ? null
                             : IconButton(
                                 tooltip: 'Очистить поиск',
-                                icon: const Icon(LucideIcons.x, size: 16),
+                                icon: const SvoiIcon(LucideIcons.x, size: 16),
                                 onPressed: () {
                                   debounce?.cancel();
                                   search.clear();
@@ -138,7 +141,7 @@ class _ServerPageState extends State<ServerPage> {
                     ),
                   ),
                   FilterChip(
-                    avatar: const Icon(LucideIcons.star, size: 14),
+                    avatar: const SvoiIcon(LucideIcons.star, size: 14),
                     label: const Text('Избранные'),
                     selected: favoritesOnly,
                     onSelected: (v) => setState(() => favoritesOnly = v),
@@ -146,7 +149,7 @@ class _ServerPageState extends State<ServerPage> {
                   Tooltip(
                     message: 'Сначала избранные и последний запуск, затем остальные. Внутри групп — по задержке.',
                     child: FilterChip(
-                      avatar: const Icon(LucideIcons.arrowDownUp, size: 14),
+                      avatar: const SvoiIcon(LucideIcons.arrowDownUp, size: 14),
                       label: const Text('По задержке'),
                       selected: sortByLatency,
                       onSelected: (v) => setState(() => sortByLatency = v),
@@ -176,7 +179,7 @@ class _ServerPageState extends State<ServerPage> {
                         : () => c.probing.value
                               ? c.cancelProbes()
                               : c.probe(filtered),
-                    icon: Icon(
+                    icon: SvoiIcon(
                       c.probing.value
                           ? LucideIcons.square
                           : LucideIcons.activity,
@@ -211,7 +214,7 @@ class _ServerPageState extends State<ServerPage> {
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(
+                            SvoiIcon(
                               LucideIcons.search,
                               size: 28,
                               color: appColors(context).muted,
@@ -352,7 +355,7 @@ class ServerRow extends StatelessWidget {
                               padding: EdgeInsets.only(left: 6),
                               child: Tooltip(
                                 message: 'Через этот сервер запущен VPN',
-                                child: Icon(
+                                child: SvoiIcon(
                                   LucideIcons.radio,
                                   color: appColors(context).success,
                                   size: 15,
@@ -386,7 +389,7 @@ class ServerRow extends StatelessWidget {
                   ? 'Убрать из избранного'
                   : 'В избранное',
               onPressed: () => c.toggleFavorite(server.id),
-              icon: Icon(
+              icon: SvoiIcon(
                 c.favorites.value.contains(server.id)
                     ? Icons.star
                     : LucideIcons.star,
@@ -399,7 +402,7 @@ class ServerRow extends StatelessWidget {
             IconButton(
               tooltip: 'Конфигурация сервера',
               onPressed: () => showConfig(context, c, server),
-              icon: const Icon(LucideIcons.fileCode, size: 16),
+              icon: const SvoiIcon(LucideIcons.fileCode, size: 16),
             ),
             ValueListenableBuilder(
               valueListenable: c.probes.putIfAbsent(

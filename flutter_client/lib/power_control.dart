@@ -112,7 +112,10 @@ class _ConnectionOrbitState extends State<ConnectionOrbit> {
                                 width: 32,
                                 height: 32,
                                 child: MediaQuery.disableAnimationsOf(context)
-                                    ? Icon(LucideIcons.ellipsis, color: color)
+                                    ? SvoiIcon(
+                                        LucideIcons.ellipsis,
+                                        color: color,
+                                      )
                                     : CircularProgressIndicator(
                                         strokeWidth: 2,
                                         color: color,
@@ -121,7 +124,7 @@ class _ConnectionOrbitState extends State<ConnectionOrbit> {
                             : Column(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Icon(
+                                  SvoiIcon(
                                     LucideIcons.power,
                                     size: 32,
                                     color: color,
@@ -223,8 +226,11 @@ class _PumpkinPowerState extends State<_PumpkinPower> {
                             cacheWidth: 384,
                             cacheHeight: 384,
                             fit: BoxFit.contain,
-                            errorBuilder: (_, error, stack) =>
-                                Icon(LucideIcons.power, size: 64, color: tone),
+                            errorBuilder: (_, error, stack) => SvoiIcon(
+                              LucideIcons.power,
+                              size: 64,
+                              color: tone,
+                            ),
                           ),
                         ),
                       ),
@@ -240,7 +246,10 @@ class _PumpkinPowerState extends State<_PumpkinPower> {
                                 shape: BoxShape.circle,
                               ),
                               child: MediaQuery.disableAnimationsOf(context)
-                                  ? Icon(LucideIcons.ellipsis, color: p.accent)
+                                  ? SvoiIcon(
+                                      LucideIcons.ellipsis,
+                                      color: p.accent,
+                                    )
                                   : CircularProgressIndicator(
                                       strokeWidth: 2,
                                       color: p.accent,
@@ -262,7 +271,7 @@ class _PumpkinPowerState extends State<_PumpkinPower> {
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 if (control.running && !control.busy) ...[
-                                  Icon(
+                                  SvoiIcon(
                                     control.verified
                                         ? LucideIcons.shieldCheck
                                         : LucideIcons.power,

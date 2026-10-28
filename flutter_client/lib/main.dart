@@ -9,6 +9,8 @@ import 'package:shadcn_ui/shadcn_ui.dart';
 import 'package:country_flags/country_flags.dart';
 
 import 'countries.dart';
+import 'ui_icons.dart';
+export 'ui_icons.dart';
 
 import 'backend.dart';
 import 'controller.dart';
@@ -264,7 +266,7 @@ class _BootstrapState extends State<Bootstrap> with WidgetsBindingObserver {
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(
+                            SvoiIcon(
                               Icons.shield_outlined,
                               size: 44,
                               color: appColors(context).accent,
@@ -437,7 +439,7 @@ class _SvoiShellState extends State<SvoiShell> {
                             padding: const EdgeInsets.fromLTRB(20, 6, 12, 6),
                             child: Row(
                               children: [
-                                Icon(
+                                SvoiIcon(
                                   LucideIcons.info,
                                   size: 18,
                                   color: appColors(context).error,
@@ -454,7 +456,7 @@ class _SvoiShellState extends State<SvoiShell> {
                                 IconButton(
                                   tooltip: 'Закрыть сообщение',
                                   onPressed: () => c.message.value = '',
-                                  icon: const Icon(LucideIcons.x, size: 18),
+                                  icon: const SvoiIcon(LucideIcons.x, size: 18),
                                 ),
                               ],
                             ),
@@ -551,7 +553,7 @@ Future<void> importDialog(BuildContext context, SvoiController c) async {
                 }
               }
             },
-            icon: const Icon(Icons.file_open_outlined),
+            icon: const SvoiIcon(Icons.file_open_outlined),
             label: const Text('Из файла'),
           ),
           TextButton(

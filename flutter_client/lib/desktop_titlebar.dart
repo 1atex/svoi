@@ -46,7 +46,7 @@ class _DesktopTitlebarState extends State<DesktopTitlebar> {
       final tabs = [
         (0, 'Подключение', LucideIcons.power),
         if (Platform.isWindows) (4, 'zapret', LucideIcons.shield),
-        (6, 'Инструменты', LucideIcons.network),
+        (6, 'Инструменты', LucideIcons.wrench),
         (5, 'Настройки', LucideIcons.settings2),
       ];
       const tabStyle = TextStyle(
@@ -142,7 +142,7 @@ class _DesktopTitlebarState extends State<DesktopTitlebar> {
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(icon, size: 20),
+                            SvoiIcon(icon, size: 20),
                             if (labels) ...[
                               const SizedBox(width: 9),
                               Text(label),
@@ -168,18 +168,18 @@ class _DesktopTitlebarState extends State<DesktopTitlebar> {
                     ),
                     PopupMenuItem(value: 'tray', child: Text('Свернуть')),
                   ],
-                  icon: const Icon(LucideIcons.ellipsis, size: 20),
+                  icon: const SvoiIcon(LucideIcons.ellipsis, size: 20),
                 ),
               if (widget.onProfiles != null && !narrow) ...[
                 IconButton(
                   tooltip: 'Профили и перенос',
                   onPressed: widget.onProfiles,
-                  icon: const Icon(LucideIcons.users, size: 20),
+                  icon: const SvoiIcon(LucideIcons.users, size: 20),
                 ),
                 IconButton(
                   tooltip: Platform.isLinux ? 'Свернуть' : 'Свернуть в трей',
                   onPressed: () => _sendWindowCommand('tray'),
-                  icon: const Icon(LucideIcons.chevronDown, size: 20),
+                  icon: const SvoiIcon(LucideIcons.chevronDown, size: 20),
                 ),
                 const SizedBox(width: 8),
               ],
@@ -266,7 +266,7 @@ class _CaptionButton extends StatelessWidget {
                 : Colors.transparent,
           ),
         ),
-        child: Semantics(label: label, child: Icon(icon, size: 16)),
+        child: Semantics(label: label, child: SvoiIcon(icon, size: 16)),
       ),
     ),
   );

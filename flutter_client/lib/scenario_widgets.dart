@@ -169,7 +169,7 @@ class ScenarioLauncher extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(
+              SvoiIcon(
                 LucideIcons.layers,
                 size: 15,
                 color: appColors(context).accent,
@@ -177,7 +177,7 @@ class ScenarioLauncher extends StatelessWidget {
               SizedBox(width: 7),
               Text('Сценарии', style: TextStyle(fontSize: 12)),
               SizedBox(width: 6),
-              Icon(LucideIcons.chevronDown, size: 14),
+              SvoiIcon(LucideIcons.chevronDown, size: 14),
             ],
           ),
         ),
@@ -211,7 +211,7 @@ class ScenarioManager extends StatelessWidget {
                 onPressed: c.busy.value
                     ? null
                     : () => saveScenarioDialog(context, c),
-                icon: const Icon(LucideIcons.plus, size: 16),
+                icon: const SvoiIcon(LucideIcons.plus, size: 16),
                 label: const Text('Сохранить текущие настройки'),
               ),
             ),
@@ -245,7 +245,7 @@ class ScenarioManager extends StatelessWidget {
                       onPressed: c.busy.value
                           ? null
                           : () => c.deleteScenario(scene['id']),
-                      icon: const Icon(LucideIcons.x, size: 18),
+                      icon: const SvoiIcon(LucideIcons.x, size: 18),
                     ),
                   ],
                 ),

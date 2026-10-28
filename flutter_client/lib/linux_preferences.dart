@@ -23,7 +23,7 @@ class LinuxPreferences extends StatelessWidget {
           ),
           OutlinedButton.icon(
             onPressed: c.refreshSubscriptions,
-            icon: const Icon(Icons.refresh),
+            icon: const SvoiIcon(Icons.refresh),
             label: const Text('Обновить подписки'),
           ),
         ],
@@ -46,12 +46,12 @@ class LinuxPreferences extends StatelessWidget {
               'openExternal',
               'https://github.com/1atex/svoi/releases?q=linux',
             ),
-            icon: const Icon(Icons.download),
+            icon: const SvoiIcon(Icons.download),
             label: const Text('Сборки Linux на GitHub'),
           ),
           TextButton.icon(
             onPressed: () => showLogs(context, c),
-            icon: const Icon(Icons.article_outlined),
+            icon: const SvoiIcon(Icons.article_outlined),
             label: const Text('Журнал Xray'),
           ),
         ],

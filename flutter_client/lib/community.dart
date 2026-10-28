@@ -65,6 +65,6 @@ class _CommunityButtonState extends State<CommunityButton> {
   Widget build(BuildContext context) => IconButton(
     tooltip: 'Новости SVOI в Telegram',
     onPressed: _opening ? null : _open,
-    icon: const Icon(Icons.telegram, size: 22),
+    icon: const SvoiIcon(Icons.telegram, size: 22),
   );
 }

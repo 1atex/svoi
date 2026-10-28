@@ -242,7 +242,7 @@ class _DnsComparePanelState extends State<DnsComparePanel> {
                       onPressed: () => Clipboard.setData(
                         ClipboardData(text: p['address'] as String),
                       ),
-                      icon: const Icon(LucideIcons.copy, size: 16),
+                      icon: const SvoiIcon(LucideIcons.copy, size: 16),
                       label: const Text('Скопировать адрес'),
                     ),
                   ],
@@ -468,10 +468,10 @@ class PortableToolsPage extends StatelessWidget {
           horizontal: 18,
           vertical: 14,
         ),
-        leading: Icon(icon, color: appColors(context).accent),
+        leading: SvoiIcon(icon, color: appColors(context).accent),
         title: Text(title),
         subtitle: Text(description),
-        trailing: const Icon(Icons.chevron_right),
+        trailing: const SvoiIcon(Icons.chevron_right),
         onTap: () => Navigator.push(
           context,
           MaterialPageRoute<void>(

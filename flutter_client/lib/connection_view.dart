@@ -160,7 +160,7 @@ class ConnectionPath extends StatelessWidget {
       Expanded(
         child: Column(
           children: [
-            Icon(icon, size: 20, color: color),
+            SvoiIcon(icon, size: 20, color: color),
             const SizedBox(height: 7),
             Text(
               title,
@@ -223,7 +223,7 @@ Future<void> showDiagnostics(
                       SiteCheckPanel(c: c),
                     );
                   },
-                  icon: const Icon(LucideIcons.search, size: 16),
+                  icon: const SvoiIcon(LucideIcons.search, size: 16),
                   label: const Text('Проверить сайт'),
                 ),
                 const SizedBox(height: 18),
