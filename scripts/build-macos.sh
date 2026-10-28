@@ -17,7 +17,7 @@ unzip -oq "$BUILD/core.zip" -d "$BUILD/core"
 python3 scripts/prepare-macos-xray.py
 (cd .tools/macos-xray-source && CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -mod=readonly -buildvcs=false -trimpath -ldflags '-s -w -X github.com/xtls/xray-core/core.build=1b1647c-svoi-macos.1' -o "$BUILD/core/xray" ./main)
 CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -tags native_core -trimpath -ldflags "-s -w -X main.nativeVersion=$VERSION" -o "$BUILD/svoi-backend" ./backend
-xcrun swiftc -O -target arm64-apple-macos12.0 -framework SystemConfiguration -framework Security flutter_client/macos/ProxyHelper.swift -o "$BUILD/svoi-proxy"
+xcrun swiftc -O -target arm64-apple-macos13.0 -framework SystemConfiguration -framework Security flutter_client/macos/ProxyHelper.swift -o "$BUILD/svoi-proxy"
 "$BUILD/svoi-proxy" --self-test
 for size in 16 32 64 128 256 512 1024; do
   sips -z "$size" "$size" flutter_client/assets/svoi-mark.png --out "flutter_client/macos/Runner/Assets.xcassets/AppIcon.appiconset/app_icon_$size.png" >/dev/null

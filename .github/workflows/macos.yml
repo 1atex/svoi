@@ -60,7 +60,8 @@ jobs:
         run: bash scripts/build-macos.sh
       - name: Check backend
         run: |
-          export SVOI_TEST_CORE="$PWD/.tools/macos-package/0.6.0-preview.1/core/xray"
+          VERSION=$(python3 -c 'import json; print(json.load(open("config/macos-release.json"))["version"])')
+          export SVOI_TEST_CORE="$PWD/.tools/macos-package/$VERSION/core/xray"
           go test -tags native_core ./...
           go vet -tags native_core ./...
       - name: Check interface
@@ -72,7 +73,9 @@ jobs:
           flutter test
       - name: Verify local proxy traffic and reconnects
         run: |
-          python3 scripts/macos-helper-smoke.py .tools/macos-package/0.6.0-preview.1/svoi-proxy
+          VERSION=$(python3 -c 'import json; print(json.load(open("config/macos-release.json"))["version"])')
+          python3 scripts/macos-helper-smoke.py ".tools/macos-package/$VERSION/svoi-proxy"
+          sudo -n python3 scripts/macos-helper-smoke.py ".tools/macos-package/$VERSION/svoi-proxy" --apply
           python3 scripts/linux-backend-smoke.py flutter_client/build/macos/Build/Products/Release/SVOI.app/Contents/MacOS
       - name: Verify packaged disk image
         run: |

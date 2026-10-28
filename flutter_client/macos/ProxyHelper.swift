@@ -4,6 +4,7 @@ import SystemConfiguration
 import Darwin
 
 typealias ProxyMap = [String: [String: Any]]
+var authorizationRequests = 0
 
 enum ProxyFailure: Error, CustomStringConvertible {
   case message(String)
@@ -67,7 +68,8 @@ final class NetworkPreferences {
       var item = AuthorizationItem(name: name, valueLength: 0, value: nil, flags: 0)
       return withUnsafeMutablePointer(to: &item) { pointer in
         var rights = AuthorizationRights(count: 1, items: pointer)
-        return AuthorizationCopyRights(auth, &rights, nil, [.interactionAllowed, .extendRights, .preAuthorize], nil)
+        authorizationRequests += 1
+        return AuthorizationCopyRights(auth, &rights, nil, [.interactionAllowed, .extendRights], nil)
       }
     }
     if allowed != errAuthorizationSuccess {
@@ -131,12 +133,94 @@ func readSnapshot(_ file: URL) throws -> (ProxyMap, ProxyMap, Int32)? {
 
 func recover(_ file: URL, store: NetworkPreferences? = nil) throws {
   guard let (before, after, pid) = try readSnapshot(file) else { return }
-  if store == nil && pid > 1 && (kill(pid, 0) == 0 || errno == EPERM) {
+  if pid != getpid() && pid > 1 && (kill(pid, 0) == 0 || errno == EPERM) {
     throw ProxyFailure.message("Другое подключение SVOI ещё управляет прокси. Сначала отключите его.")
+  }
+  if let readonly = SCPreferencesCreate(nil, "SVOI recovery check" as CFString, nil),
+     let services = SCNetworkServiceCopyAll(readonly) as? [SCNetworkService] {
+    var current: ProxyMap = [:]
+    for service in services {
+      guard let id = SCNetworkServiceGetServiceID(service),
+            let proxy = SCNetworkServiceCopyProtocol(service, kSCNetworkProtocolTypeProxies) else { continue }
+      current[id as String] = SCNetworkProtocolGetConfiguration(proxy) as? [String: Any] ?? [:]
+    }
+    if restoreChanges(current: current, original: before, expected: after).isEmpty {
+      try FileManager.default.removeItem(at: file)
+      return
+    }
   }
   let network = try store ?? NetworkPreferences()
   try network.transaction(restoring: true) { restoreChanges(current: $0, original: before, expected: after) }
   try FileManager.default.removeItem(at: file)
+}
+
+func startProxy(_ directory: URL, port: Int, network: NetworkPreferences) throws -> URL {
+  let file = directory.appendingPathComponent("macos-proxy.plist")
+  try require((1024...65535).contains(port), "Недопустимый порт прокси.")
+  try recover(file, store: network)
+  var snapshotWritten = false
+  do {
+    try network.transaction { before in
+      try require(!FileManager.default.fileExists(atPath: file.path), "Другое подключение SVOI уже управляет прокси.")
+      try require(!before.isEmpty, "Не найдено подключений Wi-Fi или Ethernet. Выберите ручной прокси.")
+      let after = before.mapValues { appliedProxy($0, port: port) }
+      let snapshot: [String: Any] = ["version": 1, "pid": Int(getpid()), "original": before, "expected": after]
+      try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
+      let bytes = try PropertyListSerialization.data(fromPropertyList: snapshot, format: .binary, options: 0)
+      try require(bytes.count < 1024 * 1024, "Настройки прокси слишком большие для безопасного восстановления. Выберите ручной прокси.")
+      try bytes.write(to: file, options: .atomic)
+      try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: file.path)
+      snapshotWritten = true
+      return after
+    }
+  } catch {
+    if snapshotWritten { try? recover(file, store: network) }
+    throw error
+  }
+  return file
+}
+
+func broker() throws {
+  var network: NetworkPreferences?
+  var active: URL?
+  defer {
+    if let file = active { try? recover(file, store: network) }
+  }
+  while let line = readLine() {
+    var response: [String: Any] = ["ready": true]
+    do {
+      try require(line.utf8.count <= 16384, "Слишком большой запрос к помощнику прокси.")
+      guard let bytes = line.data(using: .utf8),
+            let command = try JSONSerialization.jsonObject(with: bytes) as? [String: Any],
+            let operation = command["operation"] as? String else { throw ProxyFailure.message("Некорректная команда помощнику прокси.") }
+      switch operation {
+      case "ping": break
+      case "start":
+        try require(active == nil, "Другое подключение SVOI ещё управляет прокси.")
+        guard let directory = command["directory"] as? String, !directory.isEmpty,
+              let port = command["port"] as? Int, (1024...65535).contains(port) else { throw ProxyFailure.message("Некорректные параметры подключения.") }
+        if network == nil { network = try NetworkPreferences() }
+        active = try startProxy(URL(fileURLWithPath: directory, isDirectory: true), port: port, network: network!)
+      case "stop":
+        if let file = active {
+          try recover(file, store: network)
+          active = nil
+        } else if let directory = command["directory"] as? String, !directory.isEmpty {
+          try recover(URL(fileURLWithPath: directory, isDirectory: true).appendingPathComponent("macos-proxy.plist"), store: network)
+        }
+      case "recover":
+        guard let directory = command["directory"] as? String, !directory.isEmpty else { throw ProxyFailure.message("Не указана папка восстановления.") }
+        try require(active == nil, "SVOI уже управляет активным прокси.")
+        try recover(URL(fileURLWithPath: directory, isDirectory: true).appendingPathComponent("macos-proxy.plist"), store: network)
+      default: throw ProxyFailure.message("Неизвестная команда помощнику прокси.")
+      }
+    } catch { response = ["ready": false, "error": String(describing: error)] }
+    response["pid"] = Int(getpid())
+    response["authorizationRequests"] = authorizationRequests
+    let data = try JSONSerialization.data(withJSONObject: response)
+    print(String(data: data, encoding: .utf8)!)
+    fflush(stdout)
+  }
 }
 
 func selfTest() throws {
@@ -167,6 +251,7 @@ func selfTest() throws {
 func run() throws {
   let args = CommandLine.arguments
   if args.count == 2 && args[1] == "--self-test" { try selfTest(); return }
+  if args.count == 2 && args[1] == "broker" { try broker(); return }
   if args.count == 3 && args[1] == "watch", let child = Int32(args[2]), child > 1 {
     if readLine() != "release" { kill(-child, SIGTERM) }
     return
@@ -177,27 +262,8 @@ func run() throws {
   if args[1] == "recover" { try recover(file); return }
   try require(args.count == 4, "Не указан порт прокси.")
   guard let port = Int(args[3]), (1024...65535).contains(port) else { throw ProxyFailure.message("Недопустимый порт прокси.") }
-  try recover(file)
   let network = try NetworkPreferences()
-  var snapshotWritten = false
-  do {
-    try network.transaction { before in
-      try require(!FileManager.default.fileExists(atPath: file.path), "Другое подключение SVOI уже управляет прокси.")
-      try require(!before.isEmpty, "Не найдено подключений Wi-Fi или Ethernet. Выберите ручной прокси.")
-      let after = before.mapValues { appliedProxy($0, port: port) }
-      let snapshot: [String: Any] = ["version": 1, "pid": Int(getpid()), "original": before, "expected": after]
-      try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
-      let bytes = try PropertyListSerialization.data(fromPropertyList: snapshot, format: .binary, options: 0)
-      try require(bytes.count < 1024 * 1024, "Настройки прокси слишком большие для безопасного восстановления. Выберите ручной прокси.")
-      try bytes.write(to: file, options: .atomic)
-      try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: file.path)
-      snapshotWritten = true
-      return after
-    }
-  } catch {
-    if snapshotWritten { try? recover(file, store: network) }
-    throw error
-  }
+  _ = try startProxy(directory, port: port, network: network)
   print("{\"ready\":true}")
   fflush(stdout)
   while readLine() != nil {}
