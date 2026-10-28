@@ -304,10 +304,21 @@ void main() {
     expect(tester.takeException(), isNull);
     tester.view.resetViewInsets();
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Профиль').last);
+    expect(
+      tester
+          .widget<NavigationBar>(find.byType(NavigationBar))
+          .destinations
+          .length,
+      4,
+    );
+    await tester.tap(find.text('Настройки').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Общий профиль'));
     await tester.pumpAndSettle();
     await tester.scrollUntilVisible(find.text('Скопировать код переноса'), 200);
     expect(find.text('Скопировать код переноса'), findsOneWidget);
+    await tester.pageBack();
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Серверы').last);
     await tester.pumpAndSettle();
     expect(

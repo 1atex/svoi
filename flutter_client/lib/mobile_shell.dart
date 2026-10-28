@@ -98,21 +98,13 @@ class _MobileShellState extends State<MobileShell> {
                       ],
                     ),
                   )
-                : Text(
-                    [
-                      'SVOI',
-                      'Серверы',
-                      'Инструменты',
-                      'Профиль',
-                      'Настройки',
-                    ][page],
-                  ),
+                : Text(['SVOI', 'Серверы', 'Инструменты', 'Настройки'][page]),
             actions: [
               const CommunityButton(),
               if (updates?.available == true)
                 IconButton(
                   tooltip: 'Доступно обновление SVOI',
-                  onPressed: () => setState(() => page = 4),
+                  onPressed: () => setState(() => page = 3),
                   icon: SvoiIcon(
                     Icons.system_update,
                     color: appColors(context).accent,
@@ -144,10 +136,6 @@ class _MobileShellState extends State<MobileShell> {
                 NavigationDestination(
                   icon: SvoiIcon(LucideIcons.wrench, size: 22),
                   label: 'Инструменты',
-                ),
-                NavigationDestination(
-                  icon: SvoiIcon(LucideIcons.users, size: 22),
-                  label: 'Профиль',
                 ),
                 NavigationDestination(
                   icon: SvoiIcon(LucideIcons.settings2, size: 22),
@@ -183,7 +171,6 @@ class _MobileShellState extends State<MobileShell> {
                     0 => home(),
                     1 => servers(),
                     2 => PortableToolsPage(c: c),
-                    3 => profile(),
                     _ => settings(),
                   },
                 ),
@@ -246,7 +233,7 @@ class _MobileShellState extends State<MobileShell> {
                 ),
                 if (c.sessions.value.length > 1)
                   TextButton(
-                    onPressed: () => setState(() => page = 3),
+                    onPressed: openProfile,
                     child: const Text('Выбрать сохранённый профиль'),
                   ),
               ],
@@ -419,14 +406,14 @@ class _MobileShellState extends State<MobileShell> {
                         ),
                         TextButton(
                           onPressed: () {
-                            setState(() {
-                              if (search.isNotEmpty) {
+                            if (search.isNotEmpty) {
+                              setState(() {
                                 searchController.clear();
                                 search = '';
-                              } else {
-                                page = 3;
-                              }
-                            });
+                              });
+                            } else {
+                              openProfile();
+                            }
                           },
                           child: Text(
                             search.isNotEmpty
@@ -492,6 +479,22 @@ class _MobileShellState extends State<MobileShell> {
                 ),
         ),
       ],
+    );
+  }
+
+  void openProfile() {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => Scaffold(
+          appBar: AppBar(title: const Text('Общий профиль')),
+          body: SafeArea(
+            child: ListenableBuilder(
+              listenable: Listenable.merge([c.sessions, c.group, c.busy]),
+              builder: (_, _) => profile(),
+            ),
+          ),
+        ),
+      ),
     );
   }
 
@@ -577,6 +580,14 @@ class _MobileShellState extends State<MobileShell> {
   Widget settings() => ListView(
     padding: const EdgeInsets.all(20),
     children: [
+      ListTile(
+        contentPadding: EdgeInsets.zero,
+        leading: const SvoiIcon(LucideIcons.users),
+        title: const Text('Общий профиль'),
+        subtitle: const Text('Профили, перенос подписок и данные устройства'),
+        trailing: const SvoiIcon(Icons.chevron_right),
+        onTap: openProfile,
+      ),
       ListTile(
         contentPadding: EdgeInsets.zero,
         leading: const SvoiIcon(Icons.palette_outlined),

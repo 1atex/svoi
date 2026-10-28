@@ -9,6 +9,61 @@ class SpeedTools extends StatefulWidget {
 
 class _SpeedToolsState extends State<SpeedTools> {
   SvoiController get c => widget.c;
+  Widget routeIdentity(Map<String, dynamic> row) {
+    final p = appColors(context);
+    final direct = (row['serverId']?.toString() ?? '').isEmpty;
+    final country = ServerCountry.parse(row['name']?.toString() ?? 'Сервер');
+    final code =
+        row['countryCode'] as String? ??
+        c.servers.value
+            .where((s) => s.id == row['serverId'])
+            .firstOrNull
+            ?.country
+            .code;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (direct)
+          SizedBox(
+            width: 44,
+            height: 44,
+            child: SvoiIcon(LucideIcons.monitor, color: p.muted),
+          )
+        else
+          CountryMark(
+            key: ValueKey('speed-result-flag-${row['serverId']}'),
+            country: ServerCountry.parse(
+              country.title,
+              countryCode: code ?? country.code,
+            ),
+          ),
+        const SizedBox(width: 10),
+        Flexible(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                direct ? 'Напрямую' : country.title,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 16,
+                ),
+              ),
+              const SizedBox(height: 5),
+              Text(
+                direct
+                    ? 'Без подключения SVOI'
+                    : 'Через профиль · ${row['protocol'] ?? ''}',
+                style: TextStyle(color: p.muted, fontSize: 12),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
   final selected = <String>{};
   final search = TextEditingController();
   Timer? timer;
@@ -303,7 +358,7 @@ class _SpeedToolsState extends State<SpeedTools> {
               ),
               const SizedBox(height: 10),
               Text(
-                'Сначала без VPN, затем через выбранные серверы. Один тестовый узел, одинаковые условия.',
+                'Сначала напрямую, затем через выбранные профили. Через профиль идёт только трафик замера; системный VPN не включается.',
                 style: TextStyle(color: p.muted, height: 1.6),
               ),
               const SizedBox(height: 22),
@@ -367,6 +422,7 @@ class _SpeedToolsState extends State<SpeedTools> {
                               itemBuilder: (context, i) {
                                 final s = visible[i];
                                 return CheckboxListTile(
+                                  secondary: CountryMark(country: s.country),
                                   dense: true,
                                   contentPadding: EdgeInsets.zero,
                                   value: selected.contains(s.id),
@@ -391,14 +447,14 @@ class _SpeedToolsState extends State<SpeedTools> {
                                           _save();
                                         },
                                   title: Text(
-                                    s.name,
+                                    s.country.title,
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                   ),
                                   subtitle: Text(
                                     s.json['fullProfile'] == true
                                         ? 'Полный профиль Xray'
-                                        : '${s.protocol.toUpperCase()} · ${s.country.title}',
+                                        : '${s.protocol.toUpperCase()} · ${s.country.label}',
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                   ),
@@ -499,28 +555,7 @@ class _SpeedToolsState extends State<SpeedTools> {
                                 runSpacing: 10,
                                 crossAxisAlignment: WrapCrossAlignment.center,
                                 children: [
-                                  Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        row['name']?.toString() ?? '',
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.w600,
-                                          fontSize: 16,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 5),
-                                      Text(
-                                        row['protocol']?.toString() ?? '',
-                                        style: TextStyle(
-                                          color: p.muted,
-                                          fontSize: 12,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
+                                  routeIdentity(row),
                                   Text(
                                     phase(row),
                                     style: TextStyle(
