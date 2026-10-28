@@ -11,7 +11,11 @@ class SpeedBackend extends DemoBackend {
   }
   final calls = <String>[];
   List<String> chosen = [];
-  bool complete = false, cancelled = false, fail = false;
+  bool complete = false,
+      cancelled = false,
+      fail = false,
+      shortProfile = false,
+      shortBaseline = false;
   @override
   Future<Map<String, dynamic>> request(
     String path, {
@@ -42,8 +46,15 @@ class SpeedBackend extends DemoBackend {
             'name': 'Без VPN',
             'protocol': 'Напрямую',
             'state': 'done',
-            'downloadMbps': 100.0,
-            'uploadMbps': 50.0,
+            'downloadMbps': 40.0,
+            'uploadMbps': 20.0,
+            'downloadSeconds': shortBaseline ? 1.2 : 4.0,
+            'uploadSeconds': 4.0,
+            'downloadBytes': shortBaseline ? 6000000 : 20000000,
+            'uploadBytes': 10000000,
+            'downloadCapped': shortBaseline,
+            'downloadFullWindow': !shortBaseline,
+            'uploadFullWindow': true,
             'latencyMs': 20.0,
           },
           {
@@ -59,8 +70,22 @@ class SpeedBackend extends DemoBackend {
                 : 'running',
             'phase': 'download',
             'error': fail ? 'Сервер не ответил. Выберите другой сервер.' : '',
-            'downloadMbps': fail ? null : 80.0,
-            'uploadMbps': complete && !fail ? 40.0 : null,
+            'downloadMbps': fail
+                ? null
+                : shortProfile
+                ? 210.0
+                : 32.0,
+            'downloadSeconds': shortProfile ? 1.28 : 4.0,
+            'uploadSeconds': 4.0,
+            'downloadBytes': shortProfile ? 33554432 : 16000000,
+            'uploadBytes': 10000000,
+            'downloadCapped': shortProfile,
+            'downloadFullWindow': !shortProfile && !fail,
+            'uploadFullWindow': !fail,
+            'warning': shortProfile
+                ? 'Короткая выборка загрузки: скорость ориентировочная.'
+                : '',
+            'uploadMbps': complete && !fail ? 20.0 : null,
             'latencyMs': fail ? null : 40.0,
           },
         ],
@@ -129,7 +154,10 @@ void main() {
       expect(api.calls.where((s) => s.endsWith('/start')).length, 1);
       await tester.ensureVisible(find.text('Последнее сравнение'));
       await tester.pumpAndSettle();
-      expect(find.text('80% от загрузки напрямую'), findsOneWidget);
+      expect(
+        find.text('80% от результата без VPN в этом тесте'),
+        findsOneWidget,
+      );
       expect(c.speedView.value['data']['state'], 'done');
       final count = api.calls.length;
       await tester.pump(const Duration(seconds: 5));
@@ -153,7 +181,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(api.cancelled, isTrue);
     expect(c.speedView.value['data']['state'], 'cancelled');
-    expect(c.speedView.value['data']['results'][0]['downloadMbps'], 100.0);
+    expect(c.speedView.value['data']['results'][0]['downloadMbps'], 40.0);
     await tester.pumpWidget(const SizedBox());
     await c.close();
   });
@@ -203,7 +231,7 @@ void main() {
             )
             .first,
       );
-      expect(find.text('80% от загрузки напрямую'), findsNothing);
+      expect(find.text('80% от результата без VPN в этом тесте'), findsNothing);
       expect(c.speedView.value['data']['results'][1]['downloadMbps'], isNull);
       await tester.pump();
       expect(tester.takeException(), isNull);
@@ -231,4 +259,34 @@ void main() {
     await tester.pumpWidget(const SizedBox());
     await c.close();
   });
+  testWidgets(
+    'short download in either route suppresses comparison percentages',
+    (tester) async {
+      for (final shortDirect in [false, true]) {
+        final api = SpeedBackend()
+          ..complete = true
+          ..shortProfile = !shortDirect
+          ..shortBaseline = shortDirect;
+        final c = await setup(tester, api);
+        await tester.tap(find.text('Сравнить скорость'));
+        await tester.pumpAndSettle();
+        await tester.scrollUntilVisible(
+          find.textContaining('Процент не рассчитан:'),
+          120,
+          scrollable: find
+              .descendant(
+                of: find.byKey(const ValueKey('speed-results-scroll')),
+                matching: find.byType(Scrollable),
+              )
+              .first,
+        );
+        expect(find.textContaining('% от результата'), findsNothing);
+        expect(find.text('Короткий замер'), findsAtLeastNWidgets(1));
+        expect(find.textContaining('Загрузка:').evaluate(), isNotEmpty);
+        expect(tester.takeException(), isNull);
+        await tester.pumpWidget(const SizedBox());
+        await c.close();
+      }
+    },
+  );
 }

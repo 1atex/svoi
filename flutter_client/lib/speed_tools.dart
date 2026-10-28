@@ -262,7 +262,10 @@ class _SpeedToolsState extends State<SpeedTools> {
     'queued' => 'Ожидает',
     'error' => 'Ошибка замера',
     'cancelled' => 'Остановлено',
-    'done' => 'Готово',
+    'done' =>
+      row['downloadFullWindow'] == true && row['uploadFullWindow'] == true
+          ? 'Готово'
+          : 'Короткий замер',
     _ => switch (row['phase']) {
       'latency' => 'Проверяем отклик',
       'download' => 'Измеряем загрузку',
@@ -550,16 +553,48 @@ class _SpeedToolsState extends State<SpeedTools> {
                               ),
                             ],
                           ),
+                          if (row['downloadSeconds'] is num ||
+                              row['uploadSeconds'] is num)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 14),
+                              child: Text(
+                                'Загрузка: ${number(row['downloadSeconds'])} с · ${number((row['downloadBytes'] as num? ?? 0) / 1048576)} МиБ${row['downloadCapped'] == true ? ' · лимит данных' : ''}\nОтдача: ${number(row['uploadSeconds'])} с · ${number((row['uploadBytes'] as num? ?? 0) / 1048576)} МиБ${row['uploadCapped'] == true ? ' · лимит данных' : ''}',
+                                style: TextStyle(
+                                  color: p.muted,
+                                  fontSize: 12,
+                                  height: 1.6,
+                                ),
+                              ),
+                            ),
+                          if (row['serverId'] != '' &&
+                              row['state'] == 'done' &&
+                              rows.firstOrNull?['state'] == 'done' &&
+                              (row['downloadFullWindow'] != true ||
+                                  rows.firstOrNull?['downloadFullWindow'] !=
+                                      true))
+                            Padding(
+                              padding: const EdgeInsets.only(top: 14),
+                              child: Text(
+                                'Процент не рассчитан: загрузка на одном из маршрутов проверялась слишком короткое время.',
+                                style: TextStyle(
+                                  color: p.muted,
+                                  fontSize: 12,
+                                  height: 1.6,
+                                ),
+                              ),
+                            ),
                           if (row['serverId'] != '' &&
                               rows.firstOrNull?['state'] == 'done' &&
                               row['state'] == 'done' &&
+                              row['downloadFullWindow'] == true &&
+                              rows.firstOrNull?['downloadFullWindow'] == true &&
                               rows.firstOrNull?['downloadMbps'] is num &&
                               row['downloadMbps'] is num &&
                               ((rows.first['downloadMbps'] as num) > 0))
                             Padding(
                               padding: const EdgeInsets.only(top: 15),
                               child: Text(
-                                '${((row['downloadMbps'] as num) / (rows.first['downloadMbps'] as num) * 100).toStringAsFixed(0)}% от загрузки напрямую',
+                                '${((row['downloadMbps'] as num) / (rows.first['downloadMbps'] as num) * 100).toStringAsFixed(0)}% от результата без VPN в этом тесте',
                                 style: TextStyle(color: p.muted, fontSize: 12),
                               ),
                             ),
@@ -592,7 +627,7 @@ class _SpeedToolsState extends State<SpeedTools> {
                     ),
                   ),
                 Text(
-                  'Отклик — медиана HTTPS-запросов без нагрузки. Сравниваются конкретные серверы и маршруты; результат не является рейтингом протоколов.',
+                  'Измерена скорость до svoi.space. На других сайтах результат может отличаться. Один замер не подтверждает ускорение VPN. Отклик — медиана HTTPS-запросов без нагрузки.',
                   style: TextStyle(color: p.muted, fontSize: 12, height: 1.6),
                 ),
               ],

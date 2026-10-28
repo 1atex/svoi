@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -19,6 +20,13 @@ func TestSpeedCountsRealBytesAndRejectsFalseResults(t *testing.T) {
 	r := measureSpeed(context.Background(), &http.Transport{}, s.URL+speedtest.Prefix, policy, func(string, int64, float64) {})
 	if r.State != "done" || r.Download == nil || *r.Download <= 0 || r.Upload == nil || *r.Upload <= 0 || r.Latency == nil || r.DownloadBytes != policy.Download || r.UploadBytes != policy.Upload {
 		t.Fatalf("invalid result %+v", r)
+	}
+	if r.DownloadSeconds <= 0 || r.UploadSeconds <= 0 || !r.DownloadCapped || !r.UploadCapped || r.DownloadFullWindow || r.UploadFullWindow || r.Warning == "" {
+		t.Fatalf("data-limited short sample presented as full measurement: %+v", r)
+	}
+	expected := float64(r.DownloadBytes) * 8 / r.DownloadSeconds / 1e6
+	if *r.Download != expected {
+		t.Fatalf("speed and recorded time disagree: %v vs %v", *r.Download, expected)
 	}
 	bad := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(200) }))
 	defer bad.Close()
@@ -108,5 +116,52 @@ func TestSpeedAPIRejectsNestedTUNAndUnknownServers(t *testing.T) {
 	expect(t, call(`{"serverIds":["1","2","3","4"]}`), 400)
 	if a.speed != nil {
 		t.Fatal("forbidden test started")
+	}
+}
+
+type pacedSpeedBody struct {
+	io.ReadCloser
+	ctx context.Context
+}
+
+func (b pacedSpeedBody) Read(p []byte) (int, error) {
+	select {
+	case <-b.ctx.Done():
+		return 0, b.ctx.Err()
+	case <-time.After(20 * time.Millisecond):
+	}
+	return b.ReadCloser.Read(p)
+}
+
+type pacedSpeedWriter struct {
+	http.ResponseWriter
+	ctx context.Context
+}
+
+func (w pacedSpeedWriter) Write(p []byte) (int, error) {
+	select {
+	case <-w.ctx.Done():
+		return 0, w.ctx.Err()
+	case <-time.After(20 * time.Millisecond):
+	}
+	return w.ResponseWriter.Write(p)
+}
+func TestSpeedFullTimeWindowRemainsComparable(t *testing.T) {
+	handler := speedtest.NewHandler(4)
+	node := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.Contains(r.URL.Path, "download") {
+			w = pacedSpeedWriter{w, r.Context()}
+		}
+		if strings.Contains(r.URL.Path, "upload") {
+			r.Body = pacedSpeedBody{r.Body, r.Context()}
+		}
+		handler.ServeHTTP(w, r)
+	}))
+	defer node.Close()
+	ctx, cancel := context.WithTimeout(context.Background(), 12*time.Second)
+	defer cancel()
+	result := measureSpeed(ctx, &http.Transport{}, node.URL+speedtest.Prefix, speedPolicy{3100 * time.Millisecond, 32 << 20, 16 << 20}, func(string, int64, float64) {})
+	if result.State != "done" || !result.DownloadFullWindow || !result.UploadFullWindow || result.DownloadCapped || result.UploadCapped || result.Warning != "" {
+		t.Fatalf("full time window misclassified: %+v", result)
 	}
 }

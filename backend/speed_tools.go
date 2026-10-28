@@ -21,18 +21,24 @@ import (
 )
 
 type speedResult struct {
-	ServerID      string   `json:"serverId"`
-	Name          string   `json:"name"`
-	Protocol      string   `json:"protocol"`
-	State         string   `json:"state"`
-	Phase         string   `json:"phase"`
-	Error         string   `json:"error,omitempty"`
-	Warning       string   `json:"warning,omitempty"`
-	Download      *float64 `json:"downloadMbps,omitempty"`
-	Upload        *float64 `json:"uploadMbps,omitempty"`
-	Latency       *float64 `json:"latencyMs,omitempty"`
-	DownloadBytes int64    `json:"downloadBytes"`
-	UploadBytes   int64    `json:"uploadBytes"`
+	ServerID           string   `json:"serverId"`
+	Name               string   `json:"name"`
+	Protocol           string   `json:"protocol"`
+	State              string   `json:"state"`
+	Phase              string   `json:"phase"`
+	Error              string   `json:"error,omitempty"`
+	Warning            string   `json:"warning,omitempty"`
+	Download           *float64 `json:"downloadMbps,omitempty"`
+	Upload             *float64 `json:"uploadMbps,omitempty"`
+	Latency            *float64 `json:"latencyMs,omitempty"`
+	DownloadBytes      int64    `json:"downloadBytes"`
+	UploadBytes        int64    `json:"uploadBytes"`
+	DownloadSeconds    float64  `json:"downloadSeconds"`
+	UploadSeconds      float64  `json:"uploadSeconds"`
+	DownloadFullWindow bool     `json:"downloadFullWindow"`
+	UploadFullWindow   bool     `json:"uploadFullWindow"`
+	DownloadCapped     bool     `json:"downloadCapped"`
+	UploadCapped       bool     `json:"uploadCapped"`
 }
 type speedRun struct {
 	mu               sync.Mutex
@@ -359,6 +365,9 @@ func measureSpeed(ctx context.Context, transport *http.Transport, endpoint strin
 	result.Latency = &latency
 	down, n, duration, err := speedTransfer(ctx, client, endpoint, "download", policy.Duration, policy.Download, progress)
 	result.DownloadBytes = n
+	result.DownloadSeconds = duration.Seconds()
+	result.DownloadCapped = n >= policy.Download
+	result.DownloadFullWindow = err == nil && duration >= max(3*time.Second, policy.Duration*9/10)
 	if n > 0 {
 		result.Download = &down
 	}
@@ -366,11 +375,20 @@ func measureSpeed(ctx context.Context, transport *http.Transport, endpoint strin
 		result.Error = err.Error()
 		return result
 	}
-	if duration < time.Second {
-		result.Warning = "Короткий замер: лимит данных достигнут быстро. Результат может колебаться."
+	if !result.DownloadFullWindow {
+		result.Warning = "Короткая выборка загрузки: скорость ориентировочная. Процент сравнения не рассчитывается."
 	}
-	up, n, _, err := speedTransfer(ctx, client, endpoint, "upload", policy.Duration, policy.Upload, progress)
+	up, n, duration, err := speedTransfer(ctx, client, endpoint, "upload", policy.Duration, policy.Upload, progress)
 	result.UploadBytes = n
+	result.UploadSeconds = duration.Seconds()
+	result.UploadCapped = n >= policy.Upload
+	result.UploadFullWindow = err == nil && duration >= max(3*time.Second, policy.Duration*9/10)
+	if err == nil && !result.UploadFullWindow {
+		if result.Warning != "" {
+			result.Warning += " "
+		}
+		result.Warning += "Короткая выборка отдачи: скорость ориентировочная."
+	}
 	if n > 0 {
 		result.Upload = &up
 	}
