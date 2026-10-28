@@ -104,9 +104,10 @@ jobs:
           github-token: ${{ github.token }}
       - name: Verify copied application and native backend together
         run: |
-          (cd .tools/package && shasum -a 256 -c *.sha256)
+          PACKAGE=$(python3 -c 'from pathlib import Path; files=list(Path(".tools/package").rglob("*.dmg")); assert len(files)==1; print(files[0].resolve().parent)')
+          (cd "$PACKAGE" && shasum -a 256 -c *.sha256)
           mkdir -p .tools/mounted .tools/installed
-          hdiutil attach -readonly -nobrowse -mountpoint "$PWD/.tools/mounted" .tools/package/*.dmg
+          hdiutil attach -readonly -nobrowse -mountpoint "$PWD/.tools/mounted" "$PACKAGE"/*.dmg
           trap 'hdiutil detach "$PWD/.tools/mounted"' EXIT
           ditto .tools/mounted/SVOI.app .tools/installed/SVOI.app
           codesign --verify --deep --strict .tools/installed/SVOI.app
