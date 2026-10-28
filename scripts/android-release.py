@@ -57,29 +57,10 @@ def publish():
     releases = api('GET', base + '/releases?per_page=100')
     release = next((r for r in releases if r['tag_name'] == TAG), None)
     if release is None:
-        body = f'''Android {CONFIG['versionName']} · Android 8+.
-
-**Телефон Xiaomi/Redmi/POCO и другие ARM64:** скачайте файл с окончанием `-arm64.apk`.
-**Эмулятор Android Studio x86_64:** скачайте `-x64.apk`.
-
-В Preview 9:
-- Интернетометр: сравнение напрямую и через до трёх выбранных профилей Xray, загрузка, отдача и HTTPS-отклик до svoi.space.
-- Графики фактической скорости по времени с общей шкалой для маршрутов. Загрузка — сплошная линия, отдача — пунктир; в узком окне график находится под цифрами.
-- Показаны длительность и объём каждой фазы. Короткие выборки отмечаются; процент не рассчитывается, если загрузка на любом из двух маршрутов измерена слишком коротко.
-- Проверка запускается вручную; при уходе с экрана, сворачивании, смене профиля или включении VPN останавливается. Готовые результаты остаются до закрытия приложения.
-- До 48 МиБ полезных данных на маршрут, максимум 192 МиБ на сравнение плюс сетевые накладные расходы. Тестовый узел фиксирован; результат не означает максимальную скорость любого сайта.
-- Интернетометр находится в «Настройки → Интернетометр». Перед сравнением нужно отключить VPN. Профиль проверяется встроенным временным ядром, без прямого fallback вместо VPN.
-- «Что нового» открывает svoi.space с установленной версией; GitHub доступен отдельной кнопкой.
-
-Короткое знакомство после установки/обновления: выбор темы и изменения на svoi.space. Встроенный Xray используется без создания отдельных системных процессов.
-Постоянная подпись сохранена; проверяется обновление поверх Preview 8.
-
-**Переход с Preview 5 и более ранних:** сначала сохраните код переноса профиля. Старые APK подписывались временными ключами CI: может потребоваться удалить старую версию и установить эту заново. Последующие версии с постоянной подписью устанавливаются поверх приложения.
-
-Загрузка продолжается при сворачивании благодаря Android DownloadManager. Установка выполняется после подтверждения пользователя. Сервисы Windows и APK имеют отдельные каналы обновлений.
-
-[Исходный код](https://github.com/1atex/svoi/tree/{os.environ['GITHUB_SHA']}) · [Проверки](https://github.com/1atex/svoi/actions/runs/{os.environ['GITHUB_RUN_ID']})
-'''
+        body = (ROOT / 'flutter_client/RELEASE-NOTES.md').read_text(encoding='utf-8')
+        if not body.startswith('# SVOI Android ' + CONFIG['versionName'] + '\n'):
+            raise RuntimeError('Android release notes/version mismatch')
+        body += f"\n[Исходный код](https://github.com/1atex/svoi/tree/{os.environ['GITHUB_SHA']}) · [Проверки](https://github.com/1atex/svoi/actions/runs/{os.environ['GITHUB_RUN_ID']})\n"
         release = api('POST', base + '/releases', {'tag_name': TAG, 'target_commitish': os.environ['GITHUB_SHA'], 'name': 'SVOI Android ' + CONFIG['versionName'], 'draft': True, 'prerelease': True, 'make_latest': 'false', 'body': body})
     assets = api('GET', base + f"/releases/{release['id']}/assets")
     for file in sorted(DIRECTORY.iterdir()):
