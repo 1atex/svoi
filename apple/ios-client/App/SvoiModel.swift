@@ -84,11 +84,13 @@ final class SvoiModel: ObservableObject {
   @Published var latencies: [String: String] = [:]
   @Published var checking = Set<String>()
   @Published var autoRefresh = true
+  @Published private(set) var preparingVPN = false
   let vpn = VPNController()
   let api = CoreBridge()
   private var token = ""
   private var root: URL?
   private var probeIDs: [String: String] = [:]
+  private var connectionAttempt = 0
   var selected: SvoiServer? { servers.first { $0.id == selectedID } }
   var profileID: String { group["id"] as? String ?? "" }
 
@@ -196,6 +198,8 @@ final class SvoiModel: ObservableObject {
 
   func switchProfile(_ profile: SavedProfile) async {
     await perform {
+      connectionAttempt += 1
+      preparingVPN = false
       if vpn.active { try await vpn.disconnect() }
       cancelProbes()
       let previous = token
@@ -208,15 +212,23 @@ final class SvoiModel: ObservableObject {
 
   func toggleVPN() async {
     cancelProbes()
+    if preparingVPN { connectionAttempt += 1; preparingVPN = false; return }
     if vpn.busy { vpn.cancelStart(); return }
     error = ""
     do {
       if vpn.active && vpn.serverID == selectedID { try await vpn.disconnect(); return }
       guard let server = selected else { throw SvoiError("Сначала добавьте подписку и выберите сервер") }
       let token = token
+      let profile = profileID
+      connectionAttempt += 1
+      let attempt = connectionAttempt
+      preparingVPN = true
+      defer { if connectionAttempt == attempt { preparingVPN = false } }
       let result = try await api.run { try CoreBridge.decode(SvoiCoreConfig(token, server.id)) }
+      guard attempt == connectionAttempt, profile == profileID else { return }
       guard let config = result["config"] as? String else { throw SvoiError("Не удалось подготовить конфигурацию") }
-      try await vpn.connect(config: config, server: server, profileID: profileID)
+      preparingVPN = false
+      try await vpn.connect(config: config, server: server, profileID: profile)
     } catch is CancellationError {}
     catch { self.error = error.localizedDescription }
   }

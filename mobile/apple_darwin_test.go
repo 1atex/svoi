@@ -41,7 +41,7 @@ func TestApplePacketFlowFramingAndReconnect(t *testing.T) {
 			}
 			flow := os.NewFile(uintptr(pair[1]), "packet-flow")
 			defer flow.Close()
-			config := `{"log":{"loglevel":"none"},"inbounds":[{"protocol":"tun","tag":"svoi-tun","settings":{"name":"SVOI","mtu":1500}}],"outbounds":[{"protocol":"freedom","tag":"direct"}]}`
+			config := fmt.Sprintf(`{"log":{"loglevel":"warning"},"inbounds":[{"protocol":"tun","tag":"svoi-tun","settings":{"name":"SVOI","mtu":1500}}],"outbounds":[{"protocol":"freedom","tag":"direct","settings":{"redirect":"127.0.0.1:%d"}}]}`, port)
 			if err := StartApple(config, int32(pair[0]), t.TempDir()); err != nil {
 				t.Fatal(err)
 			}
@@ -84,7 +84,7 @@ func appleUDPFrame(source, destination uint16, payload []byte) []byte {
 	ip[0], ip[8], ip[9] = 0x45, 64, 17
 	binary.BigEndian.PutUint16(ip[2:4], uint16(len(packet)-4))
 	copy(ip[12:16], []byte{172, 31, 255, 1})
-	copy(ip[16:20], []byte{127, 0, 0, 1})
+	copy(ip[16:20], []byte{198, 18, 0, 2})
 	var checksum uint32
 	for offset := 0; offset < 20; offset += 2 {
 		checksum += uint32(binary.BigEndian.Uint16(ip[offset : offset+2]))

@@ -40,6 +40,11 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
             guard Darwin.socketpair(AF_UNIX, SOCK_DGRAM, 0, &descriptors) == 0 else {
               throw self.error("Не удалось создать канал пакетов: \(errno)")
             }
+            var bufferSize: Int32 = 256 * 1024
+            for descriptor in descriptors {
+              _ = setsockopt(descriptor, SOL_SOCKET, SO_SNDBUF, &bufferSize, socklen_t(MemoryLayout<Int32>.size))
+              _ = setsockopt(descriptor, SOL_SOCKET, SO_RCVBUF, &bufferSize, socklen_t(MemoryLayout<Int32>.size))
+            }
             guard fcntl(descriptors[1], F_SETFL, O_NONBLOCK) != -1 else {
               throw self.error("Не удалось настроить канал пакетов: \(errno)")
             }

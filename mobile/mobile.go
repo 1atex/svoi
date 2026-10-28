@@ -116,6 +116,9 @@ func Start(config string, fd int32, assets string, callback Protector) error {
 func registerNetwork() {
 	register.Do(func() {
 		_ = internet.RegisterDialerController(protect)
+		if runtime.GOOS != "android" {
+			return
+		}
 		net.DefaultResolver = &net.Resolver{PreferGo: true, Dial: func(ctx context.Context, network, address string) (net.Conn, error) {
 			d := net.Dialer{Timeout: 5 * time.Second, Control: func(n, a string, c syscall.RawConn) error {
 				socketMu.RLock()
