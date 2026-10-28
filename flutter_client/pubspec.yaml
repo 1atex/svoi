@@ -18,4 +18,5 @@ flutter:
   uses-material-design: true
   assets:
     - assets/svoi-mark.png
+    - assets/svoi-tray.png
     - assets/themes/pumpkin-power.png
