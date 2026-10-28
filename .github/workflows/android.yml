@@ -42,6 +42,7 @@ jobs:
         run: |
           sdkmanager 'ndk;28.2.13676358' 'platforms;android-36' 'build-tools;36.0.0'
           python3 scripts/prepare-android.py
+          python3 scripts/prepare-xray-patch.py
           go install golang.org/x/mobile/cmd/gomobile@v0.0.0-20261011034528-197770444867
           go install golang.org/x/mobile/cmd/gobind@v0.0.0-20261011034528-197770444867
           gomobile init

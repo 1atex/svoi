@@ -61,3 +61,5 @@ require (
 )
 
 replace svoi => ..
+
+replace github.com/xtls/xray-core => ../.tools/xray-patched

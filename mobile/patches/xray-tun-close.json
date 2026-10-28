@@ -1,0 +1,32 @@
+{
+  "proxy/tun/stack.go": {
+    "sha256": "f300cabfeef27383b2401530a6475fb527332e17a2b144bd1acddd3f7338c00a",
+    "replacements": [
+      [
+        "\tfor _, u := range sockets {\n\t\tu.queue.close()\n\t}\n\treturn nil",
+        "\tfor _, u := range sockets {\n\t\tu.queue.close()\n\t}\n\tif s.udp != nil {\n\t\t_ = s.udp.Close()\n\t}\n\treturn nil"
+      ]
+    ]
+  },
+  "proxy/tun/udp_fullcone.go": {
+    "sha256": "993fa987b7e6a460d3337a647750711a1ce95a8933ceb89b09816a752f1ca7ee",
+    "replacements": [
+      [
+        "\tudpConns map[net.Destination]*udpConn",
+        "\tudpConns map[net.Destination]*udpConn\n\tclosed bool"
+      ],
+      [
+        "\tu.RLock()\n\tconn, found := u.udpConns[src]",
+        "\tu.RLock()\n\tif u.closed {\n\t\tu.RUnlock()\n\t\tdata.Release()\n\t\treturn\n\t}\n\tconn, found := u.udpConns[src]"
+      ],
+      [
+        "\tu.Lock()\n\tdefer u.Unlock()\n\n\tconn, found = u.udpConns[src]",
+        "\tu.Lock()\n\tdefer u.Unlock()\n\tif u.closed {\n\t\tdata.Release()\n\t\treturn\n\t}\n\n\tconn, found = u.udpConns[src]"
+      ],
+      [
+        "// udp connection abstraction",
+        "func (u *udpConnectionHandler) Close() error {\n\tu.Lock()\n\tdefer u.Unlock()\n\tu.closed = true\n\tfor _, conn := range u.udpConns {\n\t\tconn.queue.close()\n\t}\n\tclear(u.udpConns)\n\treturn nil\n}\n\n// udp connection abstraction"
+      ]
+    ]
+  }
+}

@@ -1,0 +1,63 @@
+--- a/proxy/tun/stack.go
++++ b/proxy/tun/stack.go
+@@ -148,6 +148,9 @@
+ 	for _, u := range sockets {
+ 		u.queue.close()
+ 	}
++	if s.udp != nil {
++		_ = s.udp.Close()
++	}
+ 	return nil
+ }
+ 
+--- a/proxy/tun/udp_fullcone.go
++++ b/proxy/tun/udp_fullcone.go
+@@ -16,6 +16,7 @@
+ 	sync.RWMutex
+ 
+ 	udpConns map[net.Destination]*udpConn
++	closed bool
+ 
+ 	handleConnection func(conn net.Conn, dest net.Destination)
+ 	writePacket      func(data []byte, src net.Destination, dst net.Destination) error
+@@ -37,6 +38,11 @@
+ 	data.UDP = &dst
+ 
+ 	u.RLock()
++	if u.closed {
++		u.RUnlock()
++		data.Release()
++		return
++	}
+ 	conn, found := u.udpConns[src]
+ 	if found {
+ 		if !conn.queue.push(data) {
+@@ -50,6 +56,10 @@
+ 
+ 	u.Lock()
+ 	defer u.Unlock()
++	if u.closed {
++		data.Release()
++		return
++	}
+ 
+ 	conn, found = u.udpConns[src]
+ 	if !found {
+@@ -74,6 +84,17 @@
+ 		conn.queue.close()
+ 	}
+ 	u.Unlock()
++}
++
++func (u *udpConnectionHandler) Close() error {
++	u.Lock()
++	defer u.Unlock()
++	u.closed = true
++	for _, conn := range u.udpConns {
++		conn.queue.close()
++	}
++	clear(u.udpConns)
++	return nil
+ }
+ 
+ // udp connection abstraction
