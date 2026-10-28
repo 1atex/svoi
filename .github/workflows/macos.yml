@@ -61,7 +61,9 @@ jobs:
           python3 scripts/linux-backend-smoke.py flutter_client/build/macos/Build/Products/Release/SVOI.app/Contents/MacOS
       - name: Verify packaged disk image
         run: |
-          shasum -a 256 -c releases/macos-v*/SVOI-*.sha256
+          for hash in releases/macos-v*/SVOI-*.sha256; do
+            (cd "$(dirname "$hash")" && shasum -a 256 -c "$(basename "$hash")")
+          done
           hdiutil verify releases/macos-v*/SVOI-*.dmg
           open flutter_client/build/macos/Build/Products/Release/SVOI.app --args --demo
           sleep 8
@@ -75,6 +77,7 @@ jobs:
           name: macOS-diagnostics
           path: .tools/macos-diagnostics/
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: SVOI-macOS-development-preview
           path: releases/macos-v*/*
