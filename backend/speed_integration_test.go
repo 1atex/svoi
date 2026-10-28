@@ -71,7 +71,7 @@ func TestSpeedThroughRealVLESSCannotFallBackToDirect(t *testing.T) {
 			t.Fatal(e)
 		}
 		transport.TLSClientConfig = node.Client().Transport.(*http.Transport).TLSClientConfig.Clone()
-		result := measureSpeed(ctx, transport, node.URL+speedtest.Prefix, speedPolicy{100 * time.Millisecond, 32 << 10, 16 << 10}, func(string, int64, float64) {})
+		result := measureSpeed(ctx, transport, node.URL+speedtest.Prefix, speedPolicy{Duration: 100 * time.Millisecond, Download: 32 << 10, Upload: 16 << 10}, func(string, int64, float64) {})
 		cleanup()
 		cancel()
 		if valid && result.State != "done" {
@@ -101,7 +101,7 @@ func TestSpeedCompletedJobStatus(t *testing.T) {
 	defer node.Close()
 	a.speedEndpoint = node.URL + speedtest.Prefix
 	a.speedDirectDialer = &net.Dialer{}
-	policy := speedPolicy{100 * time.Millisecond, 32 << 10, 16 << 10}
+	policy := speedPolicy{Duration: 100 * time.Millisecond, Download: 32 << 10, Upload: 16 << 10}
 	a.speedPolicy = &policy
 	call := func(method, path, body string) *httptest.ResponseRecorder {
 		r := httptest.NewRequest(method, path, strings.NewReader(body))
@@ -144,7 +144,7 @@ func TestSpeedLiveNode(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer cleanup()
-	result := measureSpeed(ctx, transport, "https://svoi.space"+speedtest.Prefix, speedPolicy{800 * time.Millisecond, 2 << 20, 1 << 20}, func(string, int64, float64) {})
+	result := measureSpeed(ctx, transport, "https://svoi.space"+speedtest.Prefix, speedPolicy{Duration: 800 * time.Millisecond, Download: 2 << 20, Upload: 1 << 20}, func(string, int64, float64) {})
 	if result.State != "done" || result.Download == nil || result.Upload == nil {
 		t.Fatalf("live test failed: %+v", result)
 	}

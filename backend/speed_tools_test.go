@@ -16,7 +16,7 @@ import (
 func TestSpeedCountsRealBytesAndRejectsFalseResults(t *testing.T) {
 	s := httptest.NewServer(speedtest.NewHandler(4))
 	defer s.Close()
-	policy := speedPolicy{100 * time.Millisecond, 64 << 10, 32 << 10}
+	policy := speedPolicy{Duration: 100 * time.Millisecond, Download: 64 << 10, Upload: 32 << 10}
 	r := measureSpeed(context.Background(), &http.Transport{}, s.URL+speedtest.Prefix, policy, func(string, int64, float64) {})
 	if r.State != "done" || r.Download == nil || *r.Download <= 0 || r.Upload == nil || *r.Upload <= 0 || r.Latency == nil || r.DownloadBytes != policy.Download || r.UploadBytes != policy.Upload {
 		t.Fatalf("invalid result %+v", r)
@@ -160,7 +160,10 @@ func TestSpeedFullTimeWindowRemainsComparable(t *testing.T) {
 	defer node.Close()
 	ctx, cancel := context.WithTimeout(context.Background(), 12*time.Second)
 	defer cancel()
-	result := measureSpeed(ctx, &http.Transport{}, node.URL+speedtest.Prefix, speedPolicy{3100 * time.Millisecond, 32 << 20, 16 << 20}, func(string, int64, float64) {})
+	result := measureSpeed(ctx, &http.Transport{}, node.URL+speedtest.Prefix, speedPolicy{Duration: 3100 * time.Millisecond, Download: 32 << 20, Upload: 16 << 20}, func(string, int64, float64) {})
+	if len(result.DownloadSamples) < 4 || len(result.UploadSamples) < 4 {
+		t.Fatal("missing actual transfer history", result)
+	}
 	if result.State != "done" || !result.DownloadFullWindow || !result.UploadFullWindow || result.DownloadCapped || result.UploadCapped || result.Warning != "" {
 		t.Fatalf("full time window misclassified: %+v", result)
 	}

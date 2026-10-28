@@ -55,6 +55,20 @@ class SpeedBackend extends DemoBackend {
             'downloadCapped': shortBaseline,
             'downloadFullWindow': !shortBaseline,
             'uploadFullWindow': true,
+            'downloadSamples': [
+              for (var i = 0; i < 4; i++)
+                {
+                  'seconds': i + 1.0,
+                  'mbps': [18.0, 41.0, 51.0, 50.0][i],
+                },
+            ],
+            'uploadSamples': [
+              for (var i = 0; i < 4; i++)
+                {
+                  'seconds': i + 1.0,
+                  'mbps': [12.0, 23.0, 26.0, 19.0][i],
+                },
+            ],
             'latencyMs': 20.0,
           },
           {
@@ -82,6 +96,26 @@ class SpeedBackend extends DemoBackend {
             'downloadCapped': shortProfile,
             'downloadFullWindow': !shortProfile && !fail,
             'uploadFullWindow': !fail,
+            'downloadSamples': fail
+                ? []
+                : [
+                    for (var i = 0; i < 4; i++)
+                      {
+                        'seconds': shortProfile ? (i + 1) * 0.32 : i + 1.0,
+                        'mbps': shortProfile
+                            ? [125.0, 210.0, 260.0, 245.0][i]
+                            : [11.0, 36.0, 42.0, 39.0][i],
+                      },
+                  ],
+            'uploadSamples': fail
+                ? []
+                : [
+                    for (var i = 0; i < 4; i++)
+                      {
+                        'seconds': i + 1.0,
+                        'mbps': [12.0, 23.0, 26.0, 19.0][i],
+                      },
+                  ],
             'warning': shortProfile
                 ? 'Короткая выборка загрузки: скорость ориентировочная.'
                 : '',
@@ -245,7 +279,29 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         theme: svoiTheme(),
-        home: Scaffold(body: NetworkToolsPage(c: c)),
+        home: Scaffold(
+          body: DefaultTabController(
+            length: 2,
+            child: Column(
+              children: [
+                const TabBar(
+                  tabs: [
+                    Tab(text: 'Скорость'),
+                    Tab(text: 'Проверить сайт'),
+                  ],
+                ),
+                Expanded(
+                  child: TabBarView(
+                    children: [
+                      SpeedTools(c: c),
+                      const SizedBox(),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
     await tester.pumpAndSettle();
@@ -289,4 +345,44 @@ void main() {
       }
     },
   );
+  testWidgets('wide result puts a real chart next to metrics', (tester) async {
+    final api = SpeedBackend()..complete = true;
+    final c = await setup(tester, api, size: const Size(1200, 950));
+    await tester.tap(find.text('Сравнить скорость'));
+    await tester.pumpAndSettle();
+    expect(find.byType(SpeedChart), findsWidgets);
+    expect(
+      tester.getTopLeft(find.byType(SpeedChart).first).dx,
+      greaterThan(tester.getTopLeft(find.text('Загрузка').first).dx + 400),
+    );
+    expect(find.text('Недостаточно данных для графика'), findsNothing);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+    await c.close();
+  });
+  test('chart ignores invalid samples and shares the same vertical scale', () {
+    expect(
+      SpeedChart.points([
+        {'seconds': 1, 'mbps': double.nan},
+        {'seconds': -1, 'mbps': 4},
+        {'seconds': 1, 'mbps': 50},
+      ]),
+      hasLength(1),
+    );
+    expect(
+      SpeedChart.scaleFor([
+        {
+          'downloadSamples': [
+            {'seconds': 1, 'mbps': 50},
+          ],
+        },
+        {
+          'uploadSamples': [
+            {'seconds': 1, 'mbps': 200},
+          ],
+        },
+      ]),
+      greaterThanOrEqualTo(200),
+    );
+  });
 }

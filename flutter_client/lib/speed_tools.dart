@@ -283,6 +283,7 @@ class _SpeedToolsState extends State<SpeedTools> {
         .where((s) => query.isEmpty || s.search.contains(query))
         .toList();
     final rows = results;
+    final chartScale = SpeedChart.scaleFor(rows);
     final active = rows.where((r) => r['state'] == 'running').firstOrNull;
     final completed = rows.where((r) => r['state'] == 'done').length;
     return Column(
@@ -488,141 +489,169 @@ class _SpeedToolsState extends State<SpeedTools> {
                   Padding(
                     padding: const EdgeInsets.only(bottom: 12),
                     child: Panel(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          Wrap(
-                            spacing: 18,
-                            runSpacing: 10,
-                            crossAxisAlignment: WrapCrossAlignment.center,
+                      child: LayoutBuilder(
+                        builder: (context, constraints) {
+                          final details = Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              Column(
-                                mainAxisSize: MainAxisSize.min,
-                                crossAxisAlignment: CrossAxisAlignment.start,
+                              Wrap(
+                                spacing: 18,
+                                runSpacing: 10,
+                                crossAxisAlignment: WrapCrossAlignment.center,
                                 children: [
-                                  Text(
-                                    row['name']?.toString() ?? '',
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: 16,
-                                    ),
+                                  Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        row['name']?.toString() ?? '',
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 16,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 5),
+                                      Text(
+                                        row['protocol']?.toString() ?? '',
+                                        style: TextStyle(
+                                          color: p.muted,
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                    ],
                                   ),
-                                  const SizedBox(height: 5),
                                   Text(
-                                    row['protocol']?.toString() ?? '',
+                                    phase(row),
                                     style: TextStyle(
-                                      color: p.muted,
+                                      color: row['state'] == 'error'
+                                          ? p.error
+                                          : p.muted,
                                       fontSize: 12,
                                     ),
                                   ),
                                 ],
                               ),
-                              Text(
-                                phase(row),
-                                style: TextStyle(
-                                  color: row['state'] == 'error'
-                                      ? p.error
-                                      : p.muted,
-                                  fontSize: 12,
-                                ),
+                              const SizedBox(height: 18),
+                              Wrap(
+                                spacing: 28,
+                                runSpacing: 14,
+                                children: [
+                                  _metric(
+                                    'Загрузка',
+                                    number(row['downloadMbps']),
+                                    'Мбит/с',
+                                    p,
+                                  ),
+                                  _metric(
+                                    'Отдача',
+                                    number(row['uploadMbps']),
+                                    'Мбит/с',
+                                    p,
+                                  ),
+                                  _metric(
+                                    'Отклик',
+                                    number(row['latencyMs']),
+                                    'мс',
+                                    p,
+                                  ),
+                                ],
                               ),
+                              if (row['downloadSeconds'] is num ||
+                                  row['uploadSeconds'] is num)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 14),
+                                  child: Text(
+                                    'Загрузка: ${number(row['downloadSeconds'])} с · ${number((row['downloadBytes'] as num? ?? 0) / 1048576)} МиБ${row['downloadCapped'] == true ? ' · лимит данных' : ''}\nОтдача: ${number(row['uploadSeconds'])} с · ${number((row['uploadBytes'] as num? ?? 0) / 1048576)} МиБ${row['uploadCapped'] == true ? ' · лимит данных' : ''}',
+                                    style: TextStyle(
+                                      color: p.muted,
+                                      fontSize: 12,
+                                      height: 1.6,
+                                    ),
+                                  ),
+                                ),
+                              if (row['serverId'] != '' &&
+                                  row['state'] == 'done' &&
+                                  rows.firstOrNull?['state'] == 'done' &&
+                                  (row['downloadFullWindow'] != true ||
+                                      rows.firstOrNull?['downloadFullWindow'] !=
+                                          true))
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 14),
+                                  child: Text(
+                                    'Процент не рассчитан: загрузка на одном из маршрутов проверялась слишком короткое время.',
+                                    style: TextStyle(
+                                      color: p.muted,
+                                      fontSize: 12,
+                                      height: 1.6,
+                                    ),
+                                  ),
+                                ),
+                              if (row['serverId'] != '' &&
+                                  rows.firstOrNull?['state'] == 'done' &&
+                                  row['state'] == 'done' &&
+                                  row['downloadFullWindow'] == true &&
+                                  rows.firstOrNull?['downloadFullWindow'] ==
+                                      true &&
+                                  rows.firstOrNull?['downloadMbps'] is num &&
+                                  row['downloadMbps'] is num &&
+                                  ((rows.first['downloadMbps'] as num) > 0))
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 15),
+                                  child: Text(
+                                    '${((row['downloadMbps'] as num) / (rows.first['downloadMbps'] as num) * 100).toStringAsFixed(0)}% от результата без VPN в этом тесте',
+                                    style: TextStyle(
+                                      color: p.muted,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ),
+                              if (row['warning']?.toString().isNotEmpty == true)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 12),
+                                  child: Text(
+                                    row['warning'].toString(),
+                                    style: TextStyle(
+                                      color: p.accent,
+                                      fontSize: 12,
+                                      height: 1.5,
+                                    ),
+                                  ),
+                                ),
+                              if (row['error']?.toString().isNotEmpty == true)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 12),
+                                  child: Text(
+                                    row['error'].toString(),
+                                    style: TextStyle(
+                                      color: p.error,
+                                      fontSize: 12,
+                                      height: 1.5,
+                                    ),
+                                  ),
+                                ),
                             ],
-                          ),
-                          const SizedBox(height: 18),
-                          Wrap(
-                            spacing: 28,
-                            runSpacing: 14,
-                            children: [
-                              _metric(
-                                'Загрузка',
-                                number(row['downloadMbps']),
-                                'Мбит/с',
-                                p,
-                              ),
-                              _metric(
-                                'Отдача',
-                                number(row['uploadMbps']),
-                                'Мбит/с',
-                                p,
-                              ),
-                              _metric(
-                                'Отклик',
-                                number(row['latencyMs']),
-                                'мс',
-                                p,
-                              ),
-                            ],
-                          ),
-                          if (row['downloadSeconds'] is num ||
-                              row['uploadSeconds'] is num)
-                            Padding(
-                              padding: const EdgeInsets.only(top: 14),
-                              child: Text(
-                                'Загрузка: ${number(row['downloadSeconds'])} с · ${number((row['downloadBytes'] as num? ?? 0) / 1048576)} МиБ${row['downloadCapped'] == true ? ' · лимит данных' : ''}\nОтдача: ${number(row['uploadSeconds'])} с · ${number((row['uploadBytes'] as num? ?? 0) / 1048576)} МиБ${row['uploadCapped'] == true ? ' · лимит данных' : ''}',
-                                style: TextStyle(
-                                  color: p.muted,
-                                  fontSize: 12,
-                                  height: 1.6,
-                                ),
-                              ),
-                            ),
-                          if (row['serverId'] != '' &&
-                              row['state'] == 'done' &&
-                              rows.firstOrNull?['state'] == 'done' &&
-                              (row['downloadFullWindow'] != true ||
-                                  rows.firstOrNull?['downloadFullWindow'] !=
-                                      true))
-                            Padding(
-                              padding: const EdgeInsets.only(top: 14),
-                              child: Text(
-                                'Процент не рассчитан: загрузка на одном из маршрутов проверялась слишком короткое время.',
-                                style: TextStyle(
-                                  color: p.muted,
-                                  fontSize: 12,
-                                  height: 1.6,
-                                ),
-                              ),
-                            ),
-                          if (row['serverId'] != '' &&
-                              rows.firstOrNull?['state'] == 'done' &&
-                              row['state'] == 'done' &&
-                              row['downloadFullWindow'] == true &&
-                              rows.firstOrNull?['downloadFullWindow'] == true &&
-                              rows.firstOrNull?['downloadMbps'] is num &&
-                              row['downloadMbps'] is num &&
-                              ((rows.first['downloadMbps'] as num) > 0))
-                            Padding(
-                              padding: const EdgeInsets.only(top: 15),
-                              child: Text(
-                                '${((row['downloadMbps'] as num) / (rows.first['downloadMbps'] as num) * 100).toStringAsFixed(0)}% от результата без VPN в этом тесте',
-                                style: TextStyle(color: p.muted, fontSize: 12),
-                              ),
-                            ),
-                          if (row['warning']?.toString().isNotEmpty == true)
-                            Padding(
-                              padding: const EdgeInsets.only(top: 12),
-                              child: Text(
-                                row['warning'].toString(),
-                                style: TextStyle(
-                                  color: p.accent,
-                                  fontSize: 12,
-                                  height: 1.5,
-                                ),
-                              ),
-                            ),
-                          if (row['error']?.toString().isNotEmpty == true)
-                            Padding(
-                              padding: const EdgeInsets.only(top: 12),
-                              child: Text(
-                                row['error'].toString(),
-                                style: TextStyle(
-                                  color: p.error,
-                                  fontSize: 12,
-                                  height: 1.5,
-                                ),
-                              ),
-                            ),
-                        ],
+                          );
+                          final chart = SpeedChart(row: row, maxY: chartScale);
+                          return constraints.maxWidth >= 800
+                              ? Row(
+                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  children: [
+                                    SizedBox(width: 448, child: details),
+                                    const SizedBox(width: 32),
+                                    Expanded(child: chart),
+                                  ],
+                                )
+                              : Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
+                                  children: [
+                                    details,
+                                    const SizedBox(height: 20),
+                                    chart,
+                                  ],
+                                );
+                        },
                       ),
                     ),
                   ),
