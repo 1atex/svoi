@@ -4,33 +4,67 @@ import UIKit
 
 struct ImportSheet: View {
   @ObservedObject var model: SvoiModel
+  var profile = false
   @Environment(\.dismiss) private var dismiss
+  @Environment(\.svoiAccent) private var accent
+  @FocusState private var editing: Bool
   @State private var text = ""
   @State private var file = false
   @State private var fileError = ""
+  @State private var mode = 0
   var body: some View {
     NavigationStack {
-      Form {
-        Section {
-          TextEditor(text: $text).frame(minHeight: 170).textInputAutocapitalization(.never).autocorrectionDisabled()
-          Button("Вставить из буфера") { text = UIPasteboard.general.string ?? "" }
-          Button("Выбрать файл") { file = true }
-        } header: { Text("Ссылка, конфигурация или код SVOI1") }
-        footer: { Text("Поддерживаются ссылки подписок, VLESS, VMess, Trojan, Shadowsocks, Hysteria2 и JSON-профили Xray.") }
-        if !model.error.isEmpty || !fileError.isEmpty { Section { Text(fileError.isEmpty ? model.error : fileError).foregroundStyle(.orange).textSelection(.enabled) } }
-        Section {
-          Button {
-            Task {
-              await model.add(text)
-              if model.error.isEmpty { dismiss() }
+      ScrollView {
+        VStack(alignment: .leading, spacing: 24) {
+          Image(systemName: mode == 1 ? "person.2" : "link").font(.system(size: 28)).foregroundStyle(accent)
+            .frame(width: 60, height: 60).background(accent.opacity(0.10), in: RoundedRectangle(cornerRadius: 20))
+          Picker("Что добавить", selection: $mode) { Text("Подписка").tag(0); Text("Профиль SVOI").tag(1) }.pickerStyle(.segmented)
+          VStack(alignment: .leading, spacing: 10) {
+            Text(mode == 1 ? "Ваша сеть — по одному коду" : "Добавьте свою подписку").font(.title2.bold())
+            Text(mode == 1 ? "Вставьте код SVOI1 с другого устройства. Подписки и параметры профиля перенесутся вместе." : "Скопируйте ссылку у VPN-провайдера. Также можно вставить конфигурацию или выбрать файл.")
+              .font(.subheadline).foregroundStyle(SvoiPalette.muted).fixedSize(horizontal: false, vertical: true)
+          }
+          VStack(alignment: .leading, spacing: 10) {
+            Text(mode == 1 ? "Код профиля" : "Ссылка или конфигурация").font(.subheadline.weight(.semibold))
+            ZStack(alignment: .topLeading) {
+              if text.isEmpty {
+                Text(mode == 1 ? "SVOI1.…" : "https://…")
+                  .foregroundStyle(SvoiPalette.muted).padding(.horizontal, 6).padding(.vertical, 12).allowsHitTesting(false)
+              }
+              TextEditor(text: $text).scrollContentBackground(.hidden).frame(minHeight: 140)
+                .textInputAutocapitalization(.never).autocorrectionDisabled().focused($editing)
+                .accessibilityLabel(mode == 1 ? "Код профиля" : "Ссылка или конфигурация")
+                .accessibilityIdentifier("import-text")
             }
+            .padding(10).background(SvoiPalette.inset, in: RoundedRectangle(cornerRadius: 18))
+              .overlay(RoundedRectangle(cornerRadius: 18).strokeBorder(editing ? accent : SvoiPalette.line))
+            HStack {
+              PasteButton(payloadType: String.self) { values in text = values.first ?? ""; fileError = "" }
+                .labelStyle(.titleAndIcon).buttonBorderShape(.roundedRectangle).tint(accent)
+              Spacer()
+              Button { file = true } label: { Label("Из файла", systemImage: "doc") }.frame(minHeight: 44)
+            }
+          }
+          if !model.error.isEmpty || !fileError.isEmpty {
+            SvoiNotice(text: fileError.isEmpty ? model.error : fileError, symbol: "exclamationmark.circle")
+          }
+          Text("VLESS · VMess · Trojan · Shadowsocks · Hysteria2 · JSON Xray")
+            .font(.caption).foregroundStyle(SvoiPalette.muted)
+          Button {
+            editing = false
+            Task { await model.add(text); if model.error.isEmpty { dismiss() } }
           } label: {
-            HStack { Text(model.working ? "Импортируем…" : "Импортировать"); Spacer(); if model.working { ProgressView() } }
-          }.disabled(model.working || text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-        }
+            HStack(spacing: 10) { if model.working { ProgressView().tint(SvoiPalette.canvas) }; Text(model.working ? "Импортируем…" : "Добавить в SVOI") }
+          }.buttonStyle(SvoiPrimaryButton()).disabled(model.working || text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            .accessibilityIdentifier("confirm-import")
+        }.padding(24).frame(maxWidth: 560).frame(maxWidth: .infinity)
+      }.scrollDismissesKeyboard(.interactively).background(SvoiPalette.canvas)
+      .navigationTitle("Добавить").navigationBarTitleDisplayMode(.inline)
+      .toolbar {
+        ToolbarItem(placement: .cancellationAction) { Button("Отмена") { dismiss() }.disabled(model.working) }
+        ToolbarItemGroup(placement: .keyboard) { Spacer(); Button("Готово") { editing = false } }
       }
-      .navigationTitle("Добавить в SVOI")
-      .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Закрыть") { dismiss() }.disabled(model.working) } }
+      .onAppear { mode = profile ? 1 : 0 }
       .interactiveDismissDisabled(model.working)
       .fileImporter(isPresented: $file, allowedContentTypes: [.plainText, .json, .data]) { result in
         do {
@@ -53,22 +87,30 @@ struct ShareProfileButton: View {
   @ObservedObject var model: SvoiModel
   @State private var code = ""
   @State private var showing = false
+  @State private var copied = false
+  @State private var preparing = false
   var body: some View {
-    Button("Поделиться профилем") {
+    Button {
+      preparing = true
       Task {
+        defer { preparing = false }
         do { code = try await model.exportProfile(); showing = true }
         catch { model.error = error.localizedDescription }
       }
-    }
-    .disabled(model.working)
+    } label: { Label(preparing ? "Готовим код…" : "Поделиться профилем", systemImage: "square.and.arrow.up") }
+    .disabled(model.working || preparing)
     .sheet(isPresented: $showing) {
       NavigationStack {
         VStack(alignment: .leading, spacing: 22) {
-          Text("Код содержит данные профиля и подписок. Передавайте его только тем, с кем хотите поделиться доступом.").foregroundStyle(.secondary)
-          ShareLink(item: code) { Label("Передать код", systemImage: "square.and.arrow.up") }.buttonStyle(.borderedProminent)
-          Button("Скопировать код") { UIPasteboard.general.string = code }
+          Image(systemName: "person.2.fill").font(.system(size: 42)).foregroundStyle(SvoiPalette.gold)
+          Text("Всё своё — с собой.").font(.title.bold())
+          Text("Получатель вставит код в SVOI на другом устройстве и получит подписки и параметры вашего профиля.").foregroundStyle(SvoiPalette.muted)
+          SvoiNotice(text: "В коде есть данные доступа. Передавайте его только тем, с кем хотите поделиться подпиской.", symbol: "lock", warning: false)
+          ShareLink(item: code) { Label("Передать код", systemImage: "square.and.arrow.up") }.buttonStyle(SvoiPrimaryButton())
+          Button { UIPasteboard.general.string = code; copied = true } label: { Label(copied ? "Код скопирован" : "Скопировать код", systemImage: copied ? "checkmark" : "doc.on.doc") }
+            .frame(maxWidth: .infinity, minHeight: 44)
           Spacer()
-        }.padding(24).navigationTitle("Общий профиль")
+        }.padding(24).background(SvoiPalette.canvas).navigationTitle("Поделиться").navigationBarTitleDisplayMode(.inline)
           .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Закрыть") { showing = false } } }
       }
     }
@@ -87,10 +129,14 @@ struct IdentitySettings: View {
       Section {
         Toggle("Отправлять данные устройства", isOn: $sendDevice)
         ForEach(labels, id: \.0) { key, label in
-          TextField(label, text: Binding(get: { fields[key] ?? "" }, set: { fields[key] = $0 }))
-            .textInputAutocapitalization(.never).autocorrectionDisabled()
+          VStack(alignment: .leading, spacing: 7) {
+            Text(label).font(.caption).foregroundStyle(SvoiPalette.muted)
+            TextField(label, text: Binding(get: { fields[key] ?? "" }, set: { fields[key] = $0 }))
+              .textInputAutocapitalization(.never).autocorrectionDisabled().accessibilityLabel(label)
+          }.padding(.vertical, 5)
         }
       } footer: { Text("Эти значения используются при запросе подписки. Импорт профиля сохраняет параметры отправителя.") }
+      .listRowBackground(SvoiPalette.surface)
       if !message.isEmpty { Section { Text(message).foregroundStyle(.orange) } }
       Button(saving ? "Сохраняем…" : "Сохранить") {
         let profile = model.profileID
@@ -107,7 +153,8 @@ struct IdentitySettings: View {
         }
       }.disabled(saving || model.working)
     }
-    .navigationTitle("Данные устройства")
+    .scrollContentBackground(.hidden).background(SvoiPalette.canvas)
+    .navigationTitle("Данные устройства").navigationBarTitleDisplayMode(.inline)
     .onAppear {
       guard fields.isEmpty else { return }
       let identity = model.group["identity"] as? [String: Any] ?? [:]

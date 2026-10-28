@@ -1,8 +1,11 @@
 import Darwin
 import SwiftUI
+import UIKit
 
 struct ConnectionTools: View {
   @ObservedObject var vpn: VPNController
+  @Environment(\.scenePhase) private var scenePhase
+  @Environment(\.svoiAccent) private var accent
   @State private var ip = ""
   @State private var baseline = ""
   @State private var ipError = ""
@@ -11,36 +14,54 @@ struct ConnectionTools: View {
   @State private var checkResult = ""
   @State private var checkTask: Task<Void, Never>?
   @State private var ipRevision = UUID()
+  @State private var copied = false
   var body: some View {
     VStack(alignment: .leading, spacing: 14) {
       HStack {
-        Image(systemName: "globe")
+        Image(systemName: "globe").font(.title3).foregroundStyle(accent)
         VStack(alignment: .leading, spacing: 4) {
           Text(ip.isEmpty ? refreshing ? "Определяем IP…" : "IP не определён" : ip).font(.headline).textSelection(.enabled)
-          Text(vpn.connected ? "Текущая сеть с SVOI" : "Текущая сеть без SVOI").font(.caption).foregroundStyle(.secondary)
+          Text(vpn.busy ? "Соединение меняется" : vpn.connected ? "IP с подключением SVOI" : "IP без подключения SVOI").font(.caption).foregroundStyle(SvoiPalette.muted)
         }
         Spacer()
-        Button { Task { await refreshIP() } } label: { Image(systemName: "arrow.clockwise") }
-          .disabled(refreshing || vpn.busy).accessibilityLabel("Обновить IP")
+        if !ip.isEmpty {
+          SvoiIconButton(symbol: copied ? "checkmark" : "doc.on.doc", label: "Скопировать IP") { UIPasteboard.general.string = ip; copied = true }
+        }
+        SvoiIconButton(symbol: "arrow.clockwise", label: "Обновить IP") { Task { await refreshIP() } }.disabled(refreshing || vpn.busy)
       }
       if !baseline.isEmpty && vpn.connected && !ip.isEmpty { Text(ip == baseline ? "IP совпадает с адресом до подключения" : "IP изменился после подключения").font(.caption).foregroundStyle(.secondary) }
       if !ipError.isEmpty { Text(ipError).font(.caption).foregroundStyle(.orange) }
-      Button(checking ? "Проверяем интернет…" : "Проверить интернет") {
+      Divider().overlay(SvoiPalette.line)
+      Button {
         checkTask?.cancel()
         checkTask = Task { await checkInternet() }
-      }.font(.footnote).disabled(checking || vpn.busy)
+      } label: {
+        HStack {
+          Label(checking ? "Проверяем интернет…" : "Проверить интернет", systemImage: "waveform.path.ecg")
+          Spacer(minLength: 8)
+          if checking { ProgressView() } else { Image(systemName: "arrow.up.right").font(.caption) }
+        }.frame(minHeight: 40)
+      }.font(.footnote.weight(.medium)).disabled(checking || vpn.busy)
       if !checkResult.isEmpty { Text(checkResult).font(.caption).foregroundStyle(.secondary) }
       if !vpn.error.isEmpty { Text(vpn.error).font(.footnote).foregroundStyle(.orange).textSelection(.enabled) }
-    }.padding(18).background(Color(red: 0.10, green: 0.10, blue: 0.12), in: RoundedRectangle(cornerRadius: 20))
-      .task(id: "\(vpn.status.rawValue):\(vpn.serverID)") {
+    }.padding(20).background(SvoiPalette.surface, in: RoundedRectangle(cornerRadius: 24))
+      .overlay(RoundedRectangle(cornerRadius: 24).strokeBorder(SvoiPalette.line))
+      .task(id: "\(vpn.status.rawValue):\(vpn.serverID):\(scenePhase)") {
         checkTask?.cancel()
         checkResult = ""
-        if !vpn.active || vpn.connected { await refreshIP() }
+        ip = ""
+        ipError = ""
+        copied = false
+        if scenePhase == .active && (!vpn.active || vpn.connected) { await refreshIP() }
       }
       .onDisappear { checkTask?.cancel() }
   }
 
   private func refreshIP() async {
+    #if SVOI_UI_PREVIEW
+    ip = vpn.connected ? "203.0.113.24" : "198.51.100.10"
+    if !vpn.active { baseline = ip }
+    #else
     let revision = UUID()
     ipRevision = revision
     refreshing = true
@@ -69,9 +90,13 @@ struct ConnectionTools: View {
     catch {
       if !Task.isCancelled && ipRevision == revision { ip = ""; ipError = "Не удалось определить IP. Повторите проверку." }
     }
+    #endif
   }
 
   private func checkInternet() async {
+    #if SVOI_UI_PREVIEW
+    checkResult = "Демонстрация интерфейса · сеть не проверяется"
+    #else
     checking = true
     defer { checking = false }
     let status = vpn.status
@@ -89,5 +114,6 @@ struct ConnectionTools: View {
     } catch {
       if !Task.isCancelled { checkResult = "Контрольный запрос не прошёл. Попробуйте другой сервер или повторите проверку." }
     }
+    #endif
   }
 }

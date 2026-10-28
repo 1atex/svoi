@@ -9,6 +9,25 @@ concurrency:
   group: svoi-ios-preview
   cancel-in-progress: true
 jobs:
+  interface:
+    runs-on: macos-26
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install XcodeGen
+        run: command -v xcodegen >/dev/null || brew install xcodegen
+      - name: Prepare interface assets
+        run: python3 scripts/prepare-ios-resources.py
+      - name: Check small and large iPhones
+        run: python3 scripts/check-ios-interface.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: iOS-interface-previews
+          path: |
+            .tools/ios-ui/**/*.png
+            .tools/ios-ui/**/*.json
+            .tools/ios-ui/*.log
   ios:
     runs-on: macos-26
     timeout-minutes: 45

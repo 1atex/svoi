@@ -24,6 +24,13 @@ final class VPNController: ObservableObject {
     }
   }
 
+  #if SVOI_UI_PREVIEW
+  func setInterfacePreview(connected: Bool, serverID: String) {
+    status = connected ? .connected : .disconnected
+    self.serverID = serverID
+  }
+  #endif
+
   init() {
     observer = NotificationCenter.default.addObserver(forName: .NEVPNStatusDidChange, object: nil, queue: .main) { [weak self] _ in
       Task { @MainActor in self?.refresh() }

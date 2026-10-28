@@ -95,6 +95,10 @@ final class SvoiModel: ObservableObject {
   var profileID: String { group["id"] as? String ?? "" }
 
   func initialize() async {
+    #if SVOI_UI_PREVIEW
+    prepareInterfacePreview()
+    return
+    #else
     guard !ready && !working else { return }
     working = true
     error = ""
@@ -127,6 +131,7 @@ final class SvoiModel: ObservableObject {
       await vpn.initialize()
       if autoRefresh { Task { await refreshSubscriptions() } }
     } catch { self.error = error.localizedDescription }
+    #endif
   }
 
   private struct SessionState: Codable { let token: String; let profiles: [SavedProfile] }
@@ -214,6 +219,10 @@ final class SvoiModel: ObservableObject {
   }
 
   func toggleVPN() async {
+    #if SVOI_UI_PREVIEW
+    vpn.setInterfacePreview(connected: !vpn.connected || vpn.serverID != selectedID, serverID: selectedID)
+    return
+    #else
     cancelProbes()
     if preparingVPN { connectionAttempt += 1; preparingVPN = false; return }
     if vpn.busy { vpn.cancelStart(); return }
@@ -234,9 +243,14 @@ final class SvoiModel: ObservableObject {
       try await vpn.connect(config: config, server: server, profileID: profile)
     } catch is CancellationError {}
     catch { self.error = error.localizedDescription }
+    #endif
   }
 
   func probe(_ server: SvoiServer) async {
+    #if SVOI_UI_PREVIEW
+    latencies[server.id] = "42 мс"
+    return
+    #else
     guard checking.count < 2, !checking.contains(server.id), !vpn.busy, !vpn.active else { return }
     let requestID = UUID().uuidString
     let token = token
@@ -253,6 +267,7 @@ final class SvoiModel: ObservableObject {
     } catch {
       if profile == profileID && probeIDs[server.id] == requestID { latencies[server.id] = "Нет ответа" }
     }
+    #endif
   }
 
   func cancelProbes() {

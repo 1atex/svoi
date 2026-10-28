@@ -39,3 +39,11 @@ for idiom, sizes in [('iphone', [20, 29, 40, 60]), ('ipad', [20, 29, 40, 76, 83.
 subprocess.run(['sips', '-z', '1024', '1024', str(root / 'assets/brand/svoi-avatar-amber.png'), '--out', str(icons / 'marketing.png')], check=True, stdout=subprocess.DEVNULL)
 images.append({'idiom': 'ios-marketing', 'size': '1024x1024', 'scale': '1x', 'filename': 'marketing.png'})
 (icons / 'Contents.json').write_text(json.dumps({'images': images, 'info': {'version': 1, 'author': 'xcode'}}, indent=2) + '\n')
+mark = icons.parent / 'SvoiMark.imageset'
+mark.mkdir(parents=True, exist_ok=True)
+images = []
+for scale in [1, 2, 3]:
+    filename = f'mark-{scale}.png'
+    subprocess.run(['sips', '-z', str(64 * scale), str(64 * scale), str(root / 'assets/brand/svoi-avatar-amber.png'), '--out', str(mark / filename)], check=True, stdout=subprocess.DEVNULL)
+    images.append({'idiom': 'universal', 'scale': f'{scale}x', 'filename': filename})
+(mark / 'Contents.json').write_text(json.dumps({'images': images, 'info': {'version': 1, 'author': 'xcode'}}, indent=2) + '\n')
