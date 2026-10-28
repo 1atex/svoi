@@ -246,7 +246,7 @@ class _MobileShellState extends State<MobileShell> {
                 ),
                 if (c.sessions.value.length > 1)
                   TextButton(
-                    onPressed: () => setState(() => page = 2),
+                    onPressed: () => setState(() => page = 3),
                     child: const Text('Выбрать сохранённый профиль'),
                   ),
               ],
@@ -424,7 +424,7 @@ class _MobileShellState extends State<MobileShell> {
                                 searchController.clear();
                                 search = '';
                               } else {
-                                page = 2;
+                                page = 3;
                               }
                             });
                           },

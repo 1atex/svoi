@@ -1,6 +1,7 @@
 param(
     [Parameter(Mandatory)][string]$Executable,
-    [string]$Icon = "$PSScriptRoot/../assets/svoi.ico"
+    [string]$Icon = "$PSScriptRoot/../assets/svoi.ico",
+    [string]$TrayIcon = "$PSScriptRoot/windows/runner/resources/tray_icon.ico"
 )
 $ErrorActionPreference = 'Stop'
 if (-not ('SvoiIconResources' -as [type])) {
@@ -27,12 +28,12 @@ public static class SvoiIconResources {
         Marshal.Copy(pointer, bytes, 0, bytes.Length);
         return bytes;
     }
-    public static void Verify(string executable, string icon) {
-        var source = File.ReadAllBytes(icon);
+    public static void Verify(string executable, string icon, string trayIcon) {
         var module = LoadLibraryEx(executable, IntPtr.Zero, 0x22);
         if (module == IntPtr.Zero) throw new Exception("Cannot open EXE resources");
         try {
             foreach (int groupId in new[] {101, 102}) {
+                var source = File.ReadAllBytes(groupId == 102 ? trayIcon : icon);
                 var group = Read(module, groupId, 14);
                 int count = BitConverter.ToUInt16(source, 4);
                 if (BitConverter.ToUInt16(group, 4) != count) throw new Exception("Icon frame count differs");
@@ -53,7 +54,7 @@ public static class SvoiIconResources {
 '@
 }
 $exePath = (Resolve-Path -LiteralPath $Executable).Path
-[SvoiIconResources]::Verify($exePath, (Resolve-Path -LiteralPath $Icon).Path)
+[SvoiIconResources]::Verify($exePath, (Resolve-Path -LiteralPath $Icon).Path, (Resolve-Path -LiteralPath $TrayIcon).Path)
 $info = [Diagnostics.FileVersionInfo]::GetVersionInfo($exePath)
 if ($info.ProductName -ne 'SVOI' -or $info.FileDescription -ne 'SVOI') {
     throw 'Windows application name must be SVOI'

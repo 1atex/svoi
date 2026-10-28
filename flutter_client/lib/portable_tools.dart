@@ -34,7 +34,10 @@ class _DnsComparePanelState extends State<DnsComparePanel> {
   }
 
   void routeChanged() {
-    if (currentRoute == routeKey && !c.busy.value) return;
+    if (currentRoute == routeKey && !c.busy.value) {
+      if (mounted) setState(() {});
+      return;
+    }
     routeKey = currentRoute;
     if (working) stop();
     if (mounted) setState(() => results.clear());
