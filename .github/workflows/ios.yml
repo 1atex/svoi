@@ -9,12 +9,36 @@ on:
         required: false
         default: false
         type: boolean
+      visual_smoke:
+        description: 'Capture the interface without repeating the full interaction suite'
+        required: false
+        default: false
+        type: boolean
 permissions:
   contents: read
 concurrency:
   group: svoi-ios-${{ inputs.package_only && 'package' || 'preview' }}
   cancel-in-progress: true
 jobs:
+  visual:
+    if: inputs.visual_smoke == true
+    runs-on: macos-26
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare interface assets
+        run: |
+          command -v xcodegen >/dev/null || brew install xcodegen
+          python3 scripts/prepare-ios-resources.py
+      - name: Check final typography
+        run: python3 scripts/check-ios-interface.py pro --snapshots
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: iOS-final-typography
+          path: |
+            .tools/ios-ui/**/*.png
+            .tools/ios-ui/*.log
   interface:
     if: inputs.package_only != true
     runs-on: macos-26

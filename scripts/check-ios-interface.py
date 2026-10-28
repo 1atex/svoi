@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 import subprocess
 import sys
+import time
 
 root = Path(__file__).resolve().parents[1]
 output = root / '.tools/ios-ui'
@@ -21,6 +22,22 @@ for name, preferred in [('compact', ['iPhone 13 mini', 'iPhone SE (3rd generatio
         subprocess.run(['xcrun', 'simctl', 'boot', udid], check=True)
         subprocess.run(['xcrun', 'simctl', 'bootstatus', udid, '-b'], check=True, timeout=180)
         subprocess.run(['xcrun', 'simctl', 'status_bar', udid, 'override', '--time', '9:41', '--batteryState', 'charged', '--batteryLevel', '100'], check=True)
+        if '--snapshots' in sys.argv:
+            with (output / f'{name}.log').open('w') as log:
+                build = subprocess.run(['xcodebuild', '-project', 'apple/ios-client/SVOI.xcodeproj', '-scheme', 'SVOIInterfacePreview',
+                    '-configuration', 'Release', '-sdk', 'iphonesimulator', '-destination', f'platform=iOS Simulator,id={udid}',
+                    '-derivedDataPath', str(root / '.tools/ios-ui-build'), 'CODE_SIGNING_ALLOWED=NO', 'build'], cwd=root,
+                    stdout=log, stderr=subprocess.STDOUT, timeout=600)
+            if build.returncode:
+                print((output / f'{name}.log').read_text()[-20000:])
+                raise SystemExit(build.returncode)
+            app = root / '.tools/ios-ui-build/Build/Products/Release-iphonesimulator/SVOIInterfacePreview.app'
+            subprocess.run(['xcrun', 'simctl', 'install', udid, str(app)], check=True, timeout=60)
+            for state, arguments in [('connection', []), ('large-type', ['--large-type']), ('first-run', ['--empty'])]:
+                subprocess.run(['xcrun', 'simctl', 'launch', '--terminate-running-process', udid, 'dev.svoi.interfacepreview', *arguments], check=True, timeout=60)
+                time.sleep(3)
+                subprocess.run(['xcrun', 'simctl', 'io', udid, 'screenshot', str(output / f'{name}-{state}.png')], check=True, timeout=30)
+            continue
         with (output / f'{name}.log').open('w') as log:
             test = subprocess.run(['xcodebuild', '-project', 'apple/ios-client/SVOI.xcodeproj', '-scheme', 'SVOIInterfacePreview',
                 '-sdk', 'iphonesimulator', '-destination', f'platform=iOS Simulator,id={udid}',
@@ -34,6 +51,6 @@ for name, preferred in [('compact', ['iPhone 13 mini', 'iPhone SE (3rd generatio
             print((output / f'{name}.log').read_text()[-20000:])
             raise SystemExit(test.returncode)
     finally:
-        subprocess.run(['xcrun', 'simctl', 'io', udid, 'screenshot', str(output / f'{name}-last-screen.png')], check=False)
-        subprocess.run(['xcrun', 'simctl', 'shutdown', udid], check=False)
+        subprocess.run(['xcrun', 'simctl', 'io', udid, 'screenshot', str(output / f'{name}-last-screen.png')], check=False, timeout=30)
+        subprocess.run(['xcrun', 'simctl', 'shutdown', udid], check=False, timeout=30)
 print('PASS: native iPhone UI, connection controls, import, profiles, themes, Dynamic Type, landscape')

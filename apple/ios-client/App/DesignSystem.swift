@@ -85,6 +85,7 @@ struct SvoiSectionTitle: View {
   let title: String
   var body: some View {
     Text(title).font(.caption.weight(.semibold)).tracking(1.2)
+      .dynamicTypeSize(...DynamicTypeSize.accessibility1)
       .foregroundStyle(SvoiPalette.muted).textCase(.uppercase).accessibilityAddTraits(.isHeader)
   }
 }

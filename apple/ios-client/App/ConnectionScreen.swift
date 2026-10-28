@@ -98,7 +98,8 @@ struct ConnectionScreen: View {
               if busy { ProgressView().tint(vpn.connected ? SvoiPalette.canvas : accent).scaleEffect(1.35) }
               else { Image(systemName: switching ? "arrow.triangle.2.circlepath" : "power").font(.system(size: 35, weight: .light)) }
               Text(busy ? "Отменить" : switching ? "Переключить" : vpn.active ? "Отключить" : "Подключить")
-                .font(.caption2.weight(.semibold)).lineLimit(1).minimumScaleFactor(0.75)
+                .font(.caption2.weight(.semibold)).dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+                .lineLimit(1).minimumScaleFactor(0.75)
             }.foregroundStyle(vpn.connected ? SvoiPalette.canvas : accent).frame(width: 126)
           }.frame(width: 180, height: 180).contentShape(Circle())
         }.buttonStyle(SvoiPressStyle()).accessibilityIdentifier("vpn-toggle")
@@ -124,6 +125,7 @@ struct ConnectionScreen: View {
   private var cardTitle: some View { SvoiSectionTitle(title: "Подключение") }
   private var coverage: some View {
     Label("Все приложения", systemImage: "shield.lefthalf.filled").font(.caption.weight(.medium)).foregroundStyle(SvoiPalette.muted)
+      .dynamicTypeSize(...DynamicTypeSize.accessibility1)
   }
   private var serverChevron: some View {
     Image(systemName: "chevron.down").font(.subheadline.weight(.medium)).foregroundStyle(SvoiPalette.muted)
@@ -132,7 +134,8 @@ struct ConnectionScreen: View {
     VStack(alignment: .leading, spacing: 5) {
       Text(displayServerName(model.selected?.name ?? (vpn.active ? "Текущее соединение" : "Выбрать сервер")))
         .font(.headline).foregroundStyle(SvoiPalette.text).fixedSize(horizontal: false, vertical: true)
-      Text("\(model.selected?.kind ?? "") · Сменить сервер").font(.caption).foregroundStyle(SvoiPalette.muted)
+      Text("\(model.selected?.kind ?? "VPN") · Сменить сервер").font(.caption).foregroundStyle(SvoiPalette.muted)
+        .dynamicTypeSize(...DynamicTypeSize.accessibility1)
     }
   }
 
