@@ -95,7 +95,7 @@ class MainFlutterWindow: NSWindow, NSWindowDelegate {
       } else { NSApp.terminate(nil) }
     case "titlebar":
       if let data = call.arguments as? [String: Any], let dark = data["dark"] as? Bool {
-        appearance = NSAppearance(named: dark ? .darkAqua : .aqua)
+        appearance = data["system"] as? Bool == true ? nil : NSAppearance(named: dark ? .darkAqua : .aqua)
       }
       result(nil)
     case "updateTray":

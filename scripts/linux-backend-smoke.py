@@ -3,6 +3,7 @@ import http.server
 import http.client
 import json
 import os
+import platform
 from pathlib import Path
 import signal
 import socket
@@ -54,9 +55,10 @@ with tempfile.TemporaryDirectory(prefix='svoi-linux-smoke-') as folder:
             request = urllib.request.Request(ready['address'] + '/api/' + path, data=json.dumps(data).encode() if data is not None else None, headers=headers, method=method)
             with opener.open(request, timeout=20) as response: return json.load(response)
         assert opener.open(f'http://127.0.0.1:{server.server_port}/', timeout=3).read() == b'svoi-linux-fixture'
-        group = api('groups', {'name': 'Linux smoke', 'deviceName': 'Test PC', 'platform': 'Linux'})
+        identity_os = 'macOS' if platform.system() == 'Darwin' else 'Linux'
+        group = api('groups', {'name': 'Desktop smoke', 'deviceName': 'Test PC', 'platform': identity_os})
         token = group['token']
-        assert group['group']['identity']['os'] == 'Linux'
+        assert group['group']['identity']['os'] == identity_os
         content = f'vless://{client_id}@127.0.0.1:{upstream_port}?security=none&type=tcp#Fixture'
         if args.tun:
             content = json.dumps({'remarks': 'Isolated TUN fixture', 'outbounds': [{'tag': 'proxy', 'protocol': 'vless', 'settings': {'vnext': [{'address': '127.0.0.1', 'port': upstream_port, 'users': [{'id': client_id, 'encryption': 'none'}]}]}, 'streamSettings': {'network': 'tcp', 'sockopt': {'interface': 'lo'}}}]})

@@ -30,6 +30,7 @@ class _DesktopTitlebarState extends State<DesktopTitlebar> {
       'drag': [?rect(_brand), ?rect(_gap)],
       'maximize': rect(_maximize),
       'dark': appColors(context).brightness == Brightness.dark,
+      'system': AppearanceScope.of(context)?.value == AppAppearance.system,
     };
     final encoded = jsonEncode(geometry);
     if (encoded == _geometry) return;
