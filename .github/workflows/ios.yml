@@ -12,7 +12,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: svoi-ios-preview
+  group: svoi-ios-${{ inputs.package_only && 'package' || 'preview' }}
   cancel-in-progress: true
 jobs:
   interface:
