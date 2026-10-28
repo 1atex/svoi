@@ -94,3 +94,46 @@ func (m *MobileApp) serverConfig(token, serverID, mode string) (string, error) {
 	raw, err = json.Marshal(config)
 	return string(raw), err
 }
+
+func (m *MobileApp) SpeedConfig(token, serverID string) (string, error) {
+	raw, err := m.ProbeConfig(token, serverID)
+	if err != nil {
+		return "", err
+	}
+	prepared, err := speedServerConfig(ServerConfig{Profile: json.RawMessage(raw)})
+	return string(prepared.Profile), err
+}
+
+func (m *MobileApp) SpeedSelection(token string, ids []string) (string, []ServerInfo, error) {
+	req := httptest.NewRequest("GET", "/api/me", nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+	m.app.mu.Lock()
+	defer m.app.mu.Unlock()
+	group, _, err := m.app.auth(req)
+	if err != nil {
+		return "", nil, err
+	}
+	if len(ids) > 3 {
+		return "", nil, errors.New("Выберите до трёх серверов")
+	}
+	seen := map[string]bool{}
+	selected := []ServerInfo{}
+	for _, id := range ids {
+		if seen[id] {
+			return "", nil, errors.New("Сервер выбран дважды")
+		}
+		seen[id] = true
+		found := false
+		for _, s := range group.Servers {
+			if s.ID == id {
+				selected = append(selected, s.ServerInfo)
+				found = true
+				break
+			}
+		}
+		if !found {
+			return "", nil, errors.New("Список серверов изменился. Выберите их заново.")
+		}
+	}
+	return group.ID, selected, nil
+}

@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show ValueListenable;
 import 'package:flutter/services.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 import 'package:country_flags/country_flags.dart';
@@ -14,6 +15,8 @@ import 'android_backend.dart';
 import 'controller.dart';
 import 'demo.dart';
 import 'data_directory.dart';
+import 'release_notice.dart';
+import 'release_notice_banner.dart';
 part 'features.dart';
 part 'design.dart';
 part 'overview.dart';
@@ -30,11 +33,14 @@ part 'mobile_updates.dart';
 part 'mobile_identity.dart';
 part 'mobile_design.dart';
 part 'network_tools.dart';
+part 'speed_tools.dart';
+part 'speed_chart.dart';
 part 'subscription_details.dart';
 part 'probe_settings.dart';
 part 'public_ip.dart';
 part 'appearance.dart';
 part 'community.dart';
+part 'onboarding.dart';
 
 const windowChannel = MethodChannel('dev.svoi/window');
 const canvas = Color(0xff101013),

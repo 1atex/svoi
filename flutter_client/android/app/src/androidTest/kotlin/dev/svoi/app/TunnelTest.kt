@@ -58,12 +58,24 @@ class TunnelTest {
             val token = created.getString("token")
             request("subscription/import", "POST", token, JSONObject().put("content", "vless://90e3da82-374e-46ef-9099-761d39b86b82@10.0.2.2:10880?encryption=none&security=none&type=tcp#Test"))
             val id = request("me", token = token).getJSONArray("servers").getJSONObject(0).getString("id")
+            val speed = request("tools/speed/start", "POST", token, JSONObject().put("serverIds", org.json.JSONArray()))
+            request("tools/speed/cancel", "POST", token)
+            val speedDeadline = System.currentTimeMillis() + 5000
+            var speedState = "running"
+            while (speedState == "running" && System.currentTimeMillis() < speedDeadline) {
+                speedState = request("tools/speed/status?id=" + speed.getString("id"), token = token).getString("state")
+                if (speedState == "running") Thread.sleep(50)
+            }
+            assertNotEquals("Speed job must stop across Binder", "running", speedState)
             var warm: JSONObject? = null
             for (cycle in 1..20) {
                 promote()
                 val running = request("connection/start", "POST", token, JSONObject().put("serverId", id))
                 assertEquals("running", running.getString("state"))
                 if (cycle == 1) {
+                    try { request("tools/speed/start", "POST", token, JSONObject().put("serverIds", org.json.JSONArray())); fail("Speed comparison must reject active TUN") }
+                    catch(e: BackendClient.Failure) { assertTrue(e.message.orEmpty().contains("VPN")) }
+
                     client.cancelProbe("cancel-before-start")
                     try { request("servers/$id/probe", "POST", token, probeId = "cancel-before-start"); fail("Cancelled probe must not start") }
                     catch(e: BackendClient.Failure) { assertTrue(e.message.orEmpty().contains("отменена")) }

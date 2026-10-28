@@ -12,7 +12,14 @@ class _MobileShellState extends State<MobileShell> {
   @override
   void initState() {
     super.initState();
-    if (c.api is AndroidBackend) updates = MobileUpdateModel()..start();
+    if (c.api is AndroidBackend) {
+      final directory = (c.api as AndroidBackend).directory;
+      updates = MobileUpdateModel(
+        releaseNotice: ReleaseNoticeStore(
+          File('${directory.path}/release-notice.json'),
+        ),
+      )..start();
+    }
   }
 
   int page = 0;
@@ -22,6 +29,7 @@ class _MobileShellState extends State<MobileShell> {
   SvoiController get c => widget.c;
   @override
   void dispose() {
+    updates?.releaseNotice?.dispose();
     updates?.dispose();
     searchController.dispose();
     super.dispose();
@@ -47,113 +55,127 @@ class _MobileShellState extends State<MobileShell> {
       c.probeProgress,
       c.probeRevision,
     ]),
-    builder: (context, _) => Theme(
-      data: mobileTheme(Theme.of(context)),
-      child: Scaffold(
-        appBar: AppBar(
-          title: page == 0
-              ? FittedBox(
-                  fit: BoxFit.scaleDown,
-                  alignment: Alignment.centerLeft,
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
-                        child: Image.asset(
-                          'assets/svoi-mark.png',
-                          width: 34,
-                          height: 34,
+    builder: (context, _) => OnboardingHost(
+      store: updates?.releaseNotice,
+      controller: c,
+      platform: 'android',
+      child: Theme(
+        data: mobileTheme(Theme.of(context)),
+        child: Scaffold(
+          appBar: AppBar(
+            title: page == 0
+                ? FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: Image.asset(
+                            'assets/svoi-mark.png',
+                            width: 34,
+                            height: 34,
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 10),
-                      const Text(
-                        'svoi',
-                        style: TextStyle(
-                          fontSize: 29,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: -1,
+                        const SizedBox(width: 10),
+                        const Text(
+                          'svoi',
+                          style: TextStyle(
+                            fontSize: 29,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: -1,
+                          ),
                         ),
-                      ),
-                      Text(
-                        '·',
-                        style: TextStyle(
-                          color: appColors(context).accent,
-                          fontSize: 29,
-                          fontWeight: FontWeight.w800,
+                        Text(
+                          '·',
+                          style: TextStyle(
+                            color: appColors(context).accent,
+                            fontSize: 29,
+                            fontWeight: FontWeight.w800,
+                          ),
                         ),
+                      ],
+                    ),
+                  )
+                : Text(['SVOI', 'Серверы', 'Профиль', 'Настройки'][page]),
+            actions: [
+              const CommunityButton(),
+              if (updates?.available == true)
+                IconButton(
+                  tooltip: 'Доступно обновление SVOI',
+                  onPressed: () => setState(() => page = 3),
+                  icon: Icon(
+                    Icons.system_update,
+                    color: appColors(context).accent,
+                  ),
+                ),
+              IconButton(
+                tooltip: 'Импортировать подписку',
+                onPressed: c.busy.value ? null : () => importDialog(context, c),
+                icon: const Icon(Icons.add),
+              ),
+            ],
+          ),
+          bottomNavigationBar: DecoratedBox(
+            decoration: BoxDecoration(
+              border: Border(top: BorderSide(color: appColors(context).edge)),
+            ),
+            child: NavigationBar(
+              selectedIndex: page,
+              onDestinationSelected: (i) => setState(() => page = i),
+              destinations: const [
+                NavigationDestination(
+                  icon: Icon(LucideIcons.power, size: 22),
+                  label: 'VPN',
+                ),
+                NavigationDestination(
+                  icon: Icon(LucideIcons.globe, size: 22),
+                  label: 'Серверы',
+                ),
+                NavigationDestination(
+                  icon: Icon(LucideIcons.users, size: 22),
+                  label: 'Профиль',
+                ),
+                NavigationDestination(
+                  icon: Icon(LucideIcons.settings2, size: 22),
+                  label: 'Настройки',
+                ),
+              ],
+            ),
+          ),
+          body: SafeArea(
+            child: Column(
+              children: [
+                if (updates?.releaseNotice != null)
+                  ReleaseNoticeBanner(
+                    store: updates!.releaseNotice!,
+                    platform: 'android',
+                    open: (uri) => windowChannel.invokeMethod<void>(
+                      'openExternal',
+                      uri.toString(),
+                    ),
+                  ),
+                if (c.message.value.isNotEmpty)
+                  MaterialBanner(
+                    content: Text(c.message.value),
+                    actions: [
+                      TextButton(
+                        onPressed: () => c.message.value = '',
+                        child: const Text('Закрыть'),
                       ),
                     ],
                   ),
-                )
-              : Text(['SVOI', 'Серверы', 'Профиль', 'Настройки'][page]),
-          actions: [
-            const CommunityButton(),
-            if (updates?.available == true)
-              IconButton(
-                tooltip: 'Доступно обновление SVOI',
-                onPressed: () => setState(() => page = 3),
-                icon: Icon(
-                  Icons.system_update,
-                  color: appColors(context).accent,
+                Expanded(
+                  child: switch (page) {
+                    0 => home(),
+                    1 => servers(),
+                    2 => profile(),
+                    _ => settings(),
+                  },
                 ),
-              ),
-            IconButton(
-              tooltip: 'Импортировать подписку',
-              onPressed: c.busy.value ? null : () => importDialog(context, c),
-              icon: const Icon(Icons.add),
+              ],
             ),
-          ],
-        ),
-        bottomNavigationBar: DecoratedBox(
-          decoration: BoxDecoration(
-            border: Border(top: BorderSide(color: appColors(context).edge)),
-          ),
-          child: NavigationBar(
-            selectedIndex: page,
-            onDestinationSelected: (i) => setState(() => page = i),
-            destinations: const [
-              NavigationDestination(
-                icon: Icon(LucideIcons.power, size: 22),
-                label: 'VPN',
-              ),
-              NavigationDestination(
-                icon: Icon(LucideIcons.globe, size: 22),
-                label: 'Серверы',
-              ),
-              NavigationDestination(
-                icon: Icon(LucideIcons.users, size: 22),
-                label: 'Профиль',
-              ),
-              NavigationDestination(
-                icon: Icon(LucideIcons.settings2, size: 22),
-                label: 'Настройки',
-              ),
-            ],
-          ),
-        ),
-        body: SafeArea(
-          child: Column(
-            children: [
-              if (c.message.value.isNotEmpty)
-                MaterialBanner(
-                  content: Text(c.message.value),
-                  actions: [
-                    TextButton(
-                      onPressed: () => c.message.value = '',
-                      child: const Text('Закрыть'),
-                    ),
-                  ],
-                ),
-              Expanded(
-                child: switch (page) {
-                  0 => home(),
-                  1 => servers(),
-                  2 => profile(),
-                  _ => settings(),
-                },
-              ),
-            ],
           ),
         ),
       ),
@@ -542,6 +564,23 @@ class _MobileShellState extends State<MobileShell> {
   Widget settings() => ListView(
     padding: const EdgeInsets.all(20),
     children: [
+      ListTile(
+        contentPadding: EdgeInsets.zero,
+        leading: const Icon(Icons.speed),
+        title: const Text('Интернетометр'),
+        subtitle: const Text('Без VPN и через выбранные серверы'),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute<void>(
+            builder: (_) => Scaffold(
+              appBar: AppBar(title: const Text('Скорость интернета')),
+              body: SafeArea(child: SpeedTools(c: c)),
+            ),
+          ),
+        ),
+      ),
+
       ListTile(
         contentPadding: EdgeInsets.zero,
         leading: const Icon(Icons.palette_outlined),

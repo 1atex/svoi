@@ -112,6 +112,7 @@ class AndroidUpdates private constructor(private val context: Context) {
     @Synchronized fun status(): JSONObject {
         refreshDownload()
         return JSONObject().put("state", stage).put("error", error).put("currentVersion", installed.versionName)
+            .put("updatedInstall", installed.lastUpdateTime > installed.firstInstallTime)
             .put("version", selected?.version ?: "").put("available", (selected?.code ?: 0) > AndroidApkVerifier.code(installed))
             .put("downloaded", downloadedBytes).put("size", selected?.size ?: 0).put("autoCheck", prefs.getBoolean("autoCheck", true))
             .put("autoDownload", prefs.getBoolean("autoDownload", true)).put("canInstall", context.packageManager.canRequestPackageInstalls())

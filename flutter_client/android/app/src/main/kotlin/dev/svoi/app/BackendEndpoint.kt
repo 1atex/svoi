@@ -35,6 +35,7 @@ class BackendEndpoint(private val service: SvoiVpnService) : IBackendService.Stu
     private fun detach(binder: IBinder) {
         val client = synchronized(clients) { clients.remove(binder) } ?: return
         synchronized(client) {
+            Mobile.cancelSpeed()
             client.dead = true; client.probes.values.forEach { it.cancel() }; client.ips.values.forEach { it.cancel() }; client.cancelled.clear()
         }
         runCatching { binder.unlinkToDeath(client.death, 0) }
@@ -65,6 +66,12 @@ class BackendEndpoint(private val service: SvoiVpnService) : IBackendService.Stu
                     when {
                         path == "init" -> response(JSONObject().put("directory", service.filesDir.absolutePath)
                             .put("probeConcurrency", probeLimit()))
+                        path == "tools/speed/start" -> {
+                            val cm = service.getSystemService(android.net.ConnectivityManager::class.java)
+                            check(cm.getNetworkCapabilities(cm.activeNetwork)?.hasTransport(android.net.NetworkCapabilities.TRANSPORT_VPN) != true) { "Отключите VPN перед сравнением скорости" }
+                            check(VpnRuntime.status().optString("state") !in listOf("starting", "running", "stopping")) { "Отключите VPN перед сравнением скорости" }
+                            parcels.reply(VpnRuntime.session!!.request(method, "/api/$path", token, body))
+                        }
                         path == "connection/start" -> {
                             val input = JSONObject(body)
                             await { callback -> VpnRuntime.start(service.applicationContext, service, token, input.getString("serverId"), callback) }

@@ -19,10 +19,17 @@ import (
 	_ "github.com/xtls/xray-core/main/distro/all"
 	"github.com/xtls/xray-core/transport/internet"
 	"svoi/backend"
+	"svoi/internal/speedtest"
 )
 
 type Protector interface{ Protect(fd int32) bool }
-type Session struct{ app *backend.MobileApp }
+type Session struct {
+	app           *backend.MobileApp
+	speedMu       sync.Mutex
+	speed         *mobileSpeedJob
+	speedEndpoint string
+	speedPolicy   *speedtest.Policy
+}
 
 func NewSession(directory string) (*Session, error) {
 	os.Setenv("XRAY_LOCATION_ASSET", filepath.Join(directory, "core"))
@@ -34,6 +41,9 @@ func NewSession(directory string) (*Session, error) {
 	return &Session{app: a}, nil
 }
 func (s *Session) Request(method, path, token, body string) string {
+	if strings.HasPrefix(path, "/api/tools/speed/") {
+		return s.speedRequest(method, path, token, body)
+	}
 	return s.app.Request(method, path, token, body)
 }
 func (s *Session) Config(token, serverID string) (string, error) {
@@ -67,6 +77,7 @@ func protect(_ string, _ string, conn syscall.RawConn) error {
 func Start(config string, fd int32, assets string, callback Protector) error {
 	lifecycle.Lock()
 	defer lifecycle.Unlock()
+	CancelSpeed()
 	if ipCancel != nil {
 		ipCancel()
 		ipCancel = nil
@@ -123,6 +134,7 @@ func clearProtector() { socketMu.Lock(); protector = nil; socketMu.Unlock() }
 func Stop() error {
 	lifecycle.Lock()
 	defer lifecycle.Unlock()
+	CancelSpeed()
 	if ipCancel != nil {
 		ipCancel()
 		ipCancel = nil

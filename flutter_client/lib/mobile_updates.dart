@@ -1,6 +1,9 @@
 part of 'main.dart';
 
 class MobileUpdateModel extends ChangeNotifier with WidgetsBindingObserver {
+  MobileUpdateModel({this.releaseNotice});
+  final ReleaseNoticeStore? releaseNotice;
+  bool _noticeLoaded = false;
   static const channel = MethodChannel('dev.svoi/updates');
   Map<String, dynamic> data = {};
   bool busy = false;
@@ -31,6 +34,16 @@ class MobileUpdateModel extends ChangeNotifier with WidgetsBindingObserver {
       );
       if (!_closed) {
         data = Map<String, dynamic>.from(jsonDecode(raw ?? '{}') as Map);
+        final current = data['currentVersion'];
+        if (!_noticeLoaded && current is String && current.isNotEmpty) {
+          _noticeLoaded = true;
+          try {
+            await releaseNotice?.load(
+              current,
+              updatedInstall: data['updatedInstall'] == true,
+            );
+          } catch (_) {}
+        }
       }
     } on PlatformException catch (e) {
       if (!_closed) {
