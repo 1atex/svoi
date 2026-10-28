@@ -6,6 +6,7 @@ analyzer:
     - windows/**
     - android/**
     - linux/**
+    - macos/**
 
 linter:
   rules: {}

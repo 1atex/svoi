@@ -376,9 +376,9 @@ class AppearancePanel extends StatelessWidget {
     final labels = {
       AppAppearance.dark: 'Классика',
       AppAppearance.light: 'Светлая',
-      AppAppearance.system: Platform.isLinux
-          ? 'Как в системе'
-          : 'Как в Windows',
+      AppAppearance.system: Platform.isWindows
+          ? 'Как в Windows'
+          : 'Как в системе',
       AppAppearance.ocean: 'Океан',
       AppAppearance.emerald: 'Изумруд',
       AppAppearance.rose: 'Роза',

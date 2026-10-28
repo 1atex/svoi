@@ -5,14 +5,14 @@ class NetworkToolsPage extends StatelessWidget {
   final SvoiController c;
   @override
   Widget build(BuildContext context) => DefaultTabController(
-    length: Platform.isLinux ? 2 : 3,
+    length: Platform.isWindows ? 3 : 2,
     child: Column(
       children: [
         TabBar(
           tabs: [
             const Tab(text: 'Скорость'),
             const Tab(text: 'Проверить сайт'),
-            if (!Platform.isLinux) const Tab(text: 'DNS'),
+            if (Platform.isWindows) const Tab(text: 'DNS'),
           ],
         ),
         Expanded(
@@ -20,7 +20,7 @@ class NetworkToolsPage extends StatelessWidget {
             children: [
               SpeedTools(c: c),
               SiteCheckPanel(c: c),
-              if (!Platform.isLinux) DnsTools(c: c),
+              if (Platform.isWindows) DnsTools(c: c),
             ],
           ),
         ),
@@ -197,7 +197,7 @@ class _SiteCheckPanelState extends State<SiteCheckPanel> {
       children: [
         Section(
           'Почему не открывается сайт?',
-          subtitle: 'Проверка по запросу. Напрямую: DNS IPv4, TCP и HTTP(S) через физический адаптер Windows. Через профиль: HTTP(S) с его маршрутизацией.',
+          subtitle: 'Проверка по запросу. Напрямую: DNS IPv4, TCP и HTTP(S) через текущую сеть. Через профиль: HTTP(S) с его маршрутизацией.',
           children: [
             TextField(
               key: const ValueKey('site-url'),

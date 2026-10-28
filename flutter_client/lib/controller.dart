@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 
 import 'backend.dart';
 import 'countries.dart';
+import 'desktop_platform.dart';
 import 'user_failure.dart';
 part 'scenario_controller.dart';
 
@@ -179,7 +180,9 @@ class SvoiController {
   final connection = ValueNotifier<Map<String, dynamic>>({});
   final preferences = ValueNotifier<Map<String, dynamic>>({});
   final selected = ValueNotifier<String>('');
-  final mode = ValueNotifier<String>('tun');
+  final mode = ValueNotifier<String>(
+    restoredConnectionMode(Platform.operatingSystem, null),
+  );
   final busy = ValueNotifier<bool>(false);
   final connectionPhase = ValueNotifier<String>('');
   final connectionIssue = ValueNotifier<String>('');
@@ -224,9 +227,10 @@ class SvoiController {
           .toList();
       final savedMode = saved['mode'];
       if (['local', 'system', 'tun'].contains(savedMode)) {
-        mode.value = Platform.isLinux && savedMode == 'system'
-            ? 'tun'
-            : savedMode;
+        mode.value = restoredConnectionMode(
+          Platform.operatingSystem,
+          savedMode,
+        );
       }
     }
     if (api.token.isNotEmpty) {
@@ -243,8 +247,8 @@ class SvoiController {
         method: 'POST',
         body: {
           'name': 'Моя сеть',
-          'deviceName': Platform.isLinux ? 'Linux' : 'Windows',
-          'platform': Platform.isLinux ? 'Linux' : 'Windows',
+          'deviceName': desktopPlatformName,
+          'platform': desktopPlatformName,
         },
       );
       api.token = result['token'];
@@ -618,8 +622,8 @@ class SvoiController {
         method: 'POST',
         body: {
           'code': text,
-          'deviceName': Platform.isLinux ? 'Linux' : 'Windows',
-          'platform': Platform.isLinux ? 'Linux' : 'Windows',
+          'deviceName': desktopPlatformName,
+          'platform': desktopPlatformName,
           'replace': true,
         },
       );
@@ -660,7 +664,7 @@ class SvoiController {
       body: {
         'name': name,
         'deviceName': 'Мой ПК',
-        'platform': Platform.isLinux ? 'Linux' : 'Windows',
+        'platform': desktopPlatformName,
       },
     );
     api.token = result['token'];
@@ -697,7 +701,7 @@ class SvoiController {
           body: {
             'code': code,
             'deviceName': 'Мой ПК',
-            'platform': Platform.isLinux ? 'Linux' : 'Windows',
+            'platform': desktopPlatformName,
             'replace': replace,
           },
         );

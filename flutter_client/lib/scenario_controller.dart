@@ -85,6 +85,12 @@ extension ScenarioActions on SvoiController {
               'Сервер сценария удалён из подписки. Выберите новый сервер и сохраните сценарий заново.',
             );
           }
+          if (!supportedConnectionModes(Platform.operatingSystem)
+              .contains(scene['mode'])) {
+            throw ApiException(
+              'Режим этого сценария пока недоступен в $desktopPlatformName. Создайте сценарий с поддерживаемым режимом.',
+            );
+          }
           preferences.value = await api.request(
             'settings',
             method: 'PUT',

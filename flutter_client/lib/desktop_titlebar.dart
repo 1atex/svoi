@@ -44,7 +44,7 @@ class _DesktopTitlebarState extends State<DesktopTitlebar> {
       final narrow = bounds.maxWidth < 600;
       final tabs = [
         (0, 'Подключение', LucideIcons.power),
-        if (!Platform.isLinux) (4, 'zapret', LucideIcons.shield),
+        if (Platform.isWindows) (4, 'zapret', LucideIcons.shield),
         (6, 'Инструменты', LucideIcons.network),
         (5, 'Настройки', LucideIcons.settings2),
       ];

@@ -3,10 +3,23 @@ import 'dart:io';
 
 Future<Directory> prepareDataDirectory({
   Map<String, String>? environment,
+  String? platform,
 }) async {
   final env = environment ?? Platform.environment;
   final override = env['SVOI_DATA'] ?? env['SVOI_FLUTTER_DATA'];
   if (override != null) return Directory(override)..createSync(recursive: true);
+  if ((platform ?? Platform.operatingSystem) == 'macos' &&
+      env['APPDATA'] == null) {
+    final home = env['HOME'];
+    if (home == null || !home.startsWith('/')) {
+      throw const FileSystemException(
+        'Не удалось определить домашний каталог macOS. Задайте SVOI_DATA.',
+      );
+    }
+    final directory = Directory('$home/Library/Application Support/SVOI');
+    await directory.create(recursive: true);
+    return directory;
+  }
   if (!Platform.isWindows && env['APPDATA'] == null) {
     final home = env['HOME'];
     final base =

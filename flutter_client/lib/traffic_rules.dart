@@ -4,7 +4,7 @@ Future<void> showTrafficRules(
   BuildContext context,
   SvoiController c, {
   int tab = 0,
-}) => Platform.isLinux
+}) => !Platform.isWindows
     ? showDesktopSheet(context, 'Сайты напрямую', DirectSitesPanel(c: c))
     : showDesktopSheet(
         context,

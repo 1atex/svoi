@@ -102,7 +102,9 @@ class NativeBackend extends Backend {
       }),
     );
     try {
-      final result = await ready.future.timeout(const Duration(seconds: 20));
+      final result = await ready.future.timeout(
+        Duration(seconds: Platform.isMacOS ? 120 : 20),
+      );
       final address = Uri.parse(result['address'] as String);
       if (address.scheme != 'http' ||
           address.host != '127.0.0.1' ||
@@ -161,7 +163,7 @@ class NativeBackend extends Backend {
         request.write(jsonEncode(body));
       }
       final response = await request.close().timeout(
-        const Duration(seconds: 40),
+        Duration(seconds: Platform.isMacOS ? 120 : 40),
       );
       final bytes = <int>[];
       await for (final chunk in response.timeout(const Duration(seconds: 15))) {

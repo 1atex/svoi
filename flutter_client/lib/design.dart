@@ -222,13 +222,14 @@ class ModePicker extends StatelessWidget {
           isExpanded: true,
           decoration: const InputDecoration(labelText: 'Что подключать'),
           items: [
-            DropdownMenuItem(
-              value: 'tun',
-              child: Text(
-                '${modeLabel('tun', routing)} · TUN',
-                overflow: TextOverflow.ellipsis,
+            if (!Platform.isMacOS)
+              DropdownMenuItem(
+                value: 'tun',
+                child: Text(
+                  '${modeLabel('tun', routing)} · TUN',
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
-            ),
             if (!Platform.isLinux)
               const DropdownMenuItem(
                 value: 'system',
@@ -262,7 +263,8 @@ class ModePicker extends StatelessWidget {
               c.connection.value['elevated'] == true
                   ? 'Маршруты из конфигурации сохраняются.'
                   : 'TUN требует прав администратора. Маршруты из конфигурации сохраняются.',
-            'system' => 'Для браузеров и приложений, учитывающих настройки прокси Windows.',
+            'system' =>
+              'Для браузеров и приложений, учитывающих настройки прокси $desktopPlatformName.',
             _ => 'Укажите SOCKS5 или HTTP вручную в приложении. Адреса — в диагностике.',
           },
           style: TextStyle(

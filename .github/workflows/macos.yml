@@ -1,0 +1,56 @@
+name: macOS development preview
+on:
+  push:
+    branches: ['macos-preview']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: macos-preview-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  macos:
+    runs-on: macos-15
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.27.3'
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.7'
+          channel: stable
+          cache: true
+      - name: Build Apple Silicon preview and DMG
+        run: bash scripts/build-macos.sh
+      - name: Check backend and interface
+        run: |
+          export SVOI_TEST_CORE="$PWD/.tools/macos-package/0.6.0-preview.1/core/xray"
+          go test -tags native_core ./...
+          go vet -tags native_core ./...
+          cd flutter_client
+          dart format --output=none --set-exit-if-changed lib test
+          flutter analyze
+          flutter test
+      - name: Verify local proxy traffic and reconnects
+        run: python3 scripts/linux-backend-smoke.py flutter_client/build/macos/Build/Products/Release/SVOI.app/Contents/MacOS
+      - name: Verify packaged disk image
+        run: |
+          shasum -a 256 -c releases/macos-v*/SVOI-*.sha256
+          hdiutil verify releases/macos-v*/SVOI-*.dmg
+          open flutter_client/build/macos/Build/Products/Release/SVOI.app --args --demo
+          sleep 8
+          pgrep -x SVOI
+          mkdir -p .tools/macos-diagnostics
+          screencapture -x .tools/macos-diagnostics/preview.png
+          osascript -e 'tell application "SVOI" to quit'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: macOS-diagnostics
+          path: .tools/macos-diagnostics/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SVOI-macOS-development-preview
+          path: releases/macos-v*/*

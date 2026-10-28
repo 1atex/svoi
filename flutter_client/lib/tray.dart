@@ -81,7 +81,7 @@ Map<String, dynamic> trayState(SvoiController c) {
         'enabled': !locked,
         'children': [
           for (final entry in [
-            ('tun', 'TUN'),
+            if (!Platform.isMacOS) ('tun', 'TUN'),
             if (!Platform.isLinux) ('system', 'Системный прокси'),
             ('local', 'Ручной прокси'),
           ])

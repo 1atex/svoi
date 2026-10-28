@@ -35,7 +35,7 @@ Future<void> saveScenarioDialog(BuildContext context, SvoiController c) async {
                   initialValue: kind,
                   isExpanded: true,
                   decoration: const InputDecoration(labelText: 'Режим'),
-                  items: const [
+                  items: [
                     DropdownMenuItem(
                       value: 'vpn',
                       child: Text(
@@ -43,13 +43,14 @@ Future<void> saveScenarioDialog(BuildContext context, SvoiController c) async {
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    DropdownMenuItem(
-                      value: 'zapret',
-                      child: Text(
-                        'Стратегия zapret',
-                        overflow: TextOverflow.ellipsis,
+                    if (Platform.isWindows)
+                      DropdownMenuItem(
+                        value: 'zapret',
+                        child: Text(
+                          'Стратегия zapret',
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
-                    ),
                   ],
                   onChanged: saving ? null : (v) => setLocal(() => kind = v!),
                 ),

@@ -15,6 +15,7 @@ import 'controller.dart';
 import 'user_failure.dart';
 import 'demo.dart';
 import 'data_directory.dart';
+import 'desktop_platform.dart';
 import 'release_notice.dart';
 import 'release_notice_banner.dart';
 part 'features.dart';
@@ -24,6 +25,7 @@ part 'desktop_workspace.dart';
 part 'desktop_titlebar.dart';
 part 'community.dart';
 part 'linux_preferences.dart';
+part 'macos_preferences.dart';
 part 'appearance.dart';
 part 'power_control.dart';
 part 'connection_view.dart';
@@ -398,7 +400,7 @@ class _SvoiShellState extends State<SvoiShell> {
       store: widget.releaseNotice,
       controller: c,
       visible: widget.onboardingVisible,
-      platform: Platform.isLinux ? 'linux' : 'windows',
+      platform: desktopPlatformId,
       child: Scaffold(
         body: Stack(
           children: [
@@ -418,7 +420,7 @@ class _SvoiShellState extends State<SvoiShell> {
                 if (widget.releaseNotice != null)
                   ReleaseNoticeBanner(
                     store: widget.releaseNotice!,
-                    platform: Platform.isLinux ? 'linux' : 'windows',
+                    platform: desktopPlatformId,
                     open: (uri) => windowChannel.invokeMethod<void>(
                       'openExternal',
                       uri.toString(),

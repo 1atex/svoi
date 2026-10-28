@@ -898,6 +898,8 @@ class PreferencesPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Platform.isLinux
       ? LinuxPreferences(c: c)
+      : Platform.isMacOS
+      ? MacOSPreferences(c: c)
       : FeatureBody(
           children: [
             const AppearancePanel(),

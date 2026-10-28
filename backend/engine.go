@@ -76,6 +76,9 @@ func newEngine(binary, dir string) (*Engine, error) {
 		if runtime.GOOS == "linux" {
 			e.status.Error = "Не найдено ядро Xray. Переустановите пакет SVOI или распакуйте весь Linux-архив вместе с папкой backend/core."
 		}
+		if runtime.GOOS == "darwin" {
+			e.status.Error = "Не найдено ядро Xray внутри SVOI.app. Скопируйте приложение целиком из DMG в Программы."
+		}
 		return e, nil
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -88,6 +91,9 @@ func newEngine(binary, dir string) (*Engine, error) {
 		e.status.Error = "Ядро Xray найдено, но не запускается. Распакуйте полный Windows x64 архив и проверьте, разрешён ли запуск core/xray.exe в Windows."
 		if runtime.GOOS == "linux" {
 			e.status.Error = "Не удалось запустить Xray. Проверьте права на исполнение backend/core/xray и архитектуру x86_64."
+		}
+		if runtime.GOOS == "darwin" {
+			e.status.Error = "Не удалось запустить Xray внутри SVOI.app. Проверьте сборку для Apple Silicon и разрешение macOS на запуск приложения."
 		}
 		return e, nil
 	}
@@ -192,6 +198,9 @@ func (e *Engine) startContext(parent context.Context, server ServerConfig, mode 
 		return fail(503, "Ядро Xray не найдено. Распакуйте приложение вместе с папкой core.")
 	}
 	if mode == "tun" && !canCreateTun(e.binary) {
+		if runtime.GOOS == "darwin" {
+			return fail(409, "TUN ещё не включён в macOS Preview. Выберите системный или ручной прокси; запуск от root это ограничение не меняет.")
+		}
 		if runtime.GOOS == "linux" {
 			return fail(409, "Для TUN установите пакет .deb: он выдаст ядру сетевые права. Для переносимой сборки выполните команду setcap из LINUX.md, затем повторите подключение. Само приложение запускайте обычным пользователем.")
 		}
