@@ -44,7 +44,9 @@ func isElevated() bool             { return os.Geteuid() == 0 }
 func canCreateTun(string) bool     { return false }
 func watchProxy(int, string) error { return nil }
 
-func macProxyHelper() string {
+var macProxyHelper = defaultMacProxyHelper
+
+func defaultMacProxyHelper() string {
 	exe, _ := os.Executable()
 	return filepath.Join(filepath.Dir(exe), "svoi-proxy")
 }

@@ -9,6 +9,25 @@ concurrency:
   group: macos-preview-${{ github.ref }}
   cancel-in-progress: true
 jobs:
+  ios-capability-check:
+    runs-on: macos-15
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build iPhone tunnel capability check
+        run: |
+          command -v xcodegen >/dev/null || brew install xcodegen
+          mkdir -p .tools
+          bash scripts/build-ios-tunnel-check.sh
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: iOS-tunnel-check-build-log
+          path: .tools/ios-tunnel-check-build.log
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SVOI-iOS-tunnel-capability-check
+          path: releases/ios-tunnel-check/*
   macos:
     runs-on: macos-15
     timeout-minutes: 40

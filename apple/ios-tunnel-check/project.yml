@@ -1,0 +1,56 @@
+name: SvoiTunnelCheck
+options:
+  bundleIdPrefix: dev.svoi
+  deploymentTarget:
+    iOS: '16.0'
+settings:
+  base:
+    SWIFT_VERSION: '5.0'
+    MARKETING_VERSION: '0.1.0'
+    CURRENT_PROJECT_VERSION: '1'
+    CODE_SIGNING_ALLOWED: 'NO'
+    TARGETED_DEVICE_FAMILY: '1,2'
+targets:
+  SvoiTunnelCheck:
+    type: application
+    platform: iOS
+    sources: [App]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.svoi.tunnelcheck
+        GENERATE_INFOPLIST_FILE: 'YES'
+        INFOPLIST_KEY_CFBundleDisplayName: SVOI Tunnel Check
+        INFOPLIST_KEY_UILaunchScreen_Generation: 'YES'
+        INFOPLIST_KEY_UIApplicationSceneManifest_Generation: 'YES'
+    entitlements:
+      path: App.entitlements
+      properties:
+        com.apple.developer.networking.networkextension: [packet-tunnel-provider]
+    dependencies:
+      - target: PacketTunnel
+        embed: true
+  PacketTunnel:
+    type: app-extension
+    platform: iOS
+    sources: [PacketTunnel]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.svoi.tunnelcheck.PacketTunnel
+        APPLICATION_EXTENSION_API_ONLY: 'YES'
+        SKIP_INSTALL: 'YES'
+    info:
+      path: PacketTunnel-Info.plist
+      properties:
+        CFBundleDisplayName: SVOI Tunnel Check Provider
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.networkextension.packet-tunnel
+          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).PacketTunnelProvider
+    entitlements:
+      path: PacketTunnel.entitlements
+      properties:
+        com.apple.developer.networking.networkextension: [packet-tunnel-provider]
+schemes:
+  SvoiTunnelCheck:
+    build:
+      targets:
+        SvoiTunnelCheck: all
