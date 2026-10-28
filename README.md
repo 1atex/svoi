@@ -16,9 +16,9 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/1atex/svoi/releases/download/v0.6.0-beta.5/SVOI-0.6.0-beta.5-windows-x64-setup.exe"><b>↓ Скачать для Windows</b></a>
+  <a href="https://github.com/1atex/svoi/releases/download/v0.6.0-beta.6/SVOI-0.6.0-beta.6-windows-x64-setup.exe"><b>↓ Скачать для Windows</b></a>
   &nbsp; · &nbsp;
-  <a href="https://github.com/1atex/svoi/releases/download/android-v0.1.0-preview.9/SVOI-Android-0.1.0-preview.9-arm64.apk"><b>↓ Android APK · Preview</b></a>
+  <a href="https://github.com/1atex/svoi/releases/download/android-v0.1.0-preview.12/SVOI-Android-0.1.0-preview.12-arm64.apk"><b>↓ Android APK · Preview</b></a>
   &nbsp; · &nbsp;
   <a href="https://github.com/1atex/svoi/releases/tag/linux-v0.6.0-preview.3"><b>↓ Linux · Preview</b></a>
   &nbsp; · &nbsp;
@@ -85,11 +85,11 @@ Hysteria2: ссылки `hy2://` и `hysteria2://`, TLS, Salamander и пере�
 
 ## Первый запуск
 
-1. **Установите SVOI.** [Установщик Windows x64](https://github.com/1atex/svoi/releases/download/v0.6.0-beta.5/SVOI-0.6.0-beta.5-windows-x64-setup.exe) уже содержит Xray, Wintun и необходимые библиотеки. WebView2 не нужен.
+1. **Установите SVOI.** [Установщик Windows x64](https://github.com/1atex/svoi/releases/download/v0.6.0-beta.6/SVOI-0.6.0-beta.6-windows-x64-setup.exe) уже содержит Xray, Wintun и необходимые библиотеки. WebView2 не нужен.
 2. **Добавьте свою подписку.** Вставьте ссылку или импортируйте конфигурацию из файла / текста.
 3. **Выберите сервер и подключитесь.** На новой установке выбран TUN («Все приложения»); для него нужны права администратора. Сохранённый выбор режима при обновлении не меняется.
 
-Предпочитаете без установки? [Скачайте portable ZIP](https://github.com/1atex/svoi/releases/download/v0.6.0-beta.5/SVOI-0.6.0-beta.5-windows-x64.zip), распакуйте **весь архив** и запустите `svoi.exe`.
+Предпочитаете без установки? [Скачайте portable ZIP](https://github.com/1atex/svoi/releases/download/v0.6.0-beta.6/SVOI-0.6.0-beta.6-windows-x64.zip), распакуйте **весь архив** и запустите `svoi.exe`.
 
 Установщик предлагает запуск после установки. Ярлык на рабочем столе и запуск от имени администратора включены по умолчанию; флажки можно снять. При запуске с повышенными правами Windows покажет запрос UAC.
 
@@ -116,9 +116,9 @@ Hysteria2: ссылки `hy2://` и `hysteria2://`, TLS, Salamander и пере�
 
 ## Статус проекта
 
-**Windows: 0.6.0-beta.5 · x64. Android: 0.1.0-preview.9 · ARM64 и x86_64. Linux: 0.6.0-preview.3 · x64.** iOS пока не выпускается. SVOI использует ваши подписки; VPN-серверы в комплект не входят.
+**Windows: 0.6.0-beta.6 · x64. Android: 0.1.0-preview.12 · ARM64 и x86_64. Linux: 0.6.0-preview.3 · x64.** iOS пока не выпускается. SVOI использует ваши подписки; VPN-серверы в комплект не входят.
 
-Android — отдельная экспериментальная сборка: [APK для ARM64-телефонов](https://github.com/1atex/svoi/releases/download/android-v0.1.0-preview.9/SVOI-Android-0.1.0-preview.9-arm64.apk), [APK для эмулятора x86_64](https://github.com/1atex/svoi/releases/download/android-v0.1.0-preview.9/SVOI-Android-0.1.0-preview.9-x64.apk), [инструкция и исходники Android](https://github.com/1atex/svoi/blob/android-preview/docs/ANDROID.md). Обновления проверяются и скачиваются из приложения; установку подтверждает пользователь. Preview 9 добавляет интернетометр с графиками и короткое знакомство после обновления; исправлено завершение UDP-потоков при отключении. Устанавливается поверх Preview 8 с сохранением данных. При переходе с Preview 5 сохраните коды профилей и переустановите приложение: начиная с Preview 6 используется постоянная подпись.
+Android — отдельная экспериментальная сборка: [APK для ARM64-телефонов](https://github.com/1atex/svoi/releases/download/android-v0.1.0-preview.12/SVOI-Android-0.1.0-preview.12-arm64.apk), [APK для эмулятора x86_64](https://github.com/1atex/svoi/releases/download/android-v0.1.0-preview.12/SVOI-Android-0.1.0-preview.12-x64.apk), [инструкция и исходники Android](https://github.com/1atex/svoi/blob/android-preview/docs/ANDROID.md). Обновления проверяются и скачиваются из приложения; установку подтверждает пользователь. Preview 12 добавляет отдельную вкладку инструментов, сравнение DNS, проверку сайта, тему AMOLED и выбор стиля иконок. Общий профиль находится в настройках. Постоянная подпись сохранена; версия устанавливается поверх Preview 9 с сохранением данных. При переходе с Preview 5 сохраните коды профилей и переустановите приложение: начиная с Preview 6 используется постоянная подпись.
 
 Linux Preview: [`.deb` и переносимый архив](https://github.com/1atex/svoi/releases/tag/linux-v0.6.0-preview.3), [инструкция](docs/LINUX.md). Поддерживаются TUN, локальный прокси, подписки, темы и перенос профилей. Системный DNS остаётся под управлением Linux; выбор приложений, Windows zapret и автоустановка обновлений в Linux пока отсутствуют. Сборки проверяются на Ubuntu 22.04, в изолированной сети и под Xvfb/Openbox.
 
