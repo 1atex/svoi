@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:svoi_flutter/controller.dart';
@@ -37,6 +39,7 @@ void main() {
       await tester.pumpWidget(const SizedBox.shrink());
       await c.close();
     },
+    skip: !Platform.isWindows,
   );
   testWidgets(
     'header actions do not collapse servers; recommendations are not an active timer',

@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:svoi_flutter/controller.dart';
@@ -107,7 +109,11 @@ void main() {
     );
     expect(find.text('Проверка задержки'), findsOneWidget);
     await tester.scrollUntilVisible(
-      find.text('Обновлять при запуске'),
+      find.text(
+        Platform.isWindows
+            ? 'Обновлять при запуске'
+            : 'Обновлять подписки при запуске',
+      ),
       300,
       scrollable: find
           .descendant(
@@ -116,7 +122,14 @@ void main() {
           )
           .first,
     );
-    expect(find.text('Обновлять при запуске'), findsOneWidget);
+    expect(
+      find.text(
+        Platform.isWindows
+            ? 'Обновлять при запуске'
+            : 'Обновлять подписки при запуске',
+      ),
+      findsOneWidget,
+    );
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());
     await controller.close();

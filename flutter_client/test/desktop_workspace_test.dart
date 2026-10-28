@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:svoi_flutter/controller.dart';
@@ -16,7 +18,7 @@ void main() {
       final backend = ConnectionBackend();
       final c = SvoiController(backend);
       await c.initialize();
-      c.mode.value = 'tun';
+      c.mode.value = Platform.isMacOS ? 'system' : 'tun';
       await c.toggleConnection();
       final active = c.selected.value;
       await tester.pumpWidget(
@@ -99,7 +101,7 @@ void main() {
       'serverId': c.selected.value,
       'error': 'timeout',
     };
-    c.mode.value = 'tun';
+    c.mode.value = Platform.isMacOS ? 'system' : 'tun';
     await tester.pumpWidget(
       MaterialApp(
         theme: svoiTheme(),

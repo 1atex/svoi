@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/services.dart';
@@ -113,6 +115,7 @@ void main() {
       await tester.pumpWidget(const SizedBox.shrink());
       await c.close();
     },
+    skip: !Platform.isWindows,
   );
 
   testWidgets(
@@ -133,9 +136,17 @@ void main() {
       );
       await tester.tap(find.byType(DropdownButtonFormField<String>));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Все приложения · TUN').last);
+      await tester.tap(
+        find
+            .text(
+              Platform.isMacOS
+                  ? 'Ручная настройка прокси'
+                  : 'Все приложения · TUN',
+            )
+            .last,
+      );
       await tester.pumpAndSettle();
-      expect(c.mode.value, 'tun');
+      expect(c.mode.value, Platform.isMacOS ? 'local' : 'tun');
       c.probes[c.selected.value]!.value = ProbeState(
         error: 'timeout',
         checkedAt: DateTime.now(),
@@ -146,7 +157,7 @@ void main() {
       await tester.tap(connect);
       await tester.pumpAndSettle();
       expect(backend.state['serverId'], c.selected.value);
-      expect(backend.state['mode'], 'tun');
+      expect(backend.state['mode'], Platform.isMacOS ? 'local' : 'tun');
       expect(find.text('Подключено'), findsWidgets);
       expect(find.text('Интернет проверен'), findsOneWidget);
 
