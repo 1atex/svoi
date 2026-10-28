@@ -63,9 +63,11 @@ struct SvoiIconButton: View {
   let symbol: String
   let label: String
   let action: () -> Void
+  @Environment(\.svoiAccent) private var accent
   var body: some View {
     Button(action: action) {
       Image(systemName: symbol).font(.system(size: 18, weight: .medium))
+        .foregroundStyle(accent)
         .frame(minWidth: 44, minHeight: 44).contentShape(Rectangle())
     }.buttonStyle(SvoiPressStyle()).accessibilityLabel(label)
   }

@@ -7,6 +7,7 @@ struct ConnectionScreen: View {
   let openServers: () -> Void
   let add: (Bool) -> Void
   @Environment(\.svoiAccent) private var accent
+  @Environment(\.sizeCategory) private var sizeCategory
   private var switching: Bool { vpn.connected && vpn.serverID != model.selectedID }
   private var busy: Bool { model.preparingVPN || vpn.busy }
   private var title: String { model.preparingVPN ? "Готовим подключение…" : vpn.title }
@@ -41,28 +42,44 @@ struct ConnectionScreen: View {
         }
       }.padding(.horizontal, 20).padding(.top, 16).padding(.bottom, 24).frame(maxWidth: 560)
         .frame(maxWidth: .infinity)
-    }.background(SvoiPalette.canvas).navigationBarTitleDisplayMode(.inline)
+    }.background(SvoiPalette.canvas).toolbar(.hidden, for: .navigationBar)
+      .safeAreaInset(edge: .top, spacing: 0) {
+        HStack(spacing: 10) {
+          SvoiBrandMark(size: 36)
+          (Text("svoi").foregroundColor(SvoiPalette.text) + Text("·").foregroundColor(accent))
+            .font(.system(size: 27, weight: .bold, design: .rounded))
+            .accessibilityLabel("SVOI")
+          Spacer()
+          SvoiIconButton(symbol: "plus", label: "Добавить подписку") { add(false) }
+            .background(SvoiPalette.surface, in: Circle()).disabled(model.working)
+        }.padding(.horizontal, 20).padding(.vertical, 8).background(SvoiPalette.canvas)
+      }
   }
 
   private var connection: some View {
     SvoiCard {
       VStack(spacing: 18) {
-        HStack {
-          SvoiSectionTitle(title: "Подключение")
-          Spacer()
-          Label("Все приложения", systemImage: "shield.lefthalf.filled").font(.caption.weight(.medium)).foregroundStyle(SvoiPalette.muted)
+        Group {
+          if sizeCategory.isAccessibilityCategory {
+            VStack(alignment: .leading, spacing: 8) { cardTitle; coverage }
+              .frame(maxWidth: .infinity, alignment: .leading)
+          } else { HStack { cardTitle; Spacer(); coverage } }
         }
         Button(action: openServers) {
-          HStack(spacing: 12) {
-            ServerFlag(name: model.selected?.name ?? "")
-            VStack(alignment: .leading, spacing: 5) {
-              Text(displayServerName(model.selected?.name ?? "Выбрать сервер"))
-                .font(.headline).foregroundStyle(SvoiPalette.text).fixedSize(horizontal: false, vertical: true)
-              Text("\(model.selected?.kind ?? "") · Сменить сервер")
-                .font(.caption).foregroundStyle(SvoiPalette.muted)
+          Group {
+            if sizeCategory.isAccessibilityCategory {
+              VStack(alignment: .leading, spacing: 12) {
+                HStack { ServerFlag(name: model.selected?.name ?? ""); Spacer(); serverChevron }
+                selectedServerText
+              }
+            } else {
+              HStack(spacing: 12) {
+                ServerFlag(name: model.selected?.name ?? "")
+                selectedServerText
+                Spacer(minLength: 2)
+                serverChevron
+              }
             }
-            Spacer(minLength: 2)
-            Image(systemName: "chevron.down").font(.subheadline.weight(.medium)).foregroundStyle(SvoiPalette.muted)
           }.padding(14).frame(maxWidth: .infinity, alignment: .leading)
             .background(SvoiPalette.inset, in: RoundedRectangle(cornerRadius: 18))
         }.buttonStyle(SvoiPressStyle()).accessibilityIdentifier("selected-server")
@@ -101,6 +118,21 @@ struct ConnectionScreen: View {
           }
         }
       }
+    }
+  }
+
+  private var cardTitle: some View { SvoiSectionTitle(title: "Подключение") }
+  private var coverage: some View {
+    Label("Все приложения", systemImage: "shield.lefthalf.filled").font(.caption.weight(.medium)).foregroundStyle(SvoiPalette.muted)
+  }
+  private var serverChevron: some View {
+    Image(systemName: "chevron.down").font(.subheadline.weight(.medium)).foregroundStyle(SvoiPalette.muted)
+  }
+  private var selectedServerText: some View {
+    VStack(alignment: .leading, spacing: 5) {
+      Text(displayServerName(model.selected?.name ?? "Выбрать сервер"))
+        .font(.headline).foregroundStyle(SvoiPalette.text).fixedSize(horizontal: false, vertical: true)
+      Text("\(model.selected?.kind ?? "") · Сменить сервер").font(.caption).foregroundStyle(SvoiPalette.muted)
     }
   }
 

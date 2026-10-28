@@ -35,7 +35,6 @@ struct SvoiRoot: View {
         TabView(selection: $tab) {
           NavigationStack {
             ConnectionScreen(model: model, vpn: vpn, openServers: { tab = 1 }, add: openImport)
-              .toolbar { brandToolbar }
           }.tabItem { Label("Подключение", systemImage: "power") }.tag(0)
           NavigationStack {
             ServerList(model: model, vpn: vpn, onSelect: { tab = 0 }, onImport: { openImport(false) })
@@ -80,16 +79,4 @@ struct SvoiRoot: View {
     importing = true
   }
 
-  @ToolbarContentBuilder private var brandToolbar: some ToolbarContent {
-    ToolbarItem(placement: .navigationBarLeading) {
-      HStack(spacing: 9) {
-        SvoiBrandMark(size: 34)
-        (Text("svoi").foregroundColor(SvoiPalette.text) + Text("·").foregroundColor(accent))
-          .font(.system(size: 25, weight: .bold, design: .rounded))
-      }.accessibilityElement(children: .ignore).accessibilityLabel("SVOI")
-    }
-    ToolbarItem(placement: .navigationBarTrailing) {
-      SvoiIconButton(symbol: "plus", label: "Добавить подписку") { openImport(false) }.disabled(model.working)
-    }
-  }
 }

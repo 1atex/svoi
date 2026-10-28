@@ -1,6 +1,7 @@
 import json
 from pathlib import Path
 import subprocess
+import sys
 
 root = Path(__file__).resolve().parents[1]
 output = root / '.tools/ios-ui'
@@ -10,6 +11,8 @@ runtimes = json.loads(subprocess.check_output(['xcrun', 'simctl', 'list', 'runti
 runtime = next(item['identifier'] for item in reversed(runtimes) if item.get('isAvailable') and 'iOS' in item['name'])
 types = json.loads(subprocess.check_output(['xcrun', 'simctl', 'list', 'devicetypes', '-j']))['devicetypes']
 for name, preferred in [('compact', ['iPhone 13 mini', 'iPhone SE (3rd generation)']), ('pro', ['iPhone 17 Pro', 'iPhone 16 Pro'])]:
+    if len(sys.argv) > 1 and name != sys.argv[1]:
+        continue
     device = next(item for title in preferred for item in types if item['name'] == title)
     udid = subprocess.check_output(['xcrun', 'simctl', 'create', f'SVOI-{name}', device['identifier'], runtime], text=True).strip()
     result = output / f'{name}.xcresult'

@@ -115,15 +115,20 @@ struct ServerList: View {
           model.selectedID = server.id
           onSelect()
         } label: {
-          HStack(spacing: 12) {
-            ServerFlag(name: server.name)
-            VStack(alignment: .leading, spacing: 5) {
-              Text(displayServerName(server.name)).font(.headline).foregroundStyle(SvoiPalette.text).fixedSize(horizontal: false, vertical: true)
-              Text(server.kind + (selected ? " · Выбран" : ""))
-                .font(.caption).foregroundStyle(selected ? accent : SvoiPalette.muted)
+          Group {
+            if sizeCategory.isAccessibilityCategory {
+              VStack(alignment: .leading, spacing: 12) {
+                HStack { ServerFlag(name: server.name); Spacer(); if selected { Image(systemName: "checkmark.circle.fill").foregroundStyle(accent) } }
+                serverText(server, selected: selected)
+              }
+            } else {
+              HStack(spacing: 12) {
+                ServerFlag(name: server.name)
+                serverText(server, selected: selected)
+                Spacer(minLength: 0)
+                if selected { Image(systemName: "checkmark.circle.fill").foregroundStyle(accent) }
+              }
             }
-            Spacer(minLength: 0)
-            if selected { Image(systemName: "checkmark.circle.fill").foregroundStyle(accent) }
           }.frame(minHeight: 52).contentShape(Rectangle())
         }.buttonStyle(SvoiPressStyle()).accessibilityIdentifier("server-\(server.id)")
         Menu {
@@ -133,18 +138,33 @@ struct ServerList: View {
         } label: { Image(systemName: "ellipsis").frame(width: 44, height: 44).contentShape(Rectangle()).foregroundStyle(SvoiPalette.muted) }
           .accessibilityLabel("Действия: \(displayServerName(server.name))")
       }
-      HStack {
-        Text(server.detail).font(.caption).foregroundStyle(SvoiPalette.muted).lineLimit(sizeCategory.isAccessibilityCategory ? nil : 2)
-        Spacer(minLength: 4)
-        Button { Task { await model.probe(server) } } label: {
-          if model.checking.contains(server.id) { ProgressView().frame(minWidth: 76, minHeight: 44) }
-          else { Text(model.latencies[server.id] ?? "Проверить").font(.caption.weight(.medium)).monospacedDigit().frame(minWidth: 76, minHeight: 44) }
-        }.disabled(model.checking.contains(server.id) || model.checking.count >= 2 || vpn.busy || vpn.active)
-          .accessibilityLabel("Задержка \(server.name): \(model.latencies[server.id] ?? "не проверена")")
+      Group {
+        if sizeCategory.isAccessibilityCategory {
+          VStack(alignment: .leading, spacing: 8) { serverDetail(server); probeButton(server) }
+        } else { HStack { serverDetail(server); Spacer(minLength: 4); probeButton(server) } }
       }
     }.padding(.horizontal, 14).padding(.top, 12).padding(.bottom, 4)
       .background(selected ? accent.opacity(0.09) : SvoiPalette.surface, in: RoundedRectangle(cornerRadius: 20))
       .overlay(RoundedRectangle(cornerRadius: 20).strokeBorder(selected ? accent.opacity(0.55) : .clear))
+  }
+
+  private func serverText(_ server: SvoiServer, selected: Bool) -> some View {
+    VStack(alignment: .leading, spacing: 5) {
+      Text(displayServerName(server.name)).font(.headline).foregroundStyle(SvoiPalette.text).fixedSize(horizontal: false, vertical: true)
+      Text(server.kind + (selected ? " · Выбран" : "")).font(.caption).foregroundStyle(selected ? accent : SvoiPalette.muted)
+    }
+  }
+
+  private func serverDetail(_ server: SvoiServer) -> some View {
+    Text(server.detail).font(.caption).foregroundStyle(SvoiPalette.muted).lineLimit(sizeCategory.isAccessibilityCategory ? nil : 2)
+  }
+
+  private func probeButton(_ server: SvoiServer) -> some View {
+    Button { Task { await model.probe(server) } } label: {
+      if model.checking.contains(server.id) { ProgressView().frame(minWidth: 76, minHeight: 44) }
+      else { Text(model.latencies[server.id] ?? "Проверить").font(.caption.weight(.medium)).monospacedDigit().frame(minWidth: 76, minHeight: 44) }
+    }.disabled(model.checking.contains(server.id) || model.checking.count >= 2 || vpn.busy || vpn.active)
+      .accessibilityLabel("Задержка \(server.name): \(model.latencies[server.id] ?? "не проверена")")
   }
 
   private func sourceHeader(_ source: SvoiSource) -> some View {

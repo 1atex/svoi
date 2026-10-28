@@ -6,6 +6,7 @@ struct ConnectionTools: View {
   @ObservedObject var vpn: VPNController
   @Environment(\.scenePhase) private var scenePhase
   @Environment(\.svoiAccent) private var accent
+  @Environment(\.sizeCategory) private var sizeCategory
   @State private var ip = ""
   @State private var baseline = ""
   @State private var ipError = ""
@@ -17,17 +18,10 @@ struct ConnectionTools: View {
   @State private var copied = false
   var body: some View {
     VStack(alignment: .leading, spacing: 14) {
-      HStack {
-        Image(systemName: "globe").font(.title3).foregroundStyle(accent)
-        VStack(alignment: .leading, spacing: 4) {
-          Text(ip.isEmpty ? refreshing ? "Определяем IP…" : "IP не определён" : ip).font(.headline).textSelection(.enabled)
-          Text(vpn.busy ? "Соединение меняется" : vpn.connected ? "IP с подключением SVOI" : "IP без подключения SVOI").font(.caption).foregroundStyle(SvoiPalette.muted)
-        }
-        Spacer()
-        if !ip.isEmpty {
-          SvoiIconButton(symbol: copied ? "checkmark" : "doc.on.doc", label: "Скопировать IP") { UIPasteboard.general.string = ip; copied = true }
-        }
-        SvoiIconButton(symbol: "arrow.clockwise", label: "Обновить IP") { Task { await refreshIP() } }.disabled(refreshing || vpn.busy)
+      Group {
+        if sizeCategory.isAccessibilityCategory {
+          VStack(alignment: .leading, spacing: 12) { ipSummary; HStack { Spacer(); ipActions } }
+        } else { HStack { ipSummary; Spacer(minLength: 0); ipActions } }
       }
       if !baseline.isEmpty && vpn.connected && !ip.isEmpty { Text(ip == baseline ? "IP совпадает с адресом до подключения" : "IP изменился после подключения").font(.caption).foregroundStyle(.secondary) }
       if !ipError.isEmpty { Text(ipError).font(.caption).foregroundStyle(.orange) }
@@ -55,6 +49,25 @@ struct ConnectionTools: View {
         if scenePhase == .active && (!vpn.active || vpn.connected) { await refreshIP() }
       }
       .onDisappear { checkTask?.cancel() }
+  }
+
+  private var ipSummary: some View {
+    HStack(alignment: .top, spacing: 10) {
+      Image(systemName: "globe").font(.title3).foregroundStyle(accent).accessibilityHidden(true)
+      VStack(alignment: .leading, spacing: 4) {
+        Text(ip.isEmpty ? refreshing ? "Определяем IP…" : "IP не определён" : ip).font(.headline).textSelection(.enabled)
+        Text(vpn.busy ? "Соединение меняется" : vpn.connected ? "IP с подключением SVOI" : "IP без подключения SVOI").font(.caption).foregroundStyle(SvoiPalette.muted)
+      }
+    }
+  }
+
+  private var ipActions: some View {
+    HStack(spacing: 0) {
+      if !ip.isEmpty {
+        SvoiIconButton(symbol: copied ? "checkmark" : "doc.on.doc", label: "Скопировать IP") { UIPasteboard.general.string = ip; copied = true }
+      }
+      SvoiIconButton(symbol: "arrow.clockwise", label: "Обновить IP") { Task { await refreshIP() } }.disabled(refreshing || vpn.busy)
+    }
   }
 
   private func refreshIP() async {

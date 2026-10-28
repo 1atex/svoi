@@ -12,6 +12,10 @@ jobs:
   interface:
     runs-on: macos-26
     timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        device: [compact, pro]
     steps:
       - uses: actions/checkout@v4
       - name: Install XcodeGen
@@ -19,11 +23,11 @@ jobs:
       - name: Prepare interface assets
         run: python3 scripts/prepare-ios-resources.py
       - name: Check small and large iPhones
-        run: python3 scripts/check-ios-interface.py
+        run: python3 scripts/check-ios-interface.py "${{ matrix.device }}"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: iOS-interface-previews
+          name: iOS-interface-${{ matrix.device }}
           path: |
             .tools/ios-ui/**/*.png
             .tools/ios-ui/**/*.json
