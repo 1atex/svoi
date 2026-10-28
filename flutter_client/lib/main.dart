@@ -33,6 +33,7 @@ part 'zapret_page.dart';
 part 'tray.dart';
 part 'startup_panel.dart';
 part 'network_tools.dart';
+part 'speed_tools.dart';
 part 'subscription_details.dart';
 part 'probe_settings.dart';
 part 'public_ip.dart';

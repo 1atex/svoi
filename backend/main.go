@@ -76,20 +76,25 @@ type State struct {
 	Groups []Group `json:"groups"`
 }
 type App struct {
-	mu         sync.Mutex
-	state      State
-	path       string
-	client     *http.Client
-	limits     map[string][]time.Time
-	engine     *Engine
-	probeSlots chan struct{}
-	settingsMu sync.Mutex
-	settings   LocalSettings
-	updates    *Updater
-	zapret     *Zapret
-	networkOp  sync.Mutex
-	handoff    vpnHandoff
-	dnsHost    dnsHost
+	speedMu           sync.Mutex
+	speed             *speedRun
+	speedEndpoint     string
+	speedPolicy       *speedPolicy
+	speedDirectDialer *net.Dialer
+	mu                sync.Mutex
+	state             State
+	path              string
+	client            *http.Client
+	limits            map[string][]time.Time
+	engine            *Engine
+	probeSlots        chan struct{}
+	settingsMu        sync.Mutex
+	settings          LocalSettings
+	updates           *Updater
+	zapret            *Zapret
+	networkOp         sync.Mutex
+	handoff           vpnHandoff
+	dnsHost           dnsHost
 }
 type input struct {
 	Name       string   `json:"name"`
@@ -757,6 +762,7 @@ func run() error {
 	if err != nil {
 		return err
 	}
+	defer a.closeSpeed()
 	if desktopSupported && (!*headless || *native) {
 		exe, err := os.Executable()
 		if err != nil {

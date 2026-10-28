@@ -536,6 +536,9 @@ func (a *App) engineAPI(w http.ResponseWriter, r *http.Request) error {
 	if r.URL.Path != "/api/connection" && r.URL.Path != "/api/connection/check" && r.URL.Path != "/api/connection/ip" {
 		a.networkOp.Lock()
 		defer a.networkOp.Unlock()
+		if r.Method == "POST" {
+			a.cancelSpeed()
+		}
 	}
 	switch {
 	case r.Method == "POST" && r.URL.Path == "/api/connection/ip":

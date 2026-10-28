@@ -1,0 +1,20 @@
+[Unit]
+Description=SVOI bounded speed measurement endpoint
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/opt/svoi-speed/svoi-speed -listen 127.0.0.1:8792
+DynamicUser=yes
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+MemoryMax=96M
+TasksMax=32
+Restart=on-failure
+RestartSec=3
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+
+[Install]
+WantedBy=multi-user.target

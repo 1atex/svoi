@@ -172,6 +172,7 @@ class SvoiController {
   final sessions = ValueNotifier<List<Map<String, dynamic>>>([]);
   bool get visible => _visible;
   final foreground = ValueNotifier<bool>(true);
+  final speedView = ValueNotifier<Map<String, dynamic>>({});
   final File? sessionFile;
   final servers = ValueNotifier<List<ServerEntry>>([]);
   final subscriptions = ValueNotifier<List<Map<String, dynamic>>>([]);

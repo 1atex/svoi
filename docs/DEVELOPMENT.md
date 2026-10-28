@@ -7,6 +7,7 @@
 | `flutter_client/` | Интерфейс, Windows runner, тесты, установщик и сборка текущего приложения |
 | `backend/*.go` | Подписки, профили, Xray, TUN, маршрутизация, zapret, обновления и автозапуск |
 | `backend/*_test.go` | Проверки backend и интеграции с Windows |
+| `cmd/svoi-speed/`, `internal/speedtest/`, `deploy/speed/` | Тестовый узел интернетометра и [методика измерения](../deploy/speed/README.md) |
 | `go.mod`, `go.sum` | Зависимости Go и их контрольные суммы |
 | `scripts/prepare-core.ps1`, `core/` | Загрузка закреплённой версии Xray, сведения об источнике и лицензии |
 | `assets/`, `licenses/` | Иконки, исходники оформления и лицензии зависимостей |
