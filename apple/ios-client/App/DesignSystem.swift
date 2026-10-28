@@ -85,7 +85,7 @@ struct SvoiIconButton: View {
   @Environment(\.svoiAccent) private var accent
   var body: some View {
     Button(action: action) {
-      Image(systemName: symbol).font(.system(size: 18, weight: .medium))
+      SvoiGlyph(symbol, size: 18)
         .foregroundStyle(accent)
         .frame(minWidth: 44, minHeight: 44).contentShape(Rectangle())
     }.buttonStyle(SvoiPressStyle()).accessibilityLabel(label)
@@ -115,7 +115,7 @@ struct SvoiNotice: View {
   var warning = true
   var body: some View {
     HStack(alignment: .top, spacing: 10) {
-      Image(systemName: symbol).padding(.top, 2).accessibilityHidden(true)
+      SvoiGlyph( symbol).padding(.top, 2).accessibilityHidden(true)
       Text(text).font(.footnote).fixedSize(horizontal: false, vertical: true).textSelection(.enabled)
     }.foregroundStyle(warning ? SvoiPalette.warning : SvoiPalette.muted)
       .padding(14).frame(maxWidth: .infinity, alignment: .leading)
@@ -130,7 +130,7 @@ struct ServerFlag: View {
   var body: some View {
     Group {
       if let value = countryFlag(name) { Text(value).font(.system(size: size * 0.57)) }
-      else { Image(systemName: "globe.europe.africa").font(.system(size: size * 0.48)).foregroundStyle(SvoiPalette.muted) }
+      else { SvoiGlyph("globe.europe.africa", size: size * 0.48).foregroundStyle(SvoiPalette.muted) }
     }.frame(width: size, height: size)
       .background(Color.white.opacity(0.045), in: RoundedRectangle(cornerRadius: 14))
       .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(colors.line)).accessibilityHidden(true)

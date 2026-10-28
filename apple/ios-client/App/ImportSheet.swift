@@ -17,7 +17,7 @@ struct ImportSheet: View {
     NavigationStack {
       ScrollView {
         VStack(alignment: .leading, spacing: 24) {
-          Image(systemName: mode == 1 ? "person.2" : "link").font(.system(size: 28)).foregroundStyle(accent)
+          SvoiGlyph(mode == 1 ? "person.2" : "link", size: 28).foregroundStyle(accent)
             .frame(width: 60, height: 60).background(accent.opacity(0.10), in: RoundedRectangle(cornerRadius: 20))
           Picker("Что добавить", selection: $mode) { Text("Подписка").tag(0); Text("Профиль SVOI").tag(1) }.pickerStyle(.segmented)
           VStack(alignment: .leading, spacing: 10) {
@@ -43,7 +43,7 @@ struct ImportSheet: View {
               PasteButton(payloadType: String.self) { values in text = values.first ?? ""; fileError = "" }
                 .labelStyle(.titleAndIcon).buttonBorderShape(.roundedRectangle).tint(accent).frame(minHeight: 44)
               Spacer()
-              Button { file = true } label: { Label("Из файла", systemImage: "doc") }.frame(minHeight: 44)
+              Button { file = true } label: { SvoiLabel("Из файла", systemImage: "doc") }.frame(minHeight: 44)
             }
           }
           if !model.error.isEmpty || !fileError.isEmpty {
@@ -101,18 +101,18 @@ struct ShareProfileButton: View {
         do { code = try await model.exportProfile(); showing = true }
         catch { model.error = error.localizedDescription }
       }
-    } label: { Label(preparing ? "Готовим код…" : "Поделиться профилем", systemImage: "square.and.arrow.up") }
+    } label: { SvoiLabel(preparing ? "Готовим код…" : "Поделиться профилем", systemImage: "square.and.arrow.up") }
     .disabled(model.working || preparing)
     .sheet(isPresented: $showing) {
       NavigationStack {
         ScrollView {
         VStack(alignment: .leading, spacing: 22) {
-          Image(systemName: "person.2.fill").font(.system(size: 42)).foregroundStyle(SvoiPalette.gold)
+          SvoiGlyph("person.2.fill", size: 42).foregroundStyle(SvoiPalette.gold)
           Text("Всё своё — с собой.").font(.title.bold())
           Text("Получатель вставит код в SVOI на другом устройстве и получит подписки и параметры вашего профиля.").foregroundStyle(SvoiPalette.muted)
           SvoiNotice(text: "В коде есть данные доступа. Передавайте его только тем, с кем хотите поделиться подпиской.", symbol: "lock", warning: false)
-          ShareLink(item: code) { Label("Передать код", systemImage: "square.and.arrow.up") }.buttonStyle(SvoiPrimaryButton())
-          Button { UIPasteboard.general.string = code; copied = true } label: { Label(copied ? "Код скопирован" : "Скопировать код", systemImage: copied ? "checkmark" : "doc.on.doc") }
+          ShareLink(item: code) { SvoiLabel("Передать код", systemImage: "square.and.arrow.up") }.buttonStyle(SvoiPrimaryButton())
+          Button { UIPasteboard.general.string = code; copied = true } label: { SvoiLabel(copied ? "Код скопирован" : "Скопировать код", systemImage: copied ? "checkmark" : "doc.on.doc") }
             .frame(maxWidth: .infinity, minHeight: 44)
         }.padding(24).frame(maxWidth: 560).frame(maxWidth: .infinity)
         }.background(colors.canvas).navigationTitle("Поделиться").navigationBarTitleDisplayMode(.inline)

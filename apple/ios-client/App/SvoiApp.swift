@@ -25,6 +25,8 @@ struct SvoiRoot: View {
   @ObservedObject var vpn: VPNController
   @AppStorage("appearance") private var appearance = "amber"
   @AppStorage("colorScheme") private var colorScheme = "dark"
+  @AppStorage("uiIconStyle") private var iconStyleName = "outline"
+  private var iconStyle: SvoiIconStyle { SvoiIconStyle(rawValue: iconStyleName) ?? .outline }
   @State private var tab = 0
   @State private var importing = false
   @State private var importProfile = false
@@ -37,7 +39,7 @@ struct SvoiRoot: View {
         TabView(selection: $tab) {
           NavigationStack {
             ConnectionScreen(model: model, vpn: vpn, openServers: { tab = 1 }, add: openImport)
-          }.tabItem { Label("Подключение", systemImage: "power") }.tag(0)
+          }.tabItem { Label("Подключение", image: SvoiIconAssets.name("power", style: iconStyle)) }.tag(0)
           NavigationStack {
             ServerList(model: model, vpn: vpn, onSelect: { tab = 0 }, onImport: { openImport(false) })
               .navigationTitle("Серверы")
@@ -46,16 +48,16 @@ struct SvoiRoot: View {
                   SvoiIconButton(symbol: "plus", label: "Добавить подписку") { openImport(false) }.disabled(model.working)
                 }
               }
-          }.tabItem { Label("Серверы", systemImage: "globe.europe.africa") }.tag(1)
+          }.tabItem { Label("Серверы", image: SvoiIconAssets.name("server.rack", style: iconStyle)) }.tag(1)
           NavigationStack {
             ToolsScreen(model: model, vpn: vpn).navigationTitle("Инструменты")
-          }.tabItem { Label("Инструменты", systemImage: "square.grid.2x2") }.tag(4)
+          }.tabItem { Label("Инструменты", image: SvoiIconAssets.name("wrench.and.screwdriver", style: iconStyle)) }.tag(4)
           NavigationStack {
             ProfileScreen(model: model, vpn: vpn, onImport: { openImport(true) }).navigationTitle("Общий профиль")
-          }.tabItem { Label("Профиль", systemImage: "person.2") }.tag(2)
+          }.tabItem { Label("Профиль", image: SvoiIconAssets.name("person.2", style: iconStyle)) }.tag(2)
           NavigationStack {
             SettingsScreen(model: model).navigationTitle("Настройки")
-          }.tabItem { Label("Настройки", systemImage: "slider.horizontal.3") }.tag(3)
+          }.tabItem { Label("Настройки", image: SvoiIconAssets.name("slider.horizontal.3", style: iconStyle)) }.tag(3)
         }
         .toolbarBackground(colors.canvas, for: .tabBar, .navigationBar)
         .toolbarBackground(.visible, for: .tabBar, .navigationBar)
@@ -72,7 +74,7 @@ struct SvoiRoot: View {
         }.padding(28).frame(maxWidth: .infinity, maxHeight: .infinity).background(colors.canvas)
       }
     }
-    .tint(accent).environment(\.svoiAccent, accent).environment(\.svoiColors, colors).background(colors.canvas)
+    .environment(\.svoiIconStyle, iconStyle).tint(accent).environment(\.svoiAccent, accent).environment(\.svoiColors, colors).background(colors.canvas)
     #if SVOI_UI_PREVIEW
     .environment(\.sizeCategory, ProcessInfo.processInfo.arguments.contains("--large-type") ? .accessibilityExtraExtraExtraLarge : .large)
     #endif

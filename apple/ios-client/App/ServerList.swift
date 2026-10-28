@@ -26,7 +26,7 @@ struct ServerList: View {
   var body: some View {
     VStack(spacing: 0) {
       HStack(spacing: 10) {
-        Image(systemName: "magnifyingglass").foregroundStyle(SvoiPalette.muted)
+        SvoiGlyph( "magnifyingglass").foregroundStyle(SvoiPalette.muted)
         TextField("Найти сервер", text: $search).textInputAutocapitalization(.never).autocorrectionDisabled()
           .accessibilityIdentifier("server-search")
         if !search.isEmpty { SvoiIconButton(symbol: "xmark.circle.fill", label: "Очистить поиск") { search = "" } }
@@ -39,7 +39,7 @@ struct ServerList: View {
           if model.servers.isEmpty {
             SvoiCard {
               VStack(alignment: .leading, spacing: 16) {
-                Image(systemName: "square.stack.3d.up").font(.largeTitle).foregroundStyle(accent)
+                SvoiGlyph("square.stack.3d.up", size: 34).foregroundStyle(accent)
                 Text("Здесь будут ваши серверы").font(.title2.bold())
                 Text("Добавьте подписку или импортируйте профиль SVOI.").foregroundStyle(SvoiPalette.muted)
                 Button("Добавить подписку", action: onImport).buttonStyle(SvoiPrimaryButton())
@@ -47,7 +47,7 @@ struct ServerList: View {
             }
           } else if filtered.isEmpty {
             VStack(spacing: 12) {
-              Image(systemName: "magnifyingglass").font(.title).foregroundStyle(SvoiPalette.muted)
+              SvoiGlyph("magnifyingglass", size: 28).foregroundStyle(SvoiPalette.muted)
               Text("Ничего не найдено").font(.headline)
               Button("Очистить поиск") { search = "" }.frame(minHeight: 44)
             }.frame(maxWidth: .infinity).padding(.vertical, 36)
@@ -56,7 +56,7 @@ struct ServerList: View {
               Text("Серверов: \(filtered.count)").font(.footnote).foregroundStyle(SvoiPalette.muted)
               Spacer()
               Button { byLatency.toggle() } label: {
-                Label(byLatency ? "По задержке" : "По подпискам", systemImage: "arrow.up.arrow.down")
+                SvoiLabel(byLatency ? "По задержке" : "По подпискам", systemImage: "arrow.up.arrow.down")
                   .font(.footnote.weight(.medium)).frame(minHeight: 44)
               }.accessibilityLabel("Сортировка: \(byLatency ? "по задержке" : "по подпискам")")
             }
@@ -100,7 +100,7 @@ struct ServerList: View {
         Text(checkingAll ? "\(checked) из \(batchCount)" : "Через профиль · GET").font(.caption).foregroundStyle(SvoiPalette.muted)
         Spacer(minLength: 8)
         Button { checkingAll ? cancelBatch() : startBatch() } label: {
-          Label(checkingAll ? "Остановить" : "Проверить задержку", systemImage: checkingAll ? "stop.circle" : "waveform.path.ecg")
+          SvoiLabel(checkingAll ? "Остановить" : "Проверить задержку", systemImage: checkingAll ? "stop.circle" : "waveform.path.ecg")
             .font(.subheadline.weight(.semibold)).frame(minHeight: 44)
         }.disabled(vpn.busy || vpn.active || filtered.isEmpty)
       }
@@ -119,7 +119,7 @@ struct ServerList: View {
           Group {
             if sizeCategory.isAccessibilityCategory {
               VStack(alignment: .leading, spacing: 12) {
-                HStack { ServerFlag(name: server.name); Spacer(); if selected { Image(systemName: "checkmark.circle.fill").foregroundStyle(accent) } }
+                HStack { ServerFlag(name: server.name); Spacer(); if selected { SvoiGlyph( "checkmark.circle.fill").foregroundStyle(accent) } }
                 serverText(server, selected: selected)
               }
             } else {
@@ -127,16 +127,16 @@ struct ServerList: View {
                 ServerFlag(name: server.name)
                 serverText(server, selected: selected)
                 Spacer(minLength: 0)
-                if selected { Image(systemName: "checkmark.circle.fill").foregroundStyle(accent) }
+                if selected { SvoiGlyph( "checkmark.circle.fill").foregroundStyle(accent) }
               }
             }
           }.frame(minHeight: 52).contentShape(Rectangle())
         }.buttonStyle(SvoiPressStyle()).accessibilityIdentifier("server-\(server.id)")
         Menu {
-          Button { showConfig(server) } label: { Label("Конфигурация", systemImage: "curlybraces") }
-          Button { Task { await model.probe(server) } } label: { Label("Проверить задержку", systemImage: "waveform.path.ecg") }
+          Button { showConfig(server) } label: { SvoiLabel("Конфигурация", systemImage: "curlybraces") }
+          Button { Task { await model.probe(server) } } label: { SvoiLabel("Проверить задержку", systemImage: "waveform.path.ecg") }
             .disabled(vpn.active || vpn.busy || model.checking.count >= 2)
-        } label: { Image(systemName: "ellipsis").frame(width: 44, height: 44).contentShape(Rectangle()).foregroundStyle(SvoiPalette.muted) }
+        } label: { SvoiGlyph( "ellipsis").frame(width: 44, height: 44).contentShape(Rectangle()).foregroundStyle(SvoiPalette.muted) }
           .accessibilityLabel("Действия: \(displayServerName(server.name))")
       }
       Group {
@@ -174,7 +174,7 @@ struct ServerList: View {
         Text(source.name).font(.headline)
         Spacer(minLength: 4)
         if source.remote {
-          Button { Task { await model.refreshSubscription(source) } } label: { Image(systemName: "arrow.clockwise").frame(width: 44, height: 44) }
+          Button { Task { await model.refreshSubscription(source) } } label: { SvoiGlyph( "arrow.clockwise").frame(width: 44, height: 44) }
             .disabled(model.working).accessibilityLabel("Обновить \(source.name)")
         }
       }

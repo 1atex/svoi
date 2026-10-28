@@ -45,3 +45,10 @@ for scale in [1, 2, 3]:
     subprocess.run(['sips', '-z', str(64 * scale), str(64 * scale), str(root / 'assets/brand/app-icon-ios.png'), '--out', str(mark / filename)], check=True, stdout=subprocess.DEVNULL)
     images.append({'idiom': 'universal', 'scale': f'{scale}x', 'filename': filename})
 (mark / 'Contents.json').write_text(json.dumps({'images': images, 'info': {'version': 1, 'author': 'xcode'}}, indent=2) + '\n')
+
+for style in ['outline', 'duotone']:
+    for source in (root / 'flutter_client/assets/ui-icons' / style).glob('*.svg'):
+        folder = icons.parent / f'UiIcon-{style}-{source.stem}.imageset'
+        folder.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(source, folder / 'icon.svg')
+        (folder / 'Contents.json').write_text(json.dumps({'images':[{'idiom':'universal','filename':'icon.svg'}],'info':{'version':1,'author':'xcode'},'properties':{'preserves-vector-representation':True,'template-rendering-intent':'template'}},indent=2)+'\n')

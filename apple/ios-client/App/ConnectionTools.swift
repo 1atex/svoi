@@ -32,9 +32,9 @@ struct ConnectionTools: View {
         checkTask = Task { await checkInternet() }
       } label: {
         HStack {
-          Label(checking ? "Проверяем интернет…" : "Проверить интернет", systemImage: "waveform.path.ecg")
+          SvoiLabel(checking ? "Проверяем интернет…" : "Проверить интернет", systemImage: "waveform.path.ecg")
           Spacer(minLength: 8)
-          if checking { ProgressView() } else { Image(systemName: "arrow.up.right").font(.caption) }
+          if checking { ProgressView() } else { SvoiGlyph("arrow.up.right", size: 12) }
         }.frame(minHeight: 44)
       }.font(.footnote.weight(.medium)).disabled(checking || vpn.busy)
       if !checkResult.isEmpty { Text(checkResult).font(.caption).foregroundStyle(.secondary) }
@@ -54,7 +54,7 @@ struct ConnectionTools: View {
 
   private var ipSummary: some View {
     HStack(alignment: .top, spacing: 10) {
-      Image(systemName: "globe").font(.title3).foregroundStyle(accent).accessibilityHidden(true)
+      SvoiGlyph("globe", size: 20).foregroundStyle(accent).accessibilityHidden(true)
       VStack(alignment: .leading, spacing: 4) {
         Text(ip.isEmpty ? refreshing ? "Определяем IP…" : "IP не определён" : ip).font(.headline).textSelection(.enabled)
         Text(vpn.busy ? "Соединение меняется" : vpn.connected ? "IP с подключением SVOI" : "IP без подключения SVOI").font(.caption).foregroundStyle(SvoiPalette.muted)

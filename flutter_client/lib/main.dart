@@ -9,6 +9,8 @@ import 'package:shadcn_ui/shadcn_ui.dart';
 import 'package:country_flags/country_flags.dart';
 
 import 'countries.dart';
+import 'ui_icons.dart';
+export 'ui_icons.dart';
 
 import 'backend.dart';
 import 'android_backend.dart';
@@ -234,7 +236,7 @@ class _BootstrapState extends State<Bootstrap> with WidgetsBindingObserver {
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(
+                            SvoiIcon(
                               Icons.shield_outlined,
                               size: 44,
                               color: appColors(context).accent,
@@ -391,7 +393,7 @@ class _SvoiShellState extends State<SvoiShell> {
                                   ),
                                 ),
                                 onPressed: () => setState(() => page = index),
-                                icon: Icon(icon, size: 17),
+                                icon: SvoiIcon(icon, size: 17),
                                 label: Text(label),
                               ),
                             ),
@@ -406,12 +408,12 @@ class _SvoiShellState extends State<SvoiShell> {
                       'Профили и перенос',
                       ProfilePage(c: c),
                     ),
-                    icon: const Icon(LucideIcons.users, size: 19),
+                    icon: const SvoiIcon(LucideIcons.users, size: 19),
                   ),
                   IconButton(
                     tooltip: 'Свернуть в трей',
                     onPressed: () => windowChannel.invokeMethod('tray'),
-                    icon: const Icon(LucideIcons.chevronDown, size: 19),
+                    icon: const SvoiIcon(LucideIcons.chevronDown, size: 19),
                   ),
                 ],
               ),
@@ -428,7 +430,7 @@ class _SvoiShellState extends State<SvoiShell> {
                       padding: const EdgeInsets.fromLTRB(20, 6, 12, 6),
                       child: Row(
                         children: [
-                          Icon(
+                          SvoiIcon(
                             LucideIcons.info,
                             size: 18,
                             color: appColors(context).error,
@@ -445,7 +447,7 @@ class _SvoiShellState extends State<SvoiShell> {
                           IconButton(
                             tooltip: 'Закрыть сообщение',
                             onPressed: () => c.message.value = '',
-                            icon: const Icon(LucideIcons.x, size: 18),
+                            icon: const SvoiIcon(LucideIcons.x, size: 18),
                           ),
                         ],
                       ),
@@ -530,7 +532,7 @@ Future<void> importDialog(BuildContext context, SvoiController c) async {
               if (context.mounted) Navigator.pop(context);
             }
           },
-          icon: const Icon(Icons.file_open_outlined),
+          icon: const SvoiIcon(Icons.file_open_outlined),
           label: const Text('Из файла'),
         ),
         TextButton(

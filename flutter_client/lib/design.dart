@@ -42,7 +42,7 @@ class AppButton extends StatelessWidget {
       overflow: TextOverflow.ellipsis,
       textAlign: TextAlign.center,
     );
-    final leading = icon == null ? null : Icon(icon, size: 17);
+    final leading = icon == null ? null : SvoiIcon(icon, size: 17);
     return ShadTheme(
       data: _buttonTheme(context),
       child: primary
@@ -88,7 +88,7 @@ class CountryMark extends StatelessWidget {
         ),
         alignment: Alignment.center,
         child: country.code == null
-            ? Icon(
+            ? SvoiIcon(
                 LucideIcons.globe,
                 size: large ? 24 : 20,
                 color: appColors(context).muted,
@@ -283,7 +283,7 @@ class ModePicker extends StatelessWidget {
                           child: IconButton(
                             tooltip: 'Закрыть',
                             onPressed: () => Navigator.pop(dialog),
-                            icon: const Icon(LucideIcons.x),
+                            icon: const SvoiIcon(LucideIcons.x),
                           ),
                         ),
                         Expanded(child: RoutingPage(c: c)),
@@ -292,7 +292,7 @@ class ModePicker extends StatelessWidget {
                   ),
                 ),
               ),
-              icon: const Icon(LucideIcons.appWindow, size: 15),
+              icon: const SvoiIcon(LucideIcons.appWindow, size: 15),
               label: const Text('Выбрать приложения и исключения'),
             ),
           ),

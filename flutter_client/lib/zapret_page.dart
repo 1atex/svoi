@@ -45,7 +45,7 @@ class _ZapretPageState extends State<ZapretPage> {
                       color: appColors(context).accent.withValues(alpha: .1),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: Icon(
+                    child: SvoiIcon(
                       LucideIcons.shield,
                       color: appColors(context).accent,
                       size: 23,
@@ -130,7 +130,7 @@ class _ZapretPageState extends State<ZapretPage> {
                     ChoiceChip(
                       showCheckmark: false,
                       selected: tab == entry.$1,
-                      avatar: Icon(entry.$3, size: 15),
+                      avatar: SvoiIcon(entry.$3, size: 15),
                       label: Text(entry.$2),
                       onSelected: (_) => setState(() => tab = entry.$1),
                     ),
@@ -275,7 +275,7 @@ class _ZapretPageState extends State<ZapretPage> {
                                         'sweep': false,
                                         'strategies': [],
                                       }),
-                                icon: const Icon(
+                                icon: const SvoiIcon(
                                   LucideIcons.refreshCw,
                                   size: 15,
                                 ),
@@ -329,7 +329,7 @@ class _ZapretPageState extends State<ZapretPage> {
                         Align(
                           alignment: Alignment.centerLeft,
                           child: TextButton.icon(
-                            icon: const Icon(LucideIcons.folder, size: 15),
+                            icon: const SvoiIcon(LucideIcons.folder, size: 15),
                             label: Text(
                               z['managed'] == true
                                   ? 'Использовать свою папку'
@@ -551,7 +551,7 @@ class _ZapretPageState extends State<ZapretPage> {
                                 text: (z['logs'] as List? ?? []).join('\n'),
                               ),
                             ),
-                            icon: const Icon(LucideIcons.copy, size: 15),
+                            icon: const SvoiIcon(LucideIcons.copy, size: 15),
                             label: const Text('Копировать'),
                           ),
                         ],
@@ -657,7 +657,7 @@ class _ZapretPageState extends State<ZapretPage> {
               if (results.isNotEmpty)
                 IconButton(
                   tooltip: 'Сохранить полный отчёт',
-                  icon: const Icon(LucideIcons.download, size: 18),
+                  icon: const SvoiIcon(LucideIcons.download, size: 18),
                   onPressed: () => widget.c.action(() async {
                     final report = await widget.c.api.request('zapret');
                     await saveText(
@@ -716,7 +716,7 @@ class _ZapretPageState extends State<ZapretPage> {
                         : '${r['check'] ?? 'Проверка'}';
                     return ListTile(
                       contentPadding: EdgeInsets.zero,
-                      leading: Icon(
+                      leading: SvoiIcon(
                         ok ? LucideIcons.circleCheck : LucideIcons.circleAlert,
                         color: ok
                             ? appColors(context).success

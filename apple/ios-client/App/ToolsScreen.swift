@@ -28,14 +28,14 @@ struct ToolsScreen: View {
   private func tool(_ title: String, detail: String, symbol: String) -> some View {
     SvoiCard {
       HStack(spacing: 14) {
-        Image(systemName: symbol).font(.title2).foregroundStyle(accent)
+        SvoiGlyph(symbol, size: 22).foregroundStyle(accent)
           .frame(width: 48, height: 48).background(accent.opacity(0.10), in: RoundedRectangle(cornerRadius: 14))
         VStack(alignment: .leading, spacing: 7) {
           Text(title).font(.headline).foregroundStyle(SvoiPalette.text)
-          Text(detail).font(.footnote).foregroundStyle(SvoiPalette.muted)
+          Text(detail).multilineTextAlignment(.leading).font(.footnote).foregroundStyle(SvoiPalette.muted)
         }
         Spacer(minLength: 0)
-        Image(systemName: "chevron.right").font(.caption).foregroundStyle(SvoiPalette.muted)
+        SvoiGlyph("chevron.right", size: 12).foregroundStyle(SvoiPalette.muted)
       }
     }
   }
@@ -157,7 +157,7 @@ struct SpeedToolScreen: View {
         SvoiSectionTitle(title: "Серверы для сравнения")
         SvoiCard {
           LazyVStack(spacing: 0) {
-            Label("Без VPN · включён в каждый тест", systemImage: "iphone").font(.footnote).foregroundStyle(SvoiPalette.muted).padding(.bottom, 16)
+            SvoiLabel("Без VPN · включён в каждый тест", systemImage: "iphone").font(.footnote).foregroundStyle(SvoiPalette.muted).padding(.bottom, 16)
             ForEach(model.servers) { server in
               Button {
                 if selected.contains(server.id) { selected.remove(server.id) }
@@ -167,7 +167,7 @@ struct SpeedToolScreen: View {
                   ServerFlag(name: server.name, size: 36)
                   Text(displayServerName(server.name)).font(.subheadline).foregroundStyle(SvoiPalette.text)
                   Spacer(minLength: 4)
-                  Image(systemName: selected.contains(server.id) ? "checkmark.circle.fill" : "circle").foregroundStyle(selected.contains(server.id) ? accent : SvoiPalette.muted)
+                  SvoiGlyph( selected.contains(server.id) ? "checkmark.circle.fill" : "circle").foregroundStyle(selected.contains(server.id) ? accent : SvoiPalette.muted)
                 }.frame(minHeight: 58).contentShape(Rectangle())
               }.buttonStyle(SvoiPressStyle()).disabled(state.working || (!selected.contains(server.id) && selected.count >= 3))
                 .accessibilityAddTraits(selected.contains(server.id) ? .isSelected : [])
@@ -183,7 +183,7 @@ struct SpeedToolScreen: View {
       .safeAreaInset(edge: .bottom) {
         Button {
           if state.working { state.stop() } else { state.start(Array(selected)) }
-        } label: { Label(state.working ? "Остановить замер" : "Сравнить скорость", systemImage: state.working ? "stop.circle" : "speedometer") }
+        } label: { SvoiLabel(state.working ? "Остановить замер" : "Сравнить скорость", systemImage: state.working ? "stop.circle" : "speedometer") }
           .buttonStyle(SvoiPrimaryButton()).disabled(!state.working && (vpn.active || vpn.busy || model.preparingVPN))
           .padding(.horizontal, 20).padding(.vertical, 12).background(colors.canvas).accessibilityIdentifier("speed-start")
       }

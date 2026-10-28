@@ -299,13 +299,13 @@ class MobileConnectionCard extends StatelessWidget {
                                   width: 32,
                                   height: 32,
                                   child: MediaQuery.disableAnimationsOf(context)
-                                      ? const Icon(Icons.more_horiz)
+                                      ? const SvoiIcon(Icons.more_horiz)
                                       : CircularProgressIndicator(
                                           strokeWidth: 2,
                                           color: color,
                                         ),
                                 )
-                              : const Icon(
+                              : const SvoiIcon(
                                   Icons.power_settings_new_rounded,
                                   size: 39,
                                 ),
@@ -360,7 +360,7 @@ class MobileConnectionCard extends StatelessWidget {
                 '${server.protocol} · Сменить сервер',
                 style: TextStyle(fontSize: 12, color: appColors(context).muted),
               ),
-              trailing: const Icon(Icons.chevron_right_rounded, size: 20),
+              trailing: const SvoiIcon(Icons.chevron_right_rounded, size: 20),
               onTap: onServer,
             ),
           ),
@@ -369,7 +369,7 @@ class MobileConnectionCard extends StatelessWidget {
           if (view.running)
             TextButton.icon(
               onPressed: busy ? null : c.check,
-              icon: const Icon(Icons.network_check, size: 18),
+              icon: const SvoiIcon(Icons.network_check, size: 18),
               label: const Text('Проверить интернет'),
             ),
         ],

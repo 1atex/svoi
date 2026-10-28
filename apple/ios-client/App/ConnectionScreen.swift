@@ -29,14 +29,14 @@ struct ConnectionScreen: View {
           Button(action: openServers) {
             SvoiCard {
               HStack(spacing: 14) {
-                Image(systemName: "square.stack.3d.up").font(.title3).foregroundStyle(accent)
+                SvoiGlyph("square.stack.3d.up", size: 20).foregroundStyle(accent)
                 VStack(alignment: .leading, spacing: 5) {
                   Text("Ваши подписки").font(.headline).foregroundStyle(SvoiPalette.text)
                   Text("Подписок: \(model.sources.count) · серверов: \(model.servers.count)").font(.footnote).foregroundStyle(SvoiPalette.muted)
                 }
                 Spacer(minLength: 4)
                 if model.working { ProgressView().tint(accent) }
-                else { Image(systemName: "chevron.right").font(.footnote).foregroundStyle(SvoiPalette.muted) }
+                else { SvoiGlyph("chevron.right", size: 15).foregroundStyle(SvoiPalette.muted) }
               }
             }
           }.buttonStyle(SvoiPressStyle())
@@ -97,7 +97,7 @@ struct ConnectionScreen: View {
             Circle().stroke(accent.opacity(0.9), lineWidth: 1.5).padding(26)
             VStack(spacing: 9) {
               if busy { ProgressView().tint(vpn.connected ? colors.canvas : accent).scaleEffect(1.35) }
-              else { Image(systemName: switching ? "arrow.triangle.2.circlepath" : "power").font(.system(size: 35, weight: .light)) }
+              else { SvoiGlyph(switching ? "arrow.triangle.2.circlepath" : "power", size: 35) }
               Text(busy ? "Отменить" : switching ? "Переключить" : vpn.active ? "Отключить" : "Подключить")
                 .font(.caption2.weight(.semibold)).dynamicTypeSize(...DynamicTypeSize.xxxLarge)
                 .lineLimit(1).minimumScaleFactor(0.75)
@@ -125,11 +125,11 @@ struct ConnectionScreen: View {
 
   private var cardTitle: some View { SvoiSectionTitle(title: "Подключение") }
   private var coverage: some View {
-    Label("Все приложения", systemImage: "shield.lefthalf.filled").font(.caption.weight(.medium)).foregroundStyle(SvoiPalette.muted)
+    SvoiLabel("Все приложения", systemImage: "shield.lefthalf.filled").font(.caption.weight(.medium)).foregroundStyle(SvoiPalette.muted)
       .dynamicTypeSize(...DynamicTypeSize.accessibility1)
   }
   private var serverChevron: some View {
-    Image(systemName: "chevron.down").font(.subheadline.weight(.medium)).foregroundStyle(SvoiPalette.muted)
+    SvoiGlyph("chevron.down", size: 16).foregroundStyle(SvoiPalette.muted)
   }
   private var selectedServerText: some View {
     VStack(alignment: .leading, spacing: 5) {
@@ -143,19 +143,19 @@ struct ConnectionScreen: View {
   private var welcome: some View {
     SvoiCard {
       VStack(alignment: .leading, spacing: 24) {
-        HStack { SvoiBrandMark(size: 56); Spacer(); Image(systemName: "sparkle").font(.title2).foregroundStyle(accent) }
+        HStack { SvoiBrandMark(size: 56); Spacer(); SvoiGlyph("sparkle", size: 22).foregroundStyle(accent) }
         VStack(alignment: .leading, spacing: 12) {
           Text("Начнём с\nвашей подписки").font(.system(.largeTitle, design: .rounded).weight(.bold)).foregroundStyle(SvoiPalette.text)
           Text("Добавьте ссылку от VPN-провайдера или перенесите общий профиль с другого устройства.")
             .font(.body).foregroundStyle(SvoiPalette.muted).fixedSize(horizontal: false, vertical: true)
         }
         VStack(spacing: 12) {
-          Button { add(false) } label: { Label("Добавить подписку", systemImage: "plus") }
+          Button { add(false) } label: { SvoiLabel("Добавить подписку", systemImage: "plus") }
             .buttonStyle(SvoiPrimaryButton()).accessibilityIdentifier("welcome-import")
-          Button { add(true) } label: { Label("У меня есть код SVOI", systemImage: "person.2") }
+          Button { add(true) } label: { SvoiLabel("У меня есть код SVOI", systemImage: "person.2") }
             .font(.subheadline.weight(.medium)).frame(maxWidth: .infinity, minHeight: 48)
         }
-        Label("Подписки хранятся на вашем устройстве", systemImage: "iphone")
+        SvoiLabel("Подписки хранятся на вашем устройстве", systemImage: "iphone")
           .font(.footnote).foregroundStyle(SvoiPalette.muted)
       }
     }

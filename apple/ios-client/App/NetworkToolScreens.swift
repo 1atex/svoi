@@ -33,11 +33,11 @@ struct DNSToolScreen: View {
                 Text(String(format: "%.1f мс", median)).font(.title2.weight(.semibold)).monospacedDigit()
                 Text("Медиана · ответов \(value.samples.count)/6").font(.caption).foregroundStyle(SvoiPalette.muted)
               } else { Text("Нет ответа").foregroundStyle(SvoiPalette.warning) }
-              if value.id == sorted.first(where: \.reliable)?.id { Label("Лучший полный результат этого теста", systemImage: "checkmark.circle").font(.footnote).foregroundStyle(SvoiPalette.success) }
+              if value.id == sorted.first(where: \.reliable)?.id { SvoiLabel("Лучший полный результат этого теста", systemImage: "checkmark.circle").font(.footnote).foregroundStyle(SvoiPalette.success) }
               Button {
                 UIPasteboard.general.string = value.provider.address
                 copied = value.id
-              } label: { Label(copied == value.id ? "Адрес скопирован" : "Скопировать адрес", systemImage: copied == value.id ? "checkmark" : "doc.on.doc") }.frame(minHeight: 44)
+              } label: { SvoiLabel(copied == value.id ? "Адрес скопирован" : "Скопировать адрес", systemImage: copied == value.id ? "checkmark" : "doc.on.doc") }.frame(minHeight: 44)
             }
           }
         }
@@ -45,7 +45,7 @@ struct DNSToolScreen: View {
       }.padding(20).frame(maxWidth: 600).frame(maxWidth: .infinity)
     }.background(colors.canvas).navigationTitle("Сравнить DNS").navigationBarTitleDisplayMode(.inline)
       .safeAreaInset(edge: .bottom) {
-        Button { state.working ? state.stop() : state.start(providers) } label: { Label(state.working ? "Остановить проверку" : "Сравнить DNS", systemImage: state.working ? "stop.circle" : "waveform.path.ecg") }
+        Button { state.working ? state.stop() : state.start(providers) } label: { SvoiLabel(state.working ? "Остановить проверку" : "Сравнить DNS", systemImage: state.working ? "stop.circle" : "waveform.path.ecg") }
           .buttonStyle(SvoiPrimaryButton()).disabled(!state.working && (vpn.active || vpn.busy || providers.isEmpty))
           .padding(20).background(colors.canvas).accessibilityIdentifier("dns-start")
       }
@@ -67,7 +67,7 @@ struct SiteToolScreen: View {
     ScrollView {
       VStack(alignment: .leading, spacing: 20) {
         Text("Проверка сайта по текущему подключению.").foregroundStyle(SvoiPalette.muted)
-        Label(vpn.connected ? "VPN включён · маршрутизация профиля" : "SVOI отключён · текущая сеть iPhone", systemImage: vpn.connected ? "shield.lefthalf.filled" : "wifi")
+        SvoiLabel(vpn.connected ? "VPN включён · маршрутизация профиля" : "SVOI отключён · текущая сеть iPhone", systemImage: vpn.connected ? "shield.lefthalf.filled" : "wifi")
           .font(.footnote).foregroundStyle(SvoiPalette.muted)
         SvoiCard {
           VStack(alignment: .leading, spacing: 14) {
@@ -78,7 +78,7 @@ struct SiteToolScreen: View {
             Button {
               editing = false
               if state.working { state.stop() } else { state.start(input) }
-            } label: { Label(state.working ? "Остановить" : "Проверить сайт", systemImage: state.working ? "stop.circle" : "arrow.up.right") }
+            } label: { SvoiLabel(state.working ? "Остановить" : "Проверить сайт", systemImage: state.working ? "stop.circle" : "arrow.up.right") }
               .buttonStyle(SvoiPrimaryButton()).disabled(!state.working && (input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || vpn.busy))
           }
         }

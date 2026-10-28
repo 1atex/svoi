@@ -4,6 +4,7 @@ import UIKit
 struct SettingsScreen: View {
   @Environment(\.svoiColors) private var colors
   @ObservedObject var model: SvoiModel
+  @AppStorage("uiIconStyle") private var iconStyle = "outline"
   @AppStorage("appearance") private var appearance = "amber"
   @AppStorage("colorScheme") private var colorScheme = "dark"
   @Environment(\.svoiAccent) private var accent
@@ -21,6 +22,19 @@ struct SettingsScreen: View {
           .font(.footnote).foregroundStyle(SvoiPalette.muted)
       } header: { Text("Тема") }.listRowBackground(colors.surface)
       Section {
+        Picker("Иконки интерфейса", selection: $iconStyle) {
+          Text("Контурные").tag("outline")
+          Text("Двухцветные").tag("duotone")
+        }.pickerStyle(.segmented).accessibilityIdentifier("icon-style")
+        HStack(spacing: 24) {
+          ForEach(["shield.lefthalf.filled", "point.3.connected.trianglepath.dotted", "speedometer", "slider.horizontal.3"], id: \.self) { symbol in
+            SvoiGlyph(symbol, size: 26).foregroundStyle(accent)
+          }
+        }.padding(.vertical, 8).frame(maxWidth: .infinity).accessibilityHidden(true)
+        Text("Стиль меняется на всех экранах. Цвет берётся из выбранной темы.")
+          .font(.footnote).foregroundStyle(SvoiPalette.muted)
+      } header: { Text("Иконки") }.listRowBackground(colors.surface)
+      Section {
         VStack(alignment: .leading, spacing: 16) {
           Text("Ваш SVOI").font(.title3.bold())
           Text("Выберите акцент, который нравится вам.").font(.footnote).foregroundStyle(SvoiPalette.muted)
@@ -29,10 +43,10 @@ struct SettingsScreen: View {
               Button { appearance = key } label: {
                 VStack(spacing: 12) {
                   RoundedRectangle(cornerRadius: 12).fill(SvoiPalette.accent(key)).frame(height: 40)
-                    .overlay(Image(systemName: "power").foregroundStyle(colors.canvas))
+                    .overlay(SvoiGlyph( "power").foregroundStyle(colors.canvas))
                   HStack(spacing: 4) {
                     Text(title).font(.footnote.weight(.medium))
-                    if appearance == key { Image(systemName: "checkmark.circle.fill").font(.caption) }
+                    if appearance == key { SvoiGlyph("checkmark.circle.fill", size: 12) }
                   }.foregroundStyle(appearance == key ? accent : SvoiPalette.muted)
                 }.padding(10).background(colors.inset, in: RoundedRectangle(cornerRadius: 16))
                   .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(appearance == key ? accent : .clear))
@@ -46,11 +60,11 @@ struct SettingsScreen: View {
 
       Section {
         Toggle(isOn: Binding(get: { model.autoRefresh }, set: { enabled in Task { await model.setAutoRefresh(enabled) } })) {
-          Label("Обновлять при запуске", systemImage: "arrow.triangle.2.circlepath")
+          SvoiLabel("Обновлять при запуске", systemImage: "arrow.triangle.2.circlepath")
         }.disabled(model.working)
         Button { Task { await model.refreshSubscriptions() } } label: {
           HStack {
-            Label("Обновить подписки", systemImage: "arrow.clockwise")
+            SvoiLabel("Обновить подписки", systemImage: "arrow.clockwise")
             Spacer()
             if model.working { ProgressView() }
           }.frame(minHeight: 36)
@@ -61,9 +75,9 @@ struct SettingsScreen: View {
       if !model.error.isEmpty { Section { SvoiNotice(text: model.error) }.listRowBackground(colors.surface) }
 
       Section {
-        Button { openTelegram(model) } label: { Label("Новости и обсуждения", systemImage: "paperplane") }.frame(minHeight: 36)
-        Link(destination: URL(string: "https://svoi.space/")!) { Label("Сайт SVOI", systemImage: "globe") }.frame(minHeight: 36)
-        Link(destination: URL(string: "https://github.com/1atex/svoi")!) { Label("Исходный код", systemImage: "chevron.left.forwardslash.chevron.right") }.frame(minHeight: 36)
+        Button { openTelegram(model) } label: { SvoiLabel("Новости и обсуждения", systemImage: "paperplane") }.frame(minHeight: 36)
+        Link(destination: URL(string: "https://svoi.space/")!) { SvoiLabel("Сайт SVOI", systemImage: "globe") }.frame(minHeight: 36)
+        Link(destination: URL(string: "https://github.com/1atex/svoi")!) { SvoiLabel("Исходный код", systemImage: "chevron.left.forwardslash.chevron.right") }.frame(minHeight: 36)
       } header: { Text("На связи со своими") }.listRowBackground(colors.surface)
 
       Section {
@@ -95,13 +109,13 @@ struct ProfileScreen: View {
       VStack(alignment: .leading, spacing: 24) {
         SvoiCard {
           VStack(alignment: .leading, spacing: 18) {
-            Image(systemName: "person.2.fill").font(.system(size: 30)).foregroundStyle(accent)
+            SvoiGlyph("person.2.fill", size: 30).foregroundStyle(accent)
               .frame(width: 64, height: 64).background(accent.opacity(0.1), in: RoundedRectangle(cornerRadius: 20))
             Text("Свои — рядом.").font(.title.bold())
             Text("Передавайте подписки и параметры профиля другим устройствам одним кодом SVOI.")
               .font(.body).foregroundStyle(SvoiPalette.muted)
             ShareProfileButton(model: model).buttonStyle(SvoiPrimaryButton())
-            Button(action: onImport) { Label("Импортировать код профиля", systemImage: "square.and.arrow.down") }
+            Button(action: onImport) { SvoiLabel("Импортировать код профиля", systemImage: "square.and.arrow.down") }
               .font(.subheadline.weight(.semibold)).frame(maxWidth: .infinity, minHeight: 44)
           }
         }
@@ -115,19 +129,19 @@ struct ProfileScreen: View {
                 else { Task { await model.switchProfile(profile) } }
               } label: {
                 HStack(spacing: 14) {
-                  Image(systemName: "person.crop.circle").font(.title2).foregroundStyle(accent)
+                  SvoiGlyph("person.crop.circle", size: 22).foregroundStyle(accent)
                   VStack(alignment: .leading, spacing: 5) {
                     Text(profile.name).font(.headline).foregroundStyle(SvoiPalette.text)
                     Text(profile.id == model.profileID ? "Активный профиль" : "Нажмите, чтобы переключиться").font(.caption).foregroundStyle(SvoiPalette.muted)
                   }
                   Spacer(minLength: 4)
-                  if profile.id == model.profileID { Image(systemName: "checkmark.circle.fill").foregroundStyle(accent) }
+                  if profile.id == model.profileID { SvoiGlyph( "checkmark.circle.fill").foregroundStyle(accent) }
                 }.padding(.vertical, 10).contentShape(Rectangle())
               }.buttonStyle(SvoiPressStyle()).disabled(model.working || vpn.busy)
             }
             Divider().overlay(colors.line)
             NavigationLink { IdentitySettings(model: model) } label: {
-              Label("HWID и данные устройства", systemImage: "fingerprint").font(.subheadline).frame(minHeight: 48)
+              SvoiLabel("HWID и данные устройства", systemImage: "fingerprint").font(.subheadline).frame(minHeight: 48)
             }
           }
         }

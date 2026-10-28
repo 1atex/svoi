@@ -45,8 +45,8 @@ final class InterfaceTests: XCTestCase {
     XCTAssertTrue(app.staticTexts["Свои — рядом."].waitForExistence(timeout: 5))
     capture("04-profile")
     app.tabBars.buttons["Настройки"].tap()
+    for _ in 0..<4 where !app.buttons["Тема Лунная"].isHittable { app.swipeUp() }
     XCTAssertTrue(app.buttons["Тема Лунная"].waitForExistence(timeout: 5))
-    if !app.buttons["Тема Лунная"].isHittable { app.swipeUp() }
     app.buttons["Тема Лунная"].tap()
     capture("05-settings")
     app.buttons["Тема SVOI"].tap()
@@ -80,6 +80,24 @@ final class InterfaceTests: XCTestCase {
     XCTAssertFalse(restored.buttons["dns-start"].isEnabled)
   }
 
+  func testInterfaceIconStylesPersist() {
+    let app = launch()
+    app.tabBars.buttons["Настройки"].tap()
+    let choice = app.segmentedControls["icon-style"].buttons["Двухцветные"]
+    XCTAssertTrue(choice.waitForExistence(timeout: 5))
+    choice.tap()
+    capture("15-duotone-settings")
+    app.tabBars.buttons["Инструменты"].tap()
+    capture("16-duotone-tools")
+    app.terminate()
+    let restored = launch()
+    restored.tabBars.buttons["Настройки"].tap()
+    XCTAssertTrue(restored.segmentedControls["icon-style"].buttons["Двухцветные"].isSelected)
+    restored.segmentedControls["icon-style"].buttons["Контурные"].tap()
+    restored.tabBars.buttons["Подключение"].tap()
+    capture("17-outline-connection")
+  }
+
   func testFirstRunImportIsImmediatelyAvailable() {
     let app = launch(["--empty"])
     let add = app.buttons["welcome-import"]
@@ -105,7 +123,7 @@ final class InterfaceTests: XCTestCase {
     capture("08-accessibility-text")
     app.swipeUp()
     app.tabBars.buttons["Настройки"].tap()
-    if !app.buttons["Тема SVOI"].isHittable { app.swipeUp() }
+    for _ in 0..<4 where !app.buttons["Тема SVOI"].isHittable { app.swipeUp() }
     XCTAssertTrue(app.buttons["Тема SVOI"].waitForExistence(timeout: 5))
     capture("09-accessibility-settings")
     app.terminate()

@@ -105,7 +105,7 @@ class _MobileShellState extends State<MobileShell> {
                 IconButton(
                   tooltip: 'Доступно обновление SVOI',
                   onPressed: () => setState(() => page = 3),
-                  icon: Icon(
+                  icon: SvoiIcon(
                     Icons.system_update,
                     color: appColors(context).accent,
                   ),
@@ -113,7 +113,7 @@ class _MobileShellState extends State<MobileShell> {
               IconButton(
                 tooltip: 'Импортировать подписку',
                 onPressed: c.busy.value ? null : () => importDialog(context, c),
-                icon: const Icon(Icons.add),
+                icon: const SvoiIcon(Icons.add),
               ),
             ],
           ),
@@ -126,19 +126,19 @@ class _MobileShellState extends State<MobileShell> {
               onDestinationSelected: (i) => setState(() => page = i),
               destinations: const [
                 NavigationDestination(
-                  icon: Icon(LucideIcons.power, size: 22),
+                  icon: SvoiIcon(LucideIcons.power, size: 22),
                   label: 'VPN',
                 ),
                 NavigationDestination(
-                  icon: Icon(LucideIcons.globe, size: 22),
+                  icon: SvoiIcon(LucideIcons.globe, size: 22),
                   label: 'Серверы',
                 ),
                 NavigationDestination(
-                  icon: Icon(LucideIcons.users, size: 22),
+                  icon: SvoiIcon(LucideIcons.users, size: 22),
                   label: 'Профиль',
                 ),
                 NavigationDestination(
-                  icon: Icon(LucideIcons.settings2, size: 22),
+                  icon: SvoiIcon(LucideIcons.settings2, size: 22),
                   label: 'Настройки',
                 ),
               ],
@@ -196,7 +196,7 @@ class _MobileShellState extends State<MobileShell> {
               children: [
                 Align(
                   alignment: Alignment.centerLeft,
-                  child: Icon(
+                  child: SvoiIcon(
                     Icons.add_link_rounded,
                     color: appColors(context).accent,
                     size: 36,
@@ -228,7 +228,7 @@ class _MobileShellState extends State<MobileShell> {
                   onPressed: c.busy.value
                       ? null
                       : () => importDialog(context, c),
-                  icon: const Icon(Icons.add),
+                  icon: const SvoiIcon(Icons.add),
                   label: const Text('Добавить подписку'),
                 ),
                 if (c.sessions.value.length > 1)
@@ -258,12 +258,12 @@ class _MobileShellState extends State<MobileShell> {
               IconButton(
                 tooltip: 'Обновить подписки',
                 onPressed: c.busy.value ? null : c.refreshSubscriptions,
-                icon: const Icon(Icons.refresh_rounded, size: 21),
+                icon: const SvoiIcon(Icons.refresh_rounded, size: 21),
               ),
             IconButton(
               tooltip: 'Добавить подписку',
               onPressed: c.busy.value ? null : () => importDialog(context, c),
-              icon: const Icon(Icons.add_rounded, size: 21),
+              icon: const SvoiIcon(Icons.add_rounded, size: 21),
             ),
           ],
         ),
@@ -278,7 +278,7 @@ class _MobileShellState extends State<MobileShell> {
                   color: appColors(context).accent.withValues(alpha: .08),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(
+                child: SvoiIcon(
                   Icons.link_rounded,
                   color: appColors(context).accent,
                   size: 22,
@@ -308,7 +308,7 @@ class _MobileShellState extends State<MobileShell> {
                     ),
                 ],
               ),
-              trailing: const Icon(Icons.chevron_right_rounded, size: 20),
+              trailing: const SvoiIcon(Icons.chevron_right_rounded, size: 20),
               onTap: () => editSource(context, c, source),
             ),
           ),
@@ -334,7 +334,7 @@ class _MobileShellState extends State<MobileShell> {
             controller: searchController,
             onChanged: (v) => setState(() => search = v),
             decoration: InputDecoration(
-              prefixIcon: const Icon(Icons.search),
+              prefixIcon: const SvoiIcon(Icons.search),
               hintText: 'Название, страна, адрес',
               suffixIcon: search.isEmpty
                   ? null
@@ -344,7 +344,7 @@ class _MobileShellState extends State<MobileShell> {
                         searchController.clear();
                         search = '';
                       }),
-                      icon: const Icon(Icons.close),
+                      icon: const SvoiIcon(Icons.close),
                     ),
             ),
           ),
@@ -372,7 +372,7 @@ class _MobileShellState extends State<MobileShell> {
                           c.connection.value['available'] != true
                     ? null
                     : () => c.probe(list),
-                icon: Icon(
+                icon: SvoiIcon(
                   c.probing.value ? Icons.stop : Icons.network_check,
                   size: 18,
                 ),
@@ -462,7 +462,7 @@ class _MobileShellState extends State<MobileShell> {
                             MobileProbeButton(c: c, server: s),
                             IconButton(
                               tooltip: 'Конфигурация',
-                              icon: const Icon(Icons.code),
+                              icon: const SvoiIcon(Icons.code),
                               onPressed: () => showConfig(context, c, s),
                             ),
                           ],
@@ -497,7 +497,7 @@ class _MobileShellState extends State<MobileShell> {
       for (final (index, s) in c.sessions.value.indexed)
         Card(
           child: ListTile(
-            leading: Icon(
+            leading: SvoiIcon(
               s['token'] == c.api.token
                   ? Icons.check_circle
                   : Icons.account_circle_outlined,
@@ -523,10 +523,10 @@ class _MobileShellState extends State<MobileShell> {
       const SizedBox(height: 24),
       ListTile(
         contentPadding: EdgeInsets.zero,
-        leading: const Icon(Icons.fingerprint),
+        leading: const SvoiIcon(Icons.fingerprint),
         title: const Text('HWID и данные устройства'),
         subtitle: const Text('Что отправлять при загрузке подписок'),
-        trailing: const Icon(Icons.chevron_right),
+        trailing: const SvoiIcon(Icons.chevron_right),
         onTap: () => Navigator.push(
           context,
           MaterialPageRoute<void>(builder: (_) => MobileIdentityPage(c: c)),
@@ -539,7 +539,7 @@ class _MobileShellState extends State<MobileShell> {
       const SizedBox(height: 20),
       FilledButton.icon(
         onPressed: c.busy.value ? null : () => importDialog(context, c),
-        icon: const Icon(Icons.download),
+        icon: const SvoiIcon(Icons.download),
         label: const Text('Получить профиль'),
       ),
       const SizedBox(height: 12),
@@ -556,7 +556,7 @@ class _MobileShellState extends State<MobileShell> {
                 );
                 c.message.value = 'Код профиля скопирован';
               }),
-        icon: const Icon(Icons.copy),
+        icon: const SvoiIcon(Icons.copy),
         label: const Text('Скопировать код переноса'),
       ),
     ],
@@ -566,10 +566,10 @@ class _MobileShellState extends State<MobileShell> {
     children: [
       ListTile(
         contentPadding: EdgeInsets.zero,
-        leading: const Icon(Icons.speed),
+        leading: const SvoiIcon(Icons.speed),
         title: const Text('Интернетометр'),
         subtitle: const Text('Без VPN и через выбранные серверы'),
-        trailing: const Icon(Icons.chevron_right),
+        trailing: const SvoiIcon(Icons.chevron_right),
         onTap: () => Navigator.push(
           context,
           MaterialPageRoute<void>(
@@ -583,10 +583,10 @@ class _MobileShellState extends State<MobileShell> {
 
       ListTile(
         contentPadding: EdgeInsets.zero,
-        leading: const Icon(Icons.palette_outlined),
+        leading: const SvoiIcon(Icons.palette_outlined),
         title: const Text('Оформление'),
         subtitle: const Text('8 тем, включая Хэллоуин'),
-        trailing: const Icon(Icons.chevron_right),
+        trailing: const SvoiIcon(Icons.chevron_right),
         onTap: () => Navigator.push(
           context,
           MaterialPageRoute<void>(
@@ -604,10 +604,10 @@ class _MobileShellState extends State<MobileShell> {
       ),
       ListTile(
         contentPadding: EdgeInsets.zero,
-        leading: const Icon(Icons.fingerprint),
+        leading: const SvoiIcon(Icons.fingerprint),
         title: const Text('HWID и данные устройства'),
         subtitle: const Text('Параметры активного профиля'),
-        trailing: const Icon(Icons.chevron_right),
+        trailing: const SvoiIcon(Icons.chevron_right),
         onTap: () => Navigator.push(
           context,
           MaterialPageRoute<void>(builder: (_) => MobileIdentityPage(c: c)),
@@ -621,7 +621,7 @@ class _MobileShellState extends State<MobileShell> {
       ),
       ListTile(
         contentPadding: EdgeInsets.zero,
-        leading: const Icon(Icons.apps),
+        leading: const SvoiIcon(Icons.apps),
         title: const Text('Приложения через VPN'),
         subtitle: const Text('Все, выбранные или исключения'),
         onTap: () => Navigator.push(
@@ -631,10 +631,10 @@ class _MobileShellState extends State<MobileShell> {
       ),
       ListTile(
         contentPadding: EdgeInsets.zero,
-        leading: const Icon(Icons.network_check),
+        leading: const SvoiIcon(Icons.network_check),
         title: const Text('Проверка задержки'),
         subtitle: const Text('Адрес, тайм-аут и число проверок'),
-        trailing: const Icon(Icons.chevron_right),
+        trailing: const SvoiIcon(Icons.chevron_right),
         onTap: () => Navigator.push(
           context,
           MaterialPageRoute<void>(
