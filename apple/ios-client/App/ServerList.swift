@@ -204,13 +204,13 @@ struct ServerList: View {
           Button { Task { await model.refreshSubscription(source) } } label: { SvoiGlyph( "arrow.clockwise").frame(width: 44, height: 44) }
             .disabled(model.working).accessibilityLabel("Обновить \(source.name)")
         }
-        Menu {
-          Button(role: .destructive) { removing = source; confirmingRemoval = true } label: {
-            SvoiLabel("Удалить подписку", systemImage: "trash")
-          }.disabled(model.working || vpn.busy || model.preparingVPN)
+        Button {
+          removing = source
+          confirmingRemoval = true
         } label: {
-          SvoiGlyph("ellipsis").frame(width: 44, height: 44).contentShape(Rectangle())
-        }.accessibilityLabel("Действия подписки \(source.name)").accessibilityIdentifier("subscription-actions-\(source.id)")
+          SvoiGlyph("trash").foregroundStyle(SvoiPalette.muted).frame(width: 44, height: 44).contentShape(Rectangle())
+        }.disabled(model.working || vpn.busy || model.preparingVPN)
+          .accessibilityLabel("Удалить подписку \(source.name)").accessibilityIdentifier("subscription-delete-\(source.id)")
       }
       if let download = source.metadata["download"] as? NSNumber {
         let used = download.int64Value + ((source.metadata["upload"] as? NSNumber)?.int64Value ?? 0)
