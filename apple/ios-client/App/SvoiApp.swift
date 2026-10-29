@@ -12,6 +12,7 @@ struct SvoiApp: App {
         .task { await model.initialize() }
         .onChange(of: scenePhase) { phase in
           if phase != .active { model.cancelProbes(); SvoiCoreCancelSpeed() }
+          if phase == .background { model.suspendForegroundWork() }
           #if !SVOI_UI_PREVIEW
           if phase == .active && model.ready { Task { await model.vpn.initialize() } }
           #endif

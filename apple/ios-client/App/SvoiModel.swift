@@ -101,6 +101,7 @@ final class SvoiModel: ObservableObject {
   private var root: URL?
   private var probeIDs: [String: String] = [:]
   private var connectionAttempt = 0
+  private var startupRefresh: Task<Void, Never>?
   var selected: SvoiServer? { servers.first { $0.id == selectedID } }
   var profileID: String { group["id"] as? String ?? "" }
   var lastSpeedResults: [SpeedRoute] = []
@@ -144,7 +145,7 @@ final class SvoiModel: ObservableObject {
       try saveSession()
       ready = true
       await vpn.initialize()
-      if autoRefresh { Task { await refreshSubscriptions() } }
+      if autoRefresh { startupRefresh = Task { await refreshSubscriptions() } }
     } catch { self.error = error.localizedDescription }
     #endif
   }
@@ -212,9 +213,11 @@ final class SvoiModel: ObservableObject {
   private func refreshRemoteSources() async throws {
     var failures: [String] = []
     for source in sources where source.remote {
+      try Task.checkCancellation()
       do { _ = try await api.request("subscription/refresh?id=\(source.id)", method: "POST", token: token) }
       catch { failures.append("\(source.name): \(error.localizedDescription)") }
     }
+    try Task.checkCancellation()
     try await reload()
     if !failures.isEmpty { throw SvoiError(failures.joined(separator: "\n")) }
   }
@@ -321,6 +324,13 @@ final class SvoiModel: ObservableObject {
     for id in probeIDs.values { SvoiCoreCancelProbe(id) }
     probeIDs.removeAll()
     checking.removeAll()
+  }
+
+  func suspendForegroundWork() {
+    cancelProbes()
+    SvoiCoreCancelSpeed()
+    startupRefresh?.cancel()
+    startupRefresh = nil
   }
 
   func configuration(_ server: SvoiServer) async throws -> String {

@@ -72,7 +72,7 @@ struct ConnectionScreen: View {
           }.frame(maxWidth: .infinity, alignment: .leading)
         }
         power
-      }
+      }.frame(maxWidth: .infinity)
       if sizeCategory.isAccessibilityCategory {
         Text(title).font(.title2.bold()).foregroundStyle(SvoiPalette.text)
           .multilineTextAlignment(.center).accessibilityIdentifier("vpn-status")
@@ -123,7 +123,7 @@ struct ConnectionScreen: View {
             .font(.caption2.weight(.semibold)).dynamicTypeSize(...DynamicTypeSize.xxxLarge)
             .lineLimit(1).minimumScaleFactor(0.75)
         }.foregroundStyle(vpn.connected ? colors.canvas : accent).frame(width: 106)
-      }.frame(width: 140, height: 140).contentShape(Circle())
+      }.dynamicTypeSize(...DynamicTypeSize.xxxLarge).frame(width: 140, height: 140).contentShape(Circle())
     }.buttonStyle(SvoiPressStyle()).accessibilityIdentifier("vpn-toggle")
       .accessibilityLabel(busy ? "Отменить подключение" : switching ? "Переключить VPN на выбранный сервер" : vpn.active ? "Отключить VPN" : "Подключить VPN")
       .disabled(model.selected == nil && !vpn.active)
