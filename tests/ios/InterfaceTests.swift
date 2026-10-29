@@ -89,6 +89,9 @@ final class InterfaceTests: XCTestCase {
     capture("21-connection-details")
     app.buttons["Готово"].tap()
     XCTAssertTrue(app.buttons["vpn-toggle"].isHittable)
+    app.buttons["vpn-toggle"].tap()
+    app.buttons["connection-details"].tap()
+    XCTAssertTrue(app.staticTexts["IP изменился после подключения"].waitForExistence(timeout: 5))
   }
 
   func testAMOLEDAndTools() {

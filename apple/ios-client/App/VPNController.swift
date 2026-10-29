@@ -8,6 +8,7 @@ final class VPNController: ObservableObject {
   @Published private(set) var serverID = ""
   @Published private(set) var busy = false
   @Published var error = ""
+  var lastDirectIP = ""
   private var manager: NETunnelProviderManager?
   private var observer: NSObjectProtocol?
   private var attempt = 0

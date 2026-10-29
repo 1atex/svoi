@@ -9,7 +9,7 @@ struct ConnectionTools: View {
   @Environment(\.svoiAccent) private var accent
   @Environment(\.sizeCategory) private var sizeCategory
   @State private var ip = ""
-  @State private var baseline = ""
+  private var baseline: String { vpn.lastDirectIP }
   @State private var ipError = ""
   @State private var refreshing = false
   @State private var checking = false
@@ -77,7 +77,7 @@ struct ConnectionTools: View {
   private func refreshIP() async {
     #if SVOI_UI_PREVIEW
     ip = vpn.connected ? "203.0.113.24" : "198.51.100.10"
-    if !vpn.active { baseline = ip }
+    if !vpn.active { vpn.lastDirectIP = ip }
     #else
     let revision = UUID()
     ipRevision = revision
@@ -101,7 +101,7 @@ struct ConnectionTools: View {
         throw SvoiError("Сервис не вернул IP-адрес")
       }
       ip = value
-      if !vpn.active { baseline = value }
+      if !vpn.active { vpn.lastDirectIP = value }
       ipError = ""
     } catch is CancellationError {}
     catch {
