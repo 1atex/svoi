@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:svoi_flutter/controller.dart';
@@ -8,6 +10,8 @@ import 'features_test.dart' show FeatureBackend;
 import 'controller_test.dart' show ProbeBackend, StalledProbeBackend;
 
 class UnavailableCoreBackend extends ProbeBackend {
+  UnavailableCoreBackend([this.status = 503]);
+  final int status;
   @override
   Future<Map<String, dynamic>> request(
     String path, {
@@ -16,7 +20,7 @@ class UnavailableCoreBackend extends ProbeBackend {
     RequestCancellation? cancellation,
   }) {
     if (path.endsWith('/probe')) {
-      return Future.error(ApiException('Не удалось подготовить Xray', 503));
+      return Future.error(ApiException('Причина отказа проверки', status));
     }
     return super.request(
       path,
@@ -28,6 +32,65 @@ class UnavailableCoreBackend extends ProbeBackend {
 }
 
 void main() {
+  test(
+    'core change clears persisted probe history as well as visible values',
+    () async {
+      final dir = await Directory.systemTemp.createTemp('svoi-core-history-');
+      final session = File('${dir.path}/session.json');
+      final c = SvoiController(ProbeBackend(), sessionFile: session);
+      await c.initialize();
+      await c.probe(c.servers.value.take(1).toList());
+      expect(c.probes['0']!.value.latency, 42);
+      await c.clearProbeHistory();
+      expect(c.probes['0']!.value.latency, isNull);
+      await c.close();
+      final restored = SvoiController(ProbeBackend(), sessionFile: session);
+      await restored.initialize();
+      expect(
+        restored.probes.values.every((probe) => probe.value.latency == null),
+        true,
+      );
+      await restored.close();
+      await dir.delete(recursive: true);
+    },
+  );
+  testWidgets(
+    'unsupported profile, setup failure and timeout have distinct labels',
+    (tester) async {
+      for (final item in {
+        422: 'Нужен Xray',
+        503: 'Ошибка ядра',
+        504: 'Нет ответа',
+        502: 'Ошибка проверки',
+        429: 'Проверка занята',
+      }.entries) {
+        final c = SvoiController(UnavailableCoreBackend(item.key));
+        await c.initialize();
+        c.connection.value = {...c.connection.value, 'available': true};
+        final server = c.servers.value.first;
+        await c.probe([server]);
+        final state = c.probes[server.id]!.value;
+        expect(
+          ProbeState.fromJson(state.toJson()).withBusy(false).failureLabel,
+          item.value,
+        );
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: svoiTheme(),
+            home: Scaffold(
+              body: ServerPingButton(c: c, server: server),
+            ),
+          ),
+        );
+        await tester.pump();
+        expect(find.text(item.value), findsOneWidget);
+        if (item.key != 504) expect(find.text('Нет ответа'), findsNothing);
+        expect(state.latency, isNull);
+        await tester.pumpWidget(const SizedBox.shrink());
+        await c.close();
+      }
+    },
+  );
   test(
     'preparation failure is distinct from server timeout and persists',
     () async {

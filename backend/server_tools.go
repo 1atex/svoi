@@ -34,6 +34,9 @@ func (a *App) serverToolsAPI(w http.ResponseWriter, r *http.Request) error {
 	if len(parts) != 2 {
 		return fail(404, "Метод сервера не найден")
 	}
+	if parts[1] == "extract-nodes" && r.Method == "POST" {
+		return a.extractServerNodesAPI(w, r, parts[0])
+	}
 	a.mu.Lock()
 	g, _, err := a.auth(r)
 	if err != nil {
@@ -119,7 +122,7 @@ func (a *App) serverToolsAPI(w http.ResponseWriter, r *http.Request) error {
 		return nil
 	}
 	if !a.engine.Status().Available {
-		return fail(503, "Ядро Xray не найдено")
+		return fail(503, "Выбранное ядро недоступно. Установите полный пакет SVOI вместе с ядрами.")
 	}
 	latency, err := probeServer(r.Context(), a.engine, server, settings)
 	if err != nil {
@@ -128,7 +131,7 @@ func (a *App) serverToolsAPI(w http.ResponseWriter, r *http.Request) error {
 			return preparation
 		}
 		if errors.Is(err, context.DeadlineExceeded) {
-			return fail(502, fmt.Sprintf("Нет ответа за %d с. Можно повторить проверку или подключиться вручную.", settings.TimeoutSeconds))
+			return fail(504, fmt.Sprintf("Нет ответа за %d с. Можно повторить проверку или подключиться вручную.", settings.TimeoutSeconds))
 		}
 		return fail(502, "GET-запрос через профиль не прошёл. Сервер, маршрут или адрес проверки недоступен.")
 	}
@@ -154,7 +157,9 @@ func probeServer(ctx context.Context, base *Engine, server ServerConfig, options
 	defer os.RemoveAll(dir)
 	probe := base.probeEngine(dir)
 	probe.checkURL = settings.URL
-	probe.checkTimeout = time.Duration(settings.TimeoutSeconds) * time.Second
+	// The probe context owns its deadline; avoid racing the HTTP client's
+	// independent timer and misclassifying a real timeout as a generic failure.
+	probe.checkTimeout = time.Duration(settings.TimeoutSeconds+1) * time.Second
 	defer probe.Stop()
 	startup, cancelStartup := context.WithTimeout(ctx, 5*time.Second)
 	err = probe.startContext(startup, server, "local")

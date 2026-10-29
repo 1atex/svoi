@@ -5,8 +5,42 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
 jobs:
+  release-preflight:
+    runs-on: ubuntu-latest
+    # Draft visibility requires repository push access; no mutation is performed here.
+    permissions:
+      contents: write
+    outputs:
+      build: ${{ steps.release.outputs.build }}
+    steps:
+      - name: Preserve an existing manually prepared release
+        id: release
+        uses: actions/github-script@v7
+        with:
+          script: |
+            if (context.eventName !== 'push' || !context.ref.startsWith('refs/tags/')) {
+              core.setOutput('build', 'true');
+              return;
+            }
+            const tag = context.ref.slice('refs/tags/'.length);
+            // Authenticated pagination includes drafts; API failures must fail the run.
+            for await (const response of github.paginate.iterator(github.rest.repos.listReleases, {
+              ...context.repo, per_page: 100,
+            })) {
+              if (response.data.some(release => release.tag_name === tag)) {
+                core.info(`Release ${tag} already exists; preserve its files and publication state.`);
+                core.setOutput('build', 'false');
+                return;
+              }
+            }
+            core.setOutput('build', 'true');
   linux:
+    needs: release-preflight
+    if: needs.release-preflight.outputs.build == 'true'
     runs-on: ubuntu-22.04
     timeout-minutes: 35
     steps:
@@ -67,8 +101,25 @@ jobs:
         with:
           name: SVOI-Linux
           path: releases/linux-v*/*
-      - name: Publish Linux preview
+      - name: Check release ownership before publication
+        id: publish-guard
         if: github.ref_type == 'tag'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const tag = context.ref.slice('refs/tags/'.length);
+            for await (const response of github.paginate.iterator(github.rest.repos.listReleases, {
+              ...context.repo, per_page: 100,
+            })) {
+              if (response.data.some(release => release.tag_name === tag)) {
+                core.info(`Release ${tag} was prepared elsewhere; automatic publication skipped.`);
+                core.setOutput('publish', 'false');
+                return;
+              }
+            }
+            core.setOutput('publish', 'true');
+      - name: Publish Linux preview
+        if: github.ref_type == 'tag' && steps.publish-guard.outputs.publish == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |

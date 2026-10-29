@@ -434,7 +434,7 @@ class ServerPingButton extends StatelessWidget {
             : !available
             ? 'Ядро недоступно'
             : result.error != null
-            ? (result.setupError ? 'Ошибка ядра' : 'Нет ответа')
+            ? result.failureLabel
             : result.latency != null
             ? '${result.latency} мс'
             : 'Проверить пинг';

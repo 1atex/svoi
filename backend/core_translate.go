@@ -54,6 +54,41 @@ func nativeObjectField(m object, key string) error {
 	return nil
 }
 
+// Xray only constructs its mux and XUDP managers when enabled is true. Provider
+// exports commonly retain these inert defaults even when multiplexing is off.
+func nativeDisabledMux(out object) error {
+	if _, exists := out["mux"]; !exists {
+		return nil
+	}
+	if err := nativeObjectField(out, "mux"); err != nil {
+		return err
+	}
+	mux := obj(out["mux"])
+	if err := nativeKeys(mux, "enabled", "concurrency", "xudpConcurrency", "xudpProxyUDP443"); err != nil {
+		return err
+	}
+	if enabled, ok := mux["enabled"].(bool); !ok || enabled {
+		return nativeUnsupported("включённый или неопределённый mux")
+	}
+	for _, key := range []string{"concurrency", "xudpConcurrency"} {
+		if value, exists := mux[key]; exists {
+			n, ok := value.(float64)
+			if !ok || n < -32768 || n > 32767 || n != float64(int(n)) {
+				return nativeUnsupported("тип параметра mux." + key)
+			}
+		}
+	}
+	if err := nativeStringFields(mux, "xudpProxyUDP443"); err != nil {
+		return err
+	}
+	switch str(mux["xudpProxyUDP443"]) {
+	case "", "reject", "allow", "skip":
+	default:
+		return nativeUnsupported("mux.xudpProxyUDP443")
+	}
+	return nil
+}
+
 // Translate only the deliberately bounded, lossless subset. Unknown fields are
 // rejected at every level rather than silently changing a provider's settings.
 func buildNativeCoreConfig(id string, server ServerConfig, sp, hp int, mode string) ([]byte, error) {
@@ -73,7 +108,10 @@ func buildNativeCoreConfig(id string, server ServerConfig, sp, hp int, mode stri
 	if err := json.Unmarshal(server.Outbound, &out); err != nil {
 		return nil, nativeUnsupported("неверный JSON")
 	}
-	if err := nativeKeys(out, "protocol", "tag", "settings", "streamSettings"); err != nil {
+	if err := nativeKeys(out, "protocol", "tag", "settings", "streamSettings", "mux"); err != nil {
+		return nil, err
+	}
+	if err := nativeDisabledMux(out); err != nil {
 		return nil, err
 	}
 	if err := nativeStringFields(out, "protocol", "tag"); err != nil {
@@ -275,7 +313,10 @@ func buildNativeCoreConfig(id string, server ServerConfig, sp, hp int, mode stri
 		if err = nativeKeys(tls, "serverName", "fingerprint", "publicKey", "shortId", "spiderX"); err != nil {
 			return nil, err
 		}
-		if str(tls["spiderX"]) != "" {
+		// The root path is the default Xray crawler hint after failed Reality
+		// authentication; it does not alter a verified handshake. Native cores
+		// still enforce the supplied SNI, public key and short ID themselves.
+		if spider := str(tls["spiderX"]); spider != "" && spider != "/" {
 			return nil, nativeUnsupported("Reality spiderX")
 		}
 		if str(tls["serverName"]) == "" || str(tls["publicKey"]) == "" {

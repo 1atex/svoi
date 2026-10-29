@@ -57,10 +57,7 @@ class CorePicker extends StatelessWidget {
                         body: {'core': value},
                       );
                       c.connection.value = result;
-                      for (final probe in c.probes.values) {
-                        probe.value = const ProbeState();
-                      }
-                      c.probeRevision.value++;
+                      await c.clearProbeHistory();
                       final modes =
                           result['capabilities']?['supportedModes'] as List? ??
                           ['local'];

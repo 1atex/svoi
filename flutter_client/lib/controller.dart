@@ -48,9 +48,17 @@ class ProbeState {
     this.checkedAt,
     this.url,
     this.setupError = false,
+    this.failureKind,
   });
   final bool busy;
   final bool setupError;
+  final String? failureKind;
+  String get failureLabel => switch (failureKind) {
+    'unsupported' => 'Нужен Xray',
+    'timeout' => 'Нет ответа',
+    'busy' => 'Проверка занята',
+    _ => setupError ? 'Ошибка ядра' : 'Ошибка проверки',
+  };
   final int? latency;
   final String? error;
   final String? url;
@@ -63,6 +71,7 @@ class ProbeState {
     checkedAt: checkedAt,
     url: url,
     setupError: setupError,
+    failureKind: failureKind,
   );
   Map<String, dynamic> toJson() => {
     'latency': latency,
@@ -70,6 +79,7 @@ class ProbeState {
     'checkedAt': checkedAt?.toIso8601String(),
     'url': url,
     'setupError': setupError,
+    'failureKind': failureKind,
   };
   static ProbeState fromJson(Map value) => ProbeState(
     latency: value['latency'] as int?,
@@ -77,6 +87,7 @@ class ProbeState {
     checkedAt: DateTime.tryParse(value['checkedAt']?.toString() ?? ''),
     url: value['url'] as String?,
     setupError: value['setupError'] == true,
+    failureKind: value['failureKind'] as String?,
   );
 }
 
@@ -357,6 +368,15 @@ class SvoiController {
     } catch (e) {
       message.value = 'Не удалось сохранить список серверов: $e';
     }
+  }
+
+  Future<void> clearProbeHistory() async {
+    cancelProbes();
+    for (final probe in probes.values) {
+      probe.value = const ProbeState();
+    }
+    probeRevision.value++;
+    await _saveLibrary();
   }
 
   bool get pendingConnectionChoice {
@@ -649,6 +669,23 @@ class SvoiController {
     await saveSession();
   });
 
+  Future<void> extractProfileNodes(ServerEntry server) => action(() async {
+    final previous = servers.value.map((s) => s.id).toSet();
+    _acceptGroup(
+      await api.request(
+        'servers/${Uri.encodeComponent(server.id)}/extract-nodes',
+        method: 'POST',
+        body: {'acknowledgeProfileRulesOmitted': true},
+      ),
+    );
+    await reload();
+    final added = servers.value.where((s) => !previous.contains(s.id)).toList();
+    if (added.isNotEmpty) await select(added.first.id);
+    message.value =
+        'Создано узлов: ${added.length}. Исходный профиль сохранён. Копии не обновляются вместе с подпиской.';
+    await saveSession();
+  });
+
   Future<void> createProfile(String name) => action(() async {
     _cancelRefreshes();
     _cancelCheck();
@@ -905,6 +942,14 @@ class SvoiController {
             result.value = ProbeState(
               error: e.toString(),
               setupError: e is ApiException && e.status == 503,
+              failureKind: e is ApiException
+                  ? switch (e.status) {
+                      422 => 'unsupported',
+                      504 => 'timeout',
+                      429 => 'busy',
+                      _ => 'network',
+                    }
+                  : 'network',
               checkedAt: DateTime.now(),
               url: url,
             );

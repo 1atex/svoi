@@ -651,6 +651,7 @@ Future<void> showConfig(
   SvoiController c,
   ServerEntry server,
 ) async {
+  final parentContext = context;
   final future = c.config(server);
   if (!context.mounted) return;
   await showDialog(
@@ -713,6 +714,14 @@ Future<void> showConfig(
         ),
       ),
       actions: [
+        if (server.json['fullProfile'] == true)
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              showProfileNodes(parentContext, c, server);
+            },
+            child: const Text('Создать отдельные узлы'),
+          ),
         TextButton(
           onPressed: () => Navigator.pop(context),
           child: const Text('Закрыть'),
@@ -722,13 +731,44 @@ Future<void> showConfig(
   );
 }
 
+Future<void> showProfileNodes(
+  BuildContext context,
+  SvoiController c,
+  ServerEntry server,
+) async {
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (dialog) => AlertDialog(
+      title: const Text('Отдельные узлы из профиля'),
+      content: const SizedBox(
+        width: 460,
+        child: Text(
+          'Полный профиль использует правила Xray. Можно создать отдельную подписку с его узлами для проверки и подключения через другое ядро.\n\n'
+          'В копиях не будет правил, балансировки, резервных маршрутов и DNS исходного профиля. Исходный профиль сохранится. Копии не обновляются вместе с подпиской.',
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(dialog, false),
+          child: const Text('Отмена'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.pop(dialog, true),
+          child: const Text('Создать копии узлов'),
+        ),
+      ],
+    ),
+  );
+  if (confirmed == true) await c.extractProfileNodes(server);
+}
+
 Future<void> showLogs(BuildContext context, SvoiController c) async {
   final future = c.logs();
   if (!context.mounted) return;
   await showDialog(
     context: context,
     builder: (context) => AlertDialog(
-      title: const Text('Журнал Xray'),
+      title: const Text('Журнал ядра'),
       content: SizedBox(
         width: 760,
         height: 420,

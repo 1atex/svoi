@@ -561,11 +561,18 @@ class DesktopServerRow extends StatelessWidget {
                           showConfig(context, c, server);
                         } else if (value == 'tcp') {
                           showTCPCheck(context, c, server);
+                        } else if (value == 'nodes') {
+                          showProfileNodes(context, c, server);
                         } else {
                           c.toggleFavorite(server.id);
                         }
                       },
                       itemBuilder: (context) => [
+                        if (server.json['fullProfile'] == true)
+                          const PopupMenuItem(
+                            value: 'nodes',
+                            child: Text('Создать отдельные узлы'),
+                          ),
                         if (server.json['fullProfile'] != true &&
                             !server.usesQuic)
                           const PopupMenuItem(

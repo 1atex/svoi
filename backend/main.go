@@ -268,7 +268,7 @@ func (a *App) dispatch(w http.ResponseWriter, r *http.Request) error {
 	if strings.HasPrefix(r.URL.Path, "/api/transfer/") {
 		return a.transferAPI(w, r)
 	}
-	if strings.HasPrefix(r.URL.Path, "/api/servers/") && (strings.HasSuffix(r.URL.Path, "/config") || strings.HasSuffix(r.URL.Path, "/probe")) {
+	if strings.HasPrefix(r.URL.Path, "/api/servers/") && (strings.HasSuffix(r.URL.Path, "/config") || strings.HasSuffix(r.URL.Path, "/probe") || strings.HasSuffix(r.URL.Path, "/tcp") || strings.HasSuffix(r.URL.Path, "/extract-nodes")) {
 		return a.serverToolsAPI(w, r)
 	}
 	if r.Method == "GET" && r.URL.Path == "/api/health" {
