@@ -1,56 +1,46 @@
-# Release candidate 0.7.0-rc.1 — review packet
+# SVOI 0.7.0 Beta Release Candidate — publication record
 
-Public GitHub release and production site deployment require the owner's separate approval. Do not create or push a release tag during preparation.
+The owner approved publication on 30 October 2026 after the optional-core ping fix. Four platform releases were published from drafts only after all listed assets and hashes were verified. Linux RC remains unpublished because its native GUI exit can still crash; the public Linux preview.3 is retained.
 
-## Version and packages
+## Published packages
 
-Windows source version, Dart fallback, pubspec and installer parameter are 0.7.0-rc.1; display version is 0.7.0 Beta Release Candidate. Linux uses config/linux-release.json with the same RC version. Android and macOS retain their independent preview version series. iOS source and unsigned preview6 are preserved.
-
-Build Windows with flutter_client/build-prototype.ps1. Dependencies are pinned and SHA-256-checked; optional core pins live in config/optional-cores.json. Runtime capabilities must agree with packaged executables. Native profile adapters deliberately reject unsupported options instead of dropping them.
-
-## Authentic update signing
-
-backend/update_public_key.go is the trust root compiled into the application and updater helper. The local private PEM stays in ignored .tools/release-signing/update-ed25519.pem with current-user/SYSTEM access only. Do not commit, upload as an artifact, or include this key in the installer. Back up the private key securely before deleting this checkout. Losing it requires an explicit trust-root migration and manual bootstrap update.
-
-Sign a completed canonical setup with:
-
-    go run ./cmd/sign-update-manifest -key .tools/release-signing/update-ed25519.pem -installer releases/v0.7.0-rc.1/SVOI-0.7.0-rc.1-windows-x64-setup.exe
-
-The produced SVOI-0.7.0-rc.1-windows-x64-update.json must accompany the setup on the same release. Its Ed25519 signature binds exact payload bytes containing version, channel, platform, filename, byte size and SHA-256. The helper verifies again after the application exits. A checksum alone is never described as authenticity.
-
-CI workflow_dispatch builds remain available without a secret. Tag publication fails closed without SVOI_UPDATE_SIGNING_KEY, signs the exact built installer, runs the actual signed-release verification test, and uploads the manifest. That secret has not been provisioned here. Configure it only as an owner-approved CI secret; never paste it into a PR, issue or command line. All beta/preview/rc tags are preliminary releases.
-
-## Update and recovery behavior
-
-Existing 0.6.0-beta.6 users can install the canonical RC setup manually after reviewing the artifact. Profiles/settings are outside the application directory. The RC can authenticate future unsigned executable packages via SVOI's manifest signature, without a paid Authenticode certificate. Windows logon notifications require enabling SVOI startup and automatic update checks; no startup task is silently created by this preparation.
-
-Signed update installation uses full silent Inno Setup, not a delta payload. User-data backup and structured last-install diagnostics are kept under the updates directory. A bad signature is rejected before stopping VPN. There is no claim of atomic binary rollback or measured 20–30-second installation; use the previous verified setup and saved profile backup if manual recovery is needed.
-
-## Site publication
-
-The landing checkout contains one releases.json snapshot, source/build scripts, tests and a disabled-by-default deployment gate. Only published GitHub assets appear as public downloads. Site count means retained release binary downloads, including repeats and updates, not installations or users. Review svoi-landing/docs/RELEASE-SOURCE.md before enabling deployment. Production has not been changed.
-
-## Publication sequence after separate owner approval
-
-1. Review the actual Windows setup/ZIP/signed update JSON, Android signed APKs, Linux packages, macOS ARM64 ad-hoc DMG and preserved unsigned iOS IPA. Keep their independent platform versions and signing limitations explicit. Select exactly which packages are approved; do not label the RC as stable.
-2. Securely back up the existing local update-signing private key and provision its PEM as the app repository's `SVOI_UPDATE_SIGNING_KEY` Actions secret. The embedded public key must remain the matching trust root. The secret is currently absent; tag publication deliberately fails without it.
-3. Publish the approved app release assets and complete their notes/signature manifests. Use prerelease flags for RC/preview versions and verify the actual published asset hashes and architecture labels. Do not invent future URLs in the site snapshot.
-4. Connect the reviewed landing source to an approved repository. It currently has no remote. The proposed destination is a separate private `svoi-site` repository under the owner account; it has not been created. Push its reviewed source to the default branch only after that choice is approved.
-5. Configure the site's `svoi-production` environment, host/user variables and host-key-pinned SSH secrets described in `RELEASE-SOURCE.md`. Keep `SVOI_SITE_DEPLOY_ENABLED` disabled until these prerequisites and the first deployment are approved. It is currently disabled, and no deployment credentials were provisioned here.
-6. Refresh the snapshot from the newly published app releases, build and test the site, then enable the gate and run the first approved production deployment. Verify the live snapshot and all approved download links. Subsequent six-hour runs use that same generator; optional immediate release dispatch requires separately configured cross-repository credentials. Required environment reviewers still make each deployment wait for approval.
-
-Preparation is complete only for the local artifacts and reviewed source. The steps above are not already-running release or site automation and have not been executed during this task.
-
-## Verification recorded on 30 October 2026 (Moscow time)
-
-| Platform | Artifact source | Evidence |
+| Platform | Source | Release and validation |
 | --- | --- | --- |
-| Windows 0.7.0-rc.1 | `f9d00e2` | Native Go suite/vet; Flutter analyzer and 112 tests passed, 2 platform skips; final setup Ed25519 verification and focused recovery/mutex tests passed; final packaged backend exposed and selected all three cores; ZIP CRC and private-key exclusion passed. Actual Windows screenshots use the built EXE with demo data. |
-| Android preview.13 | `9a2a714` | [CI 40964198782](https://github.com/1atex/svoi/actions/runs/40964198782) succeeded: 105 Flutter tests, 1 skip, signed release APKs, emulator VPN with 20 reconnects, update checks and in-place upgrade from published Preview 8. |
-| Linux 0.7.0-rc.1 | `583fdce` | [CI 40967340073](https://github.com/1atex/svoi/actions/runs/40967340073) succeeded: native Go tests with all packaged cores, vet, 38 Flutter tests, local/TUN real HTTP traffic and five reconnects each, ten normal GUI close cycles without a debugger, Debian installation and installed-backend traffic. The Linux-only shutdown fix preserves the render scene and disconnects native callbacks before destroying the window. |
-| macOS preview.5 | `6b78023` | [CI 40963566410](https://github.com/1atex/svoi/actions/runs/40963566410) succeeded: ARM64 DMG build/signature validation, interface/backend checks and proxy/reconnect smoke. Screenshot uses demo data; DMG is ad-hoc signed, not notarized. |
-| iOS preview.6 | `b6c96af` preserved | Existing unsigned IPA and its prior simulator verification are unchanged. This task did not run a new physical-device test or add provisioning. |
+| Windows 0.7.0-rc.1 | `f3042e623a725beac618c80078c2b41ec47de546` | [Release](https://github.com/1atex/svoi/releases/tag/v0.7.0-rc.1): canonical setup, ZIP, checksums and Ed25519 update manifest. Flutter analyzer and 114 tests passed (2 platform skips); full native Go suite and vet passed; final installer signature, packaged core selection and ZIP CRC passed. |
+| Android preview.13 | `9a2a714a16ab11950cf049b933ff84de9d2f1c1c` | [Release](https://github.com/1atex/svoi/releases/tag/android-v0.1.0-preview.13), [CI](https://github.com/1atex/svoi/actions/runs/40964198782): signed ARM64/x64 APKs, 105 Flutter tests, VPN with 20 reconnects on emulator, update checks and in-place upgrade from published Preview 8. |
+| macOS preview.5 | `6b78023e242bbc4eb4ae094c8b0dafaae9b23a1f` | [Release](https://github.com/1atex/svoi/releases/tag/macos-v0.6.0-preview.5), [CI](https://github.com/1atex/svoi/actions/runs/40963566410): Apple Silicon ARM64 DMG, ad-hoc signature, no Apple notarization; backend/UI/proxy checks passed. |
+| iOS preview.6 | `b6c96af217798d71b66cc934584f674c6e3f8a49` | [Release](https://github.com/1atex/svoi/releases/tag/ios-v0.1.0-preview.6): preserved unsigned IPA and matching source archive. The app and Packet Tunnel extension require appropriate signing, provisioning and Network Extension entitlements. An Apple ID alone is insufficient. Prior simulator validation is preserved; no new physical-device test is claimed. |
 
-The Windows setup was **not installed over the owner's running installation**. Authentication, helper behavior, profile backups, notification delivery, mutex waiting and packaged core selection were checked, but this is not an end-to-end timed upgrade or proof of automatic binary rollback. The current installed app and network settings were left untouched.
+Windows setup: 65,248,345 bytes, SHA-256 `ad4edfafcc8714a2558c64d42f36ade11be0f6851e222d24253812beaffafad3`.
+Windows ZIP SHA-256: `5196454a21255704c9a2001b4aea8cff31887aacd424facf5c4e9a8e840f05db`.
+Signed manifest SHA-256: `f64b4220076fffa611a66c6791dafa6283150208e6b26db594eab4751fb1642a`.
 
-Final public-site source snapshot: `2026-10-29T22:35:28Z`, 26 published releases, 62 binary assets, 240 download events (Windows 157, Android 65, Linux 18). Seven contract tests and a real 362px browser review passed. The snapshot includes published beta.6/Android preview.12/Linux preview.3; the prepared builds above remain unpublished. Site archive SHA-256: `f572895cbcc80844ab07990286a3b4da125c9c66f8666f5259bd45f7dc52ea81`.
+## Ping correction and profile semantics
+
+The immediate failure was not a measured timeout: complete Xray profiles with provider routing/balancers were rejected with HTTP 422, while the UI incorrectly called every non-startup error "No response". The UI now distinguishes unsupported profiles, core preparation errors, actual deadlines and other network errors. Switching cores clears persisted probe history as well as the visible result.
+
+The native adapter accepts the lossless no-op cases `mux.enabled=false` with known fields and the default Reality `spiderX="/"`. Custom unsupported settings still fail explicitly. TLS fingerprints and certificate verification are not weakened. Both actual native executables passed a local Reality/QQ traffic fixture and a GET through an isolated copy of one real saved provider node: Xray 191 ms, sing-box 178 ms, Mihomo 178 ms. The running user VPN and original profile data were untouched. These are probe observations, not broad speed benchmarks or a claim that every Reality server version interoperates with every core.
+
+Full Xray profiles are never silently flattened. The explicit "Create separate nodes" operation requires acknowledgment, preserves the original, creates a separate manual source, and warns that copies omit profile DNS, routing, balancing and fallback behavior. Copies do not refresh with the original subscription. Owner/authentication, persistence and source-preservation tests passed.
+
+## Windows updates and signing
+
+A real previous beta.6 backend was launched with isolated data and auto-download disabled; its live GitHub check reported `0.7.0-rc.1` available. The canonical SVOI filename works for that updater; no legacy Flutter-named asset is needed for beta.6. A previously tested unpublished RC with the same `0.7.0-rc.1` version needs the newly published setup manually because its version number is unchanged.
+
+`backend/update_public_key.go` is the embedded Ed25519 trust root. The matching private PEM remains in ignored `.tools/release-signing/update-ed25519.pem` with restricted local access. Back it up securely; never include it in source or artifacts. The approved `SVOI_UPDATE_SIGNING_KEY` Actions secret was installed on 29 October 2026 at 22:55:41 UTC after matching its public key. CI requires a valid signing key before new tag publication and verifies the signed installer. The tag-triggered [publication guard](https://github.com/1atex/svoi/actions/runs/40972130869) passed and skipped rebuilding/replacing the manually verified release.
+
+Signed updates use full silent Inno Setup, not a delta payload. Verification occurs before disconnecting VPN, then again in the helper. Recovery data and installation diagnostics are retained. No 20–30-second duration or automatic atomic binary rollback is promised. The new setup was not installed over the owner's running app during verification. Windows startup notifications require enabling SVOI startup and update checks; no startup task was silently created.
+
+## Production site
+
+The owner also approved the compact counter and removal of the visible counting-methodology section. The updated site is live at https://svoi.space/ and consumes one generated snapshot for versions, changelog, links and counts. Root verified public download links with HTTP 200 and matching byte sizes after the four releases.
+
+Automation is now a real server-side systemd timer, `svoi-site-refresh.timer`, at 03:17, 09:17, 15:17 and 21:17 Moscow time with up to three minutes jitter. It runs the public GitHub generator, nine tests and the existing atomic installer. API failure, an empty invalid source or validation failure preserves the last working site. Source is private under `/var/lib/svoi-site/source`; no new private GitHub repository or server SSH key in GitHub Actions was required. The alternative GitHub deployment gate remains unused.
+
+The first post-publication site snapshot was generated at `2026-10-29T23:18:16Z`; landing source commit `135df05`. Counts are retained binary-file download events, including repeats/updates, not unique people or installations; this method remains in developer documentation rather than a separate public page section.
+
+## Linux RC held back
+
+The earlier [583fdce validation](https://github.com/1atex/svoi/actions/runs/40967340073) passed ten normal GTK close cycles, but that did not eliminate the intermittent failure. The current [f3042e6 run](https://github.com/1atex/svoi/actions/runs/40970919257) passed native core/backend tests, 38 Flutter tests and local/TUN traffic, then exited with SIGSEGV during GUI close. Its RC packages are not approved for publication and must not be presented as the current verified release.
+
+A separate diagnostic-only commit `1605dcf` enables post-mortem core capture without debugger attachment or a timing delay. [Diagnostic run 40971945789](https://github.com/1atex/svoi/actions/runs/40971945789) is tracked separately. No Linux RC tag/release was created; previous local artifacts are retained only as historical test outputs. Further Linux debugging is separate from the four published releases.
