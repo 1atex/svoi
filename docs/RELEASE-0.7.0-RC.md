@@ -29,3 +29,14 @@ Signed update installation uses full silent Inno Setup, not a delta payload. Use
 ## Site publication
 
 The landing checkout contains one releases.json snapshot, source/build scripts, tests and a disabled-by-default deployment gate. Only published GitHub assets appear as public downloads. Site count means retained release binary downloads, including repeats and updates, not installations or users. Review svoi-landing/docs/RELEASE-SOURCE.md before enabling deployment. Production has not been changed.
+
+## Publication sequence after separate owner approval
+
+1. Review the actual Windows setup/ZIP/signed update JSON, Android signed APKs, Linux packages, macOS ARM64 ad-hoc DMG and preserved unsigned iOS IPA. Keep their independent platform versions and signing limitations explicit. Select exactly which packages are approved; do not label the RC as stable.
+2. Securely back up the existing local update-signing private key and provision its PEM as the app repository's `SVOI_UPDATE_SIGNING_KEY` Actions secret. The embedded public key must remain the matching trust root. The secret is currently absent; tag publication deliberately fails without it.
+3. Publish the approved app release assets and complete their notes/signature manifests. Use prerelease flags for RC/preview versions and verify the actual published asset hashes and architecture labels. Do not invent future URLs in the site snapshot.
+4. Connect the reviewed landing source to an approved repository. It currently has no remote. The proposed destination is a separate private `svoi-site` repository under the owner account; it has not been created. Push its reviewed source to the default branch only after that choice is approved.
+5. Configure the site's `svoi-production` environment, host/user variables and host-key-pinned SSH secrets described in `RELEASE-SOURCE.md`. Keep `SVOI_SITE_DEPLOY_ENABLED` disabled until these prerequisites and the first deployment are approved. It is currently disabled, and no deployment credentials were provisioned here.
+6. Refresh the snapshot from the newly published app releases, build and test the site, then enable the gate and run the first approved production deployment. Verify the live snapshot and all approved download links. Subsequent six-hour runs use that same generator; optional immediate release dispatch requires separately configured cross-repository credentials. Required environment reviewers still make each deployment wait for approval.
+
+Preparation is complete only for the local artifacts and reviewed source. The steps above are not already-running release or site automation and have not been executed during this task.
