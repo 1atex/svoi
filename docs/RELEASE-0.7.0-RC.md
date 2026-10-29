@@ -40,3 +40,17 @@ The landing checkout contains one releases.json snapshot, source/build scripts, 
 6. Refresh the snapshot from the newly published app releases, build and test the site, then enable the gate and run the first approved production deployment. Verify the live snapshot and all approved download links. Subsequent six-hour runs use that same generator; optional immediate release dispatch requires separately configured cross-repository credentials. Required environment reviewers still make each deployment wait for approval.
 
 Preparation is complete only for the local artifacts and reviewed source. The steps above are not already-running release or site automation and have not been executed during this task.
+
+## Verification recorded on 30 October 2026 (Moscow time)
+
+| Platform | Artifact source | Evidence |
+| --- | --- | --- |
+| Windows 0.7.0-rc.1 | `f9d00e2` | Native Go suite/vet; Flutter analyzer and 112 tests passed, 2 platform skips; final setup Ed25519 verification and focused recovery/mutex tests passed; final packaged backend exposed and selected all three cores; ZIP CRC and private-key exclusion passed. Actual Windows screenshots use the built EXE with demo data. |
+| Android preview.13 | `9a2a714` | [CI 40964198782](https://github.com/1atex/svoi/actions/runs/40964198782) succeeded: 105 Flutter tests, 1 skip, signed release APKs, emulator VPN with 20 reconnects, update checks and in-place upgrade from published Preview 8. |
+| Linux 0.7.0-rc.1 | `583fdce` | [CI 40967340073](https://github.com/1atex/svoi/actions/runs/40967340073) succeeded: native Go tests with all packaged cores, vet, 38 Flutter tests, local/TUN real HTTP traffic and five reconnects each, ten normal GUI close cycles without a debugger, Debian installation and installed-backend traffic. The Linux-only shutdown fix preserves the render scene and disconnects native callbacks before destroying the window. |
+| macOS preview.5 | `6b78023` | [CI 40963566410](https://github.com/1atex/svoi/actions/runs/40963566410) succeeded: ARM64 DMG build/signature validation, interface/backend checks and proxy/reconnect smoke. Screenshot uses demo data; DMG is ad-hoc signed, not notarized. |
+| iOS preview.6 | `b6c96af` preserved | Existing unsigned IPA and its prior simulator verification are unchanged. This task did not run a new physical-device test or add provisioning. |
+
+The Windows setup was **not installed over the owner's running installation**. Authentication, helper behavior, profile backups, notification delivery, mutex waiting and packaged core selection were checked, but this is not an end-to-end timed upgrade or proof of automatic binary rollback. The current installed app and network settings were left untouched.
+
+Final public-site source snapshot: `2026-10-29T22:35:28Z`, 26 published releases, 62 binary assets, 240 download events (Windows 157, Android 65, Linux 18). Seven contract tests and a real 362px browser review passed. The snapshot includes published beta.6/Android preview.12/Linux preview.3; the prepared builds above remain unpublished. Site archive SHA-256: `f572895cbcc80844ab07990286a3b4da125c9c66f8666f5259bd45f7dc52ea81`.
