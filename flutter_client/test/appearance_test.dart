@@ -89,7 +89,8 @@ void main() {
       expect(taps, 1);
       await tester.pumpWidget(app(running: true));
       await tester.pumpAndSettle();
-      expect(find.text('Отключить VPN'), findsOneWidget);
+      expect(find.text('Отключить VPN'), findsNothing);
+      expect(find.byTooltip('Отключить VPN'), findsOneWidget);
       await tester.sendKeyEvent(LogicalKeyboardKey.tab);
       await tester.pump();
       await tester.tap(find.byKey(const ValueKey('connection-power')));
@@ -102,7 +103,7 @@ void main() {
             .onPressed,
         isNull,
       );
-      expect(find.text('Подождите…'), findsOneWidget);
+      expect(find.byTooltip('Подождите'), findsOneWidget);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox.shrink());
     },

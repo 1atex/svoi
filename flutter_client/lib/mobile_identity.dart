@@ -168,7 +168,7 @@ class MobileProbeButton extends StatelessWidget {
     valueListenable: c.probes[server.id]!,
     builder: (context, result, _) => Tooltip(
       message:
-          '${result.error ?? 'GET через профиль · доступность тестового адреса'}\n${result.url ?? defaultProbeUrl}\nОшибка не запрещает подключение.',
+          'Проверить пинг · HTTP GET через профиль, не ICMP\n${result.error ?? 'Доступность тестового адреса'}\n${result.url ?? defaultProbeUrl}\nОшибка не запрещает подключение.',
       child: SizedBox(
         width: 88,
         child: TextButton(
@@ -185,6 +185,8 @@ class MobileProbeButton extends StatelessWidget {
                   height: 16,
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
+              : result.error == null && result.latency == null
+              ? const SvoiIcon(LucideIcons.activity, size: 22)
               : Text(
                   result.error != null
                       ? result.setupError
