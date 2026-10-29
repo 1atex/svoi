@@ -31,7 +31,7 @@ struct ServerList: View {
   var body: some View {
     ScrollView {
         LazyVStack(alignment: .leading, spacing: 6) {
-          if let header = header { header }
+          if let header = header { header.id("connection") }
           if !model.error.isEmpty { SvoiNotice(text: model.error, symbol: "exclamationmark.circle") }
           if !model.sources.isEmpty || !model.servers.isEmpty {
             HStack {

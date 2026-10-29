@@ -79,7 +79,7 @@ struct SettingsScreen: View {
             if model.working { ProgressView() }
           }.frame(minHeight: 36)
         }.disabled(model.working)
-      } header: { Text("Подписки") } footer: { Text("Обновление выполняется в фоне и не включает VPN.") }
+      } header: { Text("Подписки") } footer: { Text("При запуске SVOI подписки обновляются без блокировки интерфейса. VPN включается вручную.") }
         .listRowBackground(colors.surface)
 
       if !model.error.isEmpty { Section { SvoiNotice(text: model.error) }.listRowBackground(colors.surface) }

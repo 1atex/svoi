@@ -43,7 +43,7 @@ struct SvoiSource: Identifiable {
     let date = formatter.date(from: fetched) ?? ISO8601DateFormatter().date(from: fetched)
     var parts: [String] = []
     if let date = date { parts.append("Обновлено " + date.formatted(date: .numeric, time: .shortened)) }
-    if let hours = metadata["updateHours"] as? Int, hours > 0 { parts.append("Интервал: \(hours) ч") }
+    if let hours = metadata["updateHours"] as? Int, hours > 0 { parts.append("Интервал провайдера: \(hours) ч") }
     statusText = parts.joined(separator: " · ")
   }
 }
@@ -102,6 +102,7 @@ final class SvoiModel: ObservableObject {
   private var probeIDs: [String: String] = [:]
   private var connectionAttempt = 0
   private var startupRefresh: Task<Void, Never>?
+  private var foreground = true
   var selected: SvoiServer? { servers.first { $0.id == selectedID } }
   var profileID: String { group["id"] as? String ?? "" }
   var lastSpeedResults: [SpeedRoute] = []
@@ -145,7 +146,7 @@ final class SvoiModel: ObservableObject {
       try saveSession()
       ready = true
       await vpn.initialize()
-      if autoRefresh { startupRefresh = Task { await refreshSubscriptions() } }
+      if autoRefresh && foreground { startupRefresh = Task { await refreshSubscriptions() } }
     } catch { self.error = error.localizedDescription }
     #endif
   }
@@ -327,11 +328,14 @@ final class SvoiModel: ObservableObject {
   }
 
   func suspendForegroundWork() {
+    foreground = false
     cancelProbes()
     SvoiCoreCancelSpeed()
     startupRefresh?.cancel()
     startupRefresh = nil
   }
+
+  func resumeForegroundWork() { foreground = true }
 
   func configuration(_ server: SvoiServer) async throws -> String {
     let result = try await api.request("servers/\(server.id)/config?mode=tun", token: token)

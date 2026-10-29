@@ -9,6 +9,11 @@ on:
         required: false
         default: false
         type: boolean
+      connection_only:
+        description: 'Check connection, IP details and accessible layout'
+        required: false
+        default: false
+        type: boolean
       interface_only:
         description: 'Check the interface without rebuilding the device package'
         required: false
@@ -72,6 +77,7 @@ jobs:
       - name: Check small and large iPhones
         env:
           SVOI_SUBSCRIPTION_CHECK: ${{ inputs.subscription_only && '1' || '0' }}
+          SVOI_CONNECTION_CHECK: ${{ inputs.connection_only && '1' || '0' }}
         run: python3 scripts/check-ios-interface.py "${{ matrix.device }}"
       - uses: actions/upload-artifact@v4
         if: always()

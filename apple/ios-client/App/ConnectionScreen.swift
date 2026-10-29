@@ -18,7 +18,7 @@ struct ConnectionScreen: View {
 
   var body: some View {
     ScrollViewReader { proxy in
-      ServerList(model: model, vpn: vpn, onSelect: { focusConnection.toggle() }, onImport: { add(false) }, header: AnyView(introduction.id("connection")))
+      ServerList(model: model, vpn: vpn, onSelect: { focusConnection.toggle() }, onImport: { add(false) }, header: AnyView(introduction))
         .onChange(of: focusServers) { _ in
           withAnimation(reduceMotion ? nil : .easeOut(duration: 0.2)) {
             proxy.scrollTo("subscription-list", anchor: .top)
