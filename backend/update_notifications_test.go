@@ -138,6 +138,11 @@ func TestUpdateDataRecoveryCopy(t *testing.T) {
 	a := newTestApp(t)
 	profiles := []byte(`{"groups":[]}`)
 	settings := []byte(`{"autoUpdate":true}`)
+	sessionPath := filepath.Join(filepath.Dir(a.path), "session.json")
+	session := []byte(`{"token":"recovery-test-token","selected":"server-1"}`)
+	if err := os.WriteFile(sessionPath, session, 0600); err != nil {
+		t.Fatal(err)
+	}
 	if err := os.WriteFile(a.path, profiles, 0600); err != nil {
 		t.Fatal(err)
 	}
@@ -152,7 +157,7 @@ func TestUpdateDataRecoveryCopy(t *testing.T) {
 	for _, pair := range []struct {
 		path     string
 		expected []byte
-	}{{a.path, profiles}, {a.path + ".settings.json", settings}} {
+	}{{a.path, profiles}, {a.path + ".settings.json", settings}, {sessionPath, session}} {
 		copied, err := os.ReadFile(filepath.Join(dir, filepath.Base(pair.path)))
 		original, _ := os.ReadFile(pair.path)
 		if err != nil || string(copied) != string(pair.expected) || string(original) != string(pair.expected) {

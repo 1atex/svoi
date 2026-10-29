@@ -42,7 +42,7 @@ func writeUpdateInstallResult(installer string, result UpdateInstallResult) erro
 	return os.Rename(path+".tmp", path)
 }
 
-// Keep a recovery copy of the two app-owned data files. Setup updates program
+// Keep a recovery copy of backend profiles and desktop preferences. Setup updates program
 // files only; this backup is for manual recovery, not a binary transaction/rollback.
 func (u *Updater) backupUpdateData() (string, error) {
 	u.app.mu.Lock()
@@ -56,7 +56,10 @@ func (u *Updater) backupUpdateData() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	for _, path := range []string{u.app.path, u.app.path + ".settings.json"} {
+	base := filepath.Dir(u.app.path)
+	for _, path := range []string{u.app.path, u.app.path + ".settings.json",
+		filepath.Join(base, "session.json"), filepath.Join(base, "appearance.json"),
+		filepath.Join(base, "release-notice.json"), filepath.Join(base, "runtime", "core-selection.json")} {
 		in, err := os.Open(path)
 		if os.IsNotExist(err) {
 			continue

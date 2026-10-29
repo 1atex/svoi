@@ -4,6 +4,8 @@ package main
 
 import (
 	"context"
+	"fmt"
+	"golang.org/x/sys/windows"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -11,6 +13,23 @@ import (
 	"testing"
 	"time"
 )
+
+func TestUpdateWaitsForDesktopWindowMutex(t *testing.T) {
+	name := fmt.Sprintf(`Local\SVOI.UpdateTest.%d.%d`, os.Getpid(), time.Now().UnixNano())
+	wide, _ := windows.UTF16PtrFromString(name)
+	handle, err := windows.CreateMutex(nil, false, wide)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := waitUpdateDesktopClosed(name, 10*time.Millisecond); err == nil {
+		windows.CloseHandle(handle)
+		t.Fatal("installer proceeded while the desktop still held its instance mutex")
+	}
+	windows.CloseHandle(handle)
+	if err := waitUpdateDesktopClosed(name, time.Second); err != nil {
+		t.Fatal(err)
+	}
+}
 
 func TestInstallerStillVerifiesChecksumWhenParentAlreadyExited(t *testing.T) {
 	cmd := exec.Command("cmd.exe", "/c", "exit", "0")

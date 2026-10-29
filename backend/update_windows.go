@@ -119,6 +119,11 @@ func installUpdateAfterExit(installer, checksum string, parent int) (resultErr e
 	if err != nil {
 		return err
 	}
+	// Flutter closes its window after the backend has exited. Waiting only for
+	// the backend can race Inno Setup's AppMutex check and reject a valid update.
+	if err := waitUpdateDesktopClosed(`Local\SVOI.FlutterDesktop`, 30*time.Second); err != nil {
+		return err
+	}
 	cmd := exec.Command(installer, silentUpdateArguments(filepath.Dir(trusted), result.Log)...)
 	hideCommand(cmd)
 	if err := cmd.Run(); err != nil {
@@ -130,6 +135,28 @@ func installUpdateAfterExit(installer, checksum string, parent int) (resultErr e
 		return fmt.Errorf("Установщик не завершил обновление: %w. Журнал: %s", err, result.Log)
 	}
 	return nil
+}
+
+func waitUpdateDesktopClosed(mutexName string, timeout time.Duration) error {
+	name, err := windows.UTF16PtrFromString(mutexName)
+	if err != nil {
+		return err
+	}
+	deadline := time.Now().Add(timeout)
+	for {
+		handle, err := windows.OpenMutex(windows.SYNCHRONIZE, false, name)
+		if errors.Is(err, windows.ERROR_FILE_NOT_FOUND) {
+			return nil
+		}
+		if err != nil {
+			return fmt.Errorf("Не удалось проверить завершение окна SVOI: %w", err)
+		}
+		windows.CloseHandle(handle)
+		if !time.Now().Before(deadline) {
+			return fmt.Errorf("Окно SVOI ещё открыто; установка отменена, файлы не изменены")
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
 }
 
 func silentUpdateArguments(directory, log string) []string {
