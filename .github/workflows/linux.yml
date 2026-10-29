@@ -22,7 +22,7 @@ jobs:
       - name: Install Linux build and test dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev libstdc++-12-dev libayatana-appindicator3-dev libcap2-bin xvfb xdotool scrot openbox dbus-x11
+          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev libstdc++-12-dev libayatana-appindicator3-dev libcap2-bin xvfb xdotool scrot openbox dbus-x11 gdb
       - name: Verify tag and build packages
         run: |
           VERSION=$(python3 -c 'import json; print(json.load(open("config/linux-release.json"))["version"])')
@@ -41,6 +41,8 @@ jobs:
           flutter analyze
           flutter test test/linux_platform_test.dart test/controller_test.dart test/data_directory_test.dart test/appearance_test.dart test/community_test.dart test/onboarding_test.dart test/release_notice_test.dart test/portable_tools_test.dart test/ui_icons_test.dart
       - name: Verify traffic, reconnects and window lifecycle
+        env:
+          SVOI_LINUX_DEBUG_CLOSE: '1'
         run: |
           BUNDLE="$PWD/.tools/linux-package/$LINUX_VERSION/svoi"
           python3 scripts/linux-backend-smoke.py "$BUNDLE"

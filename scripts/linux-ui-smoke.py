@@ -16,6 +16,8 @@ with tempfile.TemporaryDirectory(prefix='svoi-linux-ui-') as data:
         wm = subprocess.Popen(['openbox', '--sm-disable'], env=env, stdout=log, stderr=log)
         time.sleep(.7)
         app = subprocess.Popen([str(bundle / 'svoi')], env=env, stdout=log, stderr=log)
+        debugger = None
+        debug_log = None
         try:
             deadline = time.monotonic() + 35
             while time.monotonic() < deadline:
@@ -47,6 +49,12 @@ with tempfile.TemporaryDirectory(prefix='svoi-linux-ui-') as data:
             subprocess.run(['scrot', '--overwrite', str(output / 'linux-first-run.png')], check=True)
             children = subprocess.check_output(['pgrep', '-P', str(app.pid)], text=True).split()
             assert children, 'Native backend was not started'
+            if os.environ.get('SVOI_LINUX_DEBUG_CLOSE') == '1':
+                debug_log = open(output / 'linux-close-backtrace.log', 'w')
+                debugger = subprocess.Popen(['sudo', '-n', 'gdb', '--batch', '-p', str(app.pid),
+                    '-ex', 'set pagination off', '-ex', 'continue', '-ex', 'thread apply all bt',
+                    '-ex', 'kill'], stdout=debug_log, stderr=debug_log)
+                time.sleep(2)
             subprocess.run(['xdotool', 'windowactivate', '--sync', window], check=True)
             subprocess.run(['xdotool', 'key', '--clearmodifiers', 'alt+F4'], check=True)
             app.wait(timeout=15)
@@ -56,5 +64,9 @@ with tempfile.TemporaryDirectory(prefix='svoi-linux-ui-') as data:
             assert not list(Path(data).glob('*.tmp'))
             print('PASS: GTK launch, first-run onboarding, persisted completion, native window close and backend cleanup')
         finally:
+            if debugger is not None:
+                try: debugger.wait(timeout=10)
+                except subprocess.TimeoutExpired: debugger.terminate(); debugger.wait(timeout=5)
+            if debug_log is not None: debug_log.close()
             if app.poll() is None: app.terminate(); app.wait(timeout=10)
             wm.terminate(); wm.wait(timeout=10)
