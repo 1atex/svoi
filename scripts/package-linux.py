@@ -18,15 +18,17 @@ STAGE.parent.mkdir(parents=True)
 shutil.copytree(ROOT / 'flutter_client/build/linux/x64/release/bundle', STAGE)
 (STAGE / 'backend/core').mkdir(parents=True)
 shutil.copy2(ROOT / '.tools/linux-backend/svoi-backend', STAGE / 'backend/svoi-backend')
-for name in ('xray', 'geoip.dat', 'geosite.dat', 'LICENSE'):
+for name in ('xray', 'geoip.dat', 'geosite.dat', 'LICENSE', 'sing-box', 'mihomo', 'sing-box-LICENSE.txt', 'sing-box-SOURCE.txt', 'mihomo-LICENSE.txt', 'mihomo-SOURCE.txt'):
     shutil.copy2(ROOT / '.tools/linux-core' / name, STAGE / 'backend/core' / name)
+for support in (ROOT / '.tools/linux-core').glob('*.so*'):
+    shutil.copy2(support, STAGE / 'backend/core' / support.name)
 shutil.copy2(ROOT / 'LICENSE', STAGE / 'LICENSE')
 shutil.copytree(ROOT / 'licenses', STAGE / 'licenses')
 shutil.copy2(ROOT / 'docs/LINUX.md', STAGE / 'LINUX.md')
 for entry in STAGE.rglob('*'):
     if not entry.is_symlink(): entry.chmod(0o755 if entry.is_dir() else 0o644)
 STAGE.chmod(0o755)
-for name in ('svoi', 'backend/svoi-backend', 'backend/core/xray'):
+for name in ('svoi', 'backend/svoi-backend', 'backend/core/xray', 'backend/core/sing-box', 'backend/core/mihomo'):
     (STAGE / name).chmod(0o755)
 OUTPUT.mkdir(parents=True, exist_ok=True)
 archive = OUTPUT / f'SVOI-{VERSION}-linux-x64.tar.gz'
@@ -62,7 +64,7 @@ shutil.copy2(ROOT / 'assets/brand/linux/symbolic.svg', icons / 'dev.svoi.app-sym
 control = package / 'DEBIAN'
 control.mkdir()
 (control / 'control').write_text(f"""Package: svoi
-Version: {VERSION.replace('-preview.', '~preview.')}
+Version: {VERSION.replace('-preview.', '~preview.').replace('-rc.', '~rc.')}
 Section: net
 Priority: optional
 Architecture: amd64

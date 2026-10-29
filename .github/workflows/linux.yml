@@ -32,6 +32,8 @@ jobs:
       - name: Check backend and interface
         run: |
           export SVOI_TEST_CORE="$PWD/.tools/linux-core/xray"
+          export SVOI_TEST_SING_BOX="$PWD/.tools/linux-core/sing-box"
+          export SVOI_TEST_MIHOMO="$PWD/.tools/linux-core/mihomo"
           go test -tags native_core ./...
           go vet -tags native_core ./...
           cd flutter_client

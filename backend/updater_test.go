@@ -25,7 +25,8 @@ func TestUpdateVersionOrder(t *testing.T) {
 }
 func updateFixture(body string) releaseAsset {
 	sum := sha256.Sum256([]byte(body))
-	return releaseAsset{Name: "SVOI-9.1.0-prebeta.1-windows-x64-setup.exe", URL: "https://github.com/" + releaseRepository + "/releases/download/v9.1.0-prebeta.1/setup.exe", Digest: "sha256:" + hex.EncodeToString(sum[:]), Size: int64(len(body))}
+	name := "SVOI-9.1.0-prebeta.1-windows-x64-setup.exe"
+	return releaseAsset{Name: name, URL: "https://github.com/" + releaseRepository + "/releases/download/v9.1.0-prebeta.1/" + name, Digest: "sha256:" + hex.EncodeToString(sum[:]), Size: int64(len(body))}
 }
 func TestUpdateAssetTrust(t *testing.T) {
 	good := updateFixture("installer")
@@ -62,6 +63,7 @@ func TestFlutterUpdateChannelRejectsWebViewInstaller(t *testing.T) {
 		t.Fatal("Flutter accepted a WebView installer")
 	}
 	asset.Name = strings.Replace(asset.Name, "SVOI-", "SVOI-Flutter-", 1)
+	asset.URL = strings.Replace(asset.URL, "/SVOI-", "/SVOI-Flutter-", 1)
 	if !validUpdateAsset(asset) {
 		t.Fatal("Flutter installer was rejected")
 	}

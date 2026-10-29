@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math/rand/v2"
 	"net"
 	"net/http"
 	"net/url"
@@ -20,26 +21,30 @@ import (
 )
 
 type EngineStatus struct {
-	DirectDomains []string   `json:"directDomains"`
-	Available     bool       `json:"available"`
-	Elevated      bool       `json:"elevated"`
-	Problem       string     `json:"problem,omitempty"`
-	Version       string     `json:"version"`
-	State         string     `json:"state"`
-	ServerID      string     `json:"serverId"`
-	ServerName    string     `json:"serverName"`
-	Mode          string     `json:"mode"`
-	SocksPort     int        `json:"socksPort"`
-	HTTPPort      int        `json:"httpPort"`
-	StartedAt     *time.Time `json:"startedAt,omitempty"`
-	Error         string     `json:"error,omitempty"`
-	Latency       int64      `json:"latency,omitempty"`
-	Checked       bool       `json:"checked"`
-	CheckedAt     *time.Time `json:"checkedAt,omitempty"`
-	Routing       AppRouting `json:"routing"`
-	Logs          []string   `json:"logs"`
+	Core          string           `json:"core"`
+	Capabilities  CoreCapabilities `json:"capabilities"`
+	DirectDomains []string         `json:"directDomains"`
+	Available     bool             `json:"available"`
+	Elevated      bool             `json:"elevated"`
+	Problem       string           `json:"problem,omitempty"`
+	Version       string           `json:"version"`
+	State         string           `json:"state"`
+	ServerID      string           `json:"serverId"`
+	ServerName    string           `json:"serverName"`
+	Mode          string           `json:"mode"`
+	SocksPort     int              `json:"socksPort"`
+	HTTPPort      int              `json:"httpPort"`
+	StartedAt     *time.Time       `json:"startedAt,omitempty"`
+	Error         string           `json:"error,omitempty"`
+	Latency       int64            `json:"latency,omitempty"`
+	Checked       bool             `json:"checked"`
+	CheckedAt     *time.Time       `json:"checkedAt,omitempty"`
+	Routing       AppRouting       `json:"routing"`
+	Logs          []string         `json:"logs"`
 }
 type Engine struct {
+	core          string
+	xrayBinary    string
 	op            sync.Mutex
 	mu            sync.Mutex
 	binary        string
@@ -67,6 +72,7 @@ func newEngine(binary, dir string) (*Engine, error) {
 	if err := os.MkdirAll(dir, 0700); err != nil {
 		return nil, err
 	}
+	defer e.initializeCores()
 	if err := recoverSystemProxy(dir); err != nil {
 		e.status.Error = "Не удалось восстановить прежние настройки прокси: " + err.Error()
 	}
@@ -104,7 +110,13 @@ func (e *Engine) snapshot(includeLogs bool) EngineStatus {
 	defer e.mu.Unlock()
 	s := e.status
 	s.DirectDomains = append([]string{}, s.DirectDomains...)
-	s.Elevated = canCreateTun(e.binary)
+	s.Core = e.coreID()
+	s.Elevated = e.coreID() == "xray" && canCreateTun(e.binary)
+	s.Capabilities.Cores = append([]CoreCapability{}, s.Capabilities.Cores...)
+	for i := range s.Capabilities.Cores {
+		s.Capabilities.Cores[i].SupportedModes = append([]string{}, s.Capabilities.Cores[i].SupportedModes...)
+	}
+	s.Capabilities.SupportedModes = append([]string{}, s.Capabilities.SupportedModes...)
 	s.Routing.Processes = append([]string{}, e.status.Routing.Processes...)
 	s.Logs = nil
 	if includeLogs {
@@ -156,6 +168,30 @@ func reservePort() (net.Listener, int, error) {
 	}
 	return l, l.Addr().(*net.TCPAddr).Port, nil
 }
+
+// SOCKS listeners can bind UDP as well as TCP. A TCP-only ephemeral port can
+// belong to an excluded UDP range on Windows, preventing Mihomo from starting.
+func reserveSocksPort() (net.Listener, net.PacketConn, int, error) {
+	var last error
+	for range 64 {
+		// TCP and UDP ephemeral allocators may each walk long ranges excluded
+		// by the other protocol. Spread candidates across unprivileged ports.
+		port := 1024 + rand.IntN(65536-1024)
+		address := net.JoinHostPort("127.0.0.1", strconv.Itoa(port))
+		udp, err := net.ListenPacket("udp4", address)
+		if err != nil {
+			last = err
+			continue
+		}
+		tcp, err := net.Listen("tcp4", address)
+		if err == nil {
+			return tcp, udp, port, nil
+		}
+		udp.Close()
+		last = err
+	}
+	return nil, nil, 0, fmt.Errorf("не удалось выбрать порт SOCKS TCP/UDP: %w", last)
+}
 func credentialStrings(v any) []string {
 	var all []string
 	switch x := v.(type) {
@@ -189,7 +225,10 @@ func (e *Engine) startContext(parent context.Context, server ServerConfig, mode 
 		return fail(400, "Неизвестный режим подключения")
 	}
 	if !e.Status().Available {
-		return fail(503, "Ядро Xray не найдено. Распакуйте приложение вместе с папкой core.")
+		return fail(503, "Выбранное ядро недоступно. Установите полный пакет вместе с папкой core.")
+	}
+	if e.coreID() != "xray" && mode == "tun" {
+		return nativeUnsupported("TUN для " + e.coreID())
 	}
 	if mode == "tun" && !canCreateTun(e.binary) {
 		if runtime.GOOS == "linux" {
@@ -197,21 +236,22 @@ func (e *Engine) startContext(parent context.Context, server ServerConfig, mode 
 		}
 		return fail(409, "Для TUN закройте SVOI и запустите его от имени администратора. Системный прокси работает без повышения прав.")
 	}
-	socks, sp, err := reservePort()
+	socks, socksUDP, sp, err := reserveSocksPort()
 	if err != nil {
 		return err
 	}
 	defer socks.Close()
+	defer socksUDP.Close()
 	httpListener, hp, err := reservePort()
 	if err != nil {
 		return err
 	}
 	defer httpListener.Close()
-	config, err := buildXrayConfig(server, sp, hp, mode)
+	config, err := buildCoreConfig(e.coreID(), server, sp, hp, mode)
 	if err != nil {
 		return err
 	}
-	f, err := os.CreateTemp(e.dir, "xray-*.json")
+	f, err := os.CreateTemp(e.dir, e.coreID()+"-*.json")
 	if err != nil {
 		return err
 	}
@@ -235,7 +275,7 @@ func (e *Engine) startContext(parent context.Context, server ServerConfig, mode 
 	validationOutput := &Engine{redactions: credentialStrings(outbound), coreStarted: true}
 	ctx, cancel := context.WithTimeout(parent, 10*time.Second)
 	defer cancel()
-	validate := exec.CommandContext(ctx, e.binary, "run", "-test", "-c", path)
+	validate := exec.CommandContext(ctx, e.binary, coreArgs(e.coreID(), "check", path, e.dir)...)
 	hideCommand(validate)
 	validate.Dir = filepath.Dir(e.binary)
 	validate.Stdout = validationOutput
@@ -244,7 +284,7 @@ func (e *Engine) startContext(parent context.Context, server ServerConfig, mode 
 		for _, line := range validationOutput.Status().Logs {
 			_, _ = e.Write([]byte(line + "\n"))
 		}
-		err = fail(422, "Xray отклонил конфигурацию. Обновите подписку или выберите другой сервер; подробности — в диагностике.")
+		err = fail(422, coreName(e.coreID())+" отклонил конфигурацию. Обновите подписку или выберите другой сервер; подробности — в диагностике.")
 		if e.Status().State != "running" {
 			e.setError(err)
 		}
@@ -267,12 +307,13 @@ func (e *Engine) startContext(parent context.Context, server ServerConfig, mode 
 	e.startupOutput = ""
 	e.redactions = credentialStrings(outbound)
 	e.mu.Unlock()
-	cmd := exec.Command(e.binary, "run", "-c", path)
+	cmd := exec.Command(e.binary, coreArgs(e.coreID(), "run", path, e.dir)...)
 	prepareXrayCommand(cmd)
 	cmd.Dir = filepath.Dir(e.binary)
 	cmd.Stdout = e
 	cmd.Stderr = e
 	socks.Close()
+	socksUDP.Close()
 	httpListener.Close()
 	if err = cmd.Start(); err != nil {
 		e.setError(err)
@@ -298,9 +339,9 @@ func (e *Engine) startContext(parent context.Context, server ServerConfig, mode 
 		if e.cmd == cmd && e.status.State != "stopping" && e.status.State != "stopped" {
 			e.status.State = "error"
 			if err != nil {
-				e.status.Error = "Процесс Xray завершился: " + err.Error()
+				e.status.Error = "Процесс " + coreName(e.coreID()) + " завершился: " + err.Error()
 			} else {
-				e.status.Error = "Процесс Xray завершился"
+				e.status.Error = "Процесс " + coreName(e.coreID()) + " завершился"
 			}
 		}
 		e.mu.Unlock()
@@ -318,14 +359,14 @@ func (e *Engine) startContext(parent context.Context, server ServerConfig, mode 
 			e.stopLocked()
 			return parent.Err()
 		case <-done:
-			err = fail(502, "Xray завершился при запуске. Проверьте журнал.")
+			err = fail(502, coreName(e.coreID())+" завершился при запуске. Проверьте журнал.")
 			e.stopLocked()
 			e.setError(err)
 			return err
 		default:
 		}
 		e.mu.Lock()
-		coreStarted := e.coreStarted
+		coreStarted := e.coreStarted || e.coreID() != "xray"
 		e.mu.Unlock()
 		if !coreStarted {
 			time.Sleep(30 * time.Millisecond)
@@ -334,13 +375,23 @@ func (e *Engine) startContext(parent context.Context, server ServerConfig, mode 
 		c, dialErr := net.DialTimeout("tcp", net.JoinHostPort("127.0.0.1", strconv.Itoa(hp)), 150*time.Millisecond)
 		if dialErr == nil {
 			c.Close()
-			ready = true
-			break
+			socksConn, socksErr := net.DialTimeout("tcp", net.JoinHostPort("127.0.0.1", strconv.Itoa(sp)), 150*time.Millisecond)
+			if socksErr == nil {
+				socksConn.Close()
+				select {
+				case <-done:
+				default:
+					ready = true
+				}
+				if ready {
+					break
+				}
+			}
 		}
 		time.Sleep(60 * time.Millisecond)
 	}
 	if !ready {
-		err = fail(504, fmt.Sprintf("Xray не завершил настройку подключения за %d секунд", int(startupTimeout.Seconds())))
+		err = fail(504, fmt.Sprintf("%s не завершил настройку подключения за %d секунд", coreName(e.coreID()), int(startupTimeout.Seconds())))
 		e.stopLocked()
 		e.setError(err)
 		return err
@@ -413,16 +464,16 @@ func (e *Engine) stopLocked() error {
 		case <-e.done:
 		default:
 			if err := interruptXray(e.cmd); err != nil {
-				_, _ = e.Write([]byte("Не удалось отправить Xray сигнал завершения: " + err.Error()))
+				_, _ = e.Write([]byte("Не удалось отправить " + coreName(e.coreID()) + " сигнал завершения: " + err.Error()))
 			}
 			timer := time.NewTimer(5 * time.Second)
 			select {
 			case <-e.done:
 				timer.Stop()
 			case <-timer.C:
-				_, _ = e.Write([]byte("Xray не завершился за 5 секунд; принудительная остановка"))
+				_, _ = e.Write([]byte(coreName(e.coreID()) + " не завершился за 5 секунд; принудительная остановка"))
 				if err := e.cmd.Process.Kill(); err != nil && !errors.Is(err, os.ErrProcessDone) {
-					return fmt.Errorf("не удалось остановить Xray: %w", err)
+					return fmt.Errorf("не удалось остановить %s: %w", coreName(e.coreID()), err)
 				}
 				<-e.done
 			}
@@ -541,6 +592,20 @@ func (a *App) engineAPI(w http.ResponseWriter, r *http.Request) error {
 		}
 	}
 	switch {
+	case r.Method == "POST" && r.URL.Path == "/api/connection/core":
+		var in struct {
+			Core string `json:"core"`
+		}
+		decoder := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096))
+		decoder.DisallowUnknownFields()
+		if decoder.Decode(&in) != nil {
+			return fail(400, "Некорректный запрос выбора ядра")
+		}
+		if err := a.engine.SelectCore(in.Core); err != nil {
+			return err
+		}
+		writeJSON(w, 200, a.engine.Status())
+		return nil
 	case r.Method == "POST" && r.URL.Path == "/api/connection/ip":
 		result, err := a.engine.PublicIP(r.Context())
 		if err != nil {

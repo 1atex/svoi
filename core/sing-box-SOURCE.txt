@@ -1,0 +1,5 @@
+sing-box 1.14.4
+Source: https://github.com/SagerNet/sing-box/tree/v1.14.4
+Binary: https://github.com/SagerNet/sing-box/releases/download/v1.14.4/sing-box-1.14.4-windows-amd64.zip
+Archive SHA256: 99185d75d314a07dbba4a130c8ad986cbeb629a07927975636b341ca61f991df
+Unmodified upstream binary.

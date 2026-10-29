@@ -12,6 +12,7 @@ fi
 echo "$XRAY_SHA  .tools/linux-core/xray.zip" | sha256sum -c -
 unzip -oq .tools/linux-core/xray.zip -d .tools/linux-core
 chmod 755 .tools/linux-core/xray
+python3 scripts/prepare-optional-cores.py --target linux-x64 --output .tools/linux-core
 CGO_ENABLED=0 go build -tags native_core -trimpath -ldflags "-s -w -X main.nativeVersion=$VERSION" -o .tools/linux-backend/svoi-backend ./backend
 pushd flutter_client
 flutter pub get

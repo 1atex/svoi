@@ -25,7 +25,9 @@ jobs:
           "SVOI_RELEASE_DIR=$dir" >> $env:GITHUB_ENV
       - name: Fetch pinned Xray
         shell: pwsh
-        run: ./scripts/prepare-core.ps1
+        run: |
+          ./scripts/prepare-core.ps1
+          python scripts/prepare-optional-cores.py --target windows-x64 --output core
       - name: Ensure Inno Setup
         shell: pwsh
         run: |
@@ -63,6 +65,32 @@ jobs:
           ./.ui-test/elevation-build/Release/elevation_test.exe
           if ($LASTEXITCODE) { throw 'Native launch tests failed' }
           ./flutter_client/build-prototype.ps1 -Version $env:SVOI_VERSION
+      - name: Authenticate update manifest
+        shell: pwsh
+        env:
+          SVOI_UPDATE_SIGNING_KEY: ${{ secrets.SVOI_UPDATE_SIGNING_KEY }}
+        run: |
+          if (!$env:SVOI_UPDATE_SIGNING_KEY) {
+            if ($env:GITHUB_REF_TYPE -eq 'tag') { throw 'Release publication requires SVOI_UPDATE_SIGNING_KEY; unsigned release blocked' }
+            Write-Output 'Review build only: update manifest signing key is not configured.'
+            exit 0
+          }
+          $keyFile = Join-Path $env:RUNNER_TEMP 'svoi-update-signing.pem'
+          try {
+            [IO.File]::WriteAllText($keyFile, $env:SVOI_UPDATE_SIGNING_KEY)
+            $installer = Join-Path $env:SVOI_RELEASE_DIR "SVOI-$env:SVOI_VERSION-windows-x64-setup.exe"
+            go run ./cmd/sign-update-manifest -key $keyFile -installer $installer
+            if ($LASTEXITCODE) { throw 'Update manifest signing failed' }
+            $manifest = Join-Path $env:SVOI_RELEASE_DIR "SVOI-$env:SVOI_VERSION-windows-x64-update.json"
+            Copy-Item -LiteralPath $manifest -Destination "$installer.update.json"
+            $env:SVOI_TEST_SIGNED_UPDATE_INSTALLER = [IO.Path]::GetFullPath($installer)
+            go test -tags native_core ./backend -run '^TestReleaseSignedUpdateManifest$' -count=1
+            if ($LASTEXITCODE) { throw 'Signed release verification failed' }
+            Remove-Item -LiteralPath "$installer.update.json"
+          } finally {
+            Remove-Item -LiteralPath $keyFile -ErrorAction SilentlyContinue
+            Remove-Item Env:SVOI_UPDATE_SIGNING_KEY -ErrorAction SilentlyContinue
+          }
       - uses: actions/upload-artifact@v4
         with:
           name: SVOI-windows
@@ -70,6 +98,7 @@ jobs:
             ${{ env.SVOI_RELEASE_DIR }}/*.exe
             ${{ env.SVOI_RELEASE_DIR }}/*.zip
             ${{ env.SVOI_RELEASE_DIR }}/*.sha256
+            ${{ env.SVOI_RELEASE_DIR }}/*-update.json
       - name: Publish release
         if: github.ref_type == 'tag'
         shell: pwsh
@@ -79,6 +108,6 @@ jobs:
           $assets = Get-ChildItem $env:SVOI_RELEASE_DIR -File | ForEach-Object { $_.FullName }
           $notes = 'flutter_client/RELEASE-NOTES.md'
           $options = @('release','create',$env:GITHUB_REF_NAME,'--title',"SVOI $env:SVOI_VERSION",'--notes-file',$notes,'--verify-tag')
-          if ($env:SVOI_VERSION -match '-(?:prebeta|rc)\.') { $options += '--prerelease' } else { $options += '--latest' }
+          if ($env:SVOI_VERSION -match '-(?:prebeta|beta|preview|rc)\.') { $options += '--prerelease' } else { $options += '--latest' }
           & gh @options @assets
           if ($LASTEXITCODE -ne 0) { throw 'Release publication failed' }

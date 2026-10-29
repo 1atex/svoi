@@ -213,9 +213,14 @@ class ModePicker extends StatelessWidget {
     final routing = Map<String, dynamic>.from(
       c.preferences.value['routing'] ?? {},
     );
+    final supported =
+        c.connection.value['capabilities']?['supportedModes'] as List? ??
+        ['tun', 'system', 'local'];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        CorePicker(c: c),
+        const SizedBox(height: 16),
         DropdownButtonFormField<String>(
           key: ValueKey('mode-${c.mode.value}-${routing['mode']}'),
           initialValue: c.mode.value,
@@ -224,21 +229,24 @@ class ModePicker extends StatelessWidget {
           items: [
             DropdownMenuItem(
               value: 'tun',
+              enabled: supported.contains('tun'),
               child: Text(
                 '${modeLabel('tun', routing)} · TUN',
                 overflow: TextOverflow.ellipsis,
               ),
             ),
             if (!Platform.isLinux)
-              const DropdownMenuItem(
+              DropdownMenuItem(
                 value: 'system',
+                enabled: supported.contains('system'),
                 child: Text(
                   'Приложения с системным прокси',
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
-            const DropdownMenuItem(
+            DropdownMenuItem(
               value: 'local',
+              enabled: supported.contains('local'),
               child: Text(
                 'Ручная настройка прокси',
                 overflow: TextOverflow.ellipsis,
@@ -274,7 +282,9 @@ class ModePicker extends StatelessWidget {
         Align(
           alignment: Alignment.centerLeft,
           child: TextButton.icon(
-            onPressed: () => showTrafficRules(context, c),
+            onPressed: (c.connection.value['core'] ?? 'xray') == 'xray'
+                ? () => showTrafficRules(context, c)
+                : null,
             icon: const SvoiIcon(LucideIcons.appWindow, size: 15),
             label: Text(
               'Правила трафика · ${(c.preferences.value['directDomains'] as List? ?? []).length} сайтов напрямую',

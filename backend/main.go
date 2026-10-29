@@ -27,7 +27,7 @@ import (
 )
 
 var appVersion = "0.4.0-prebeta.3"
-var nativeVersion = "0.6.0-beta.6"
+var nativeVersion = "0.7.0-rc.1"
 
 //go:embed web/*
 var assets embed.FS
@@ -785,9 +785,7 @@ func run() error {
 				a.zapret.launchJob("update", nil, false)
 			}
 			a.updates = newUpdater(a)
-			if a.localSettings().AutoUpdate {
-				a.updates.start("check")
-			}
+			a.updates.startBackgroundCheck()
 		}
 	}
 	log.Printf("SVOI %s — http://%s", appVersion, *listen)

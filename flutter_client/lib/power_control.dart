@@ -121,25 +121,10 @@ class _ConnectionOrbitState extends State<ConnectionOrbit> {
                                         color: color,
                                       ),
                               )
-                            : Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  SvoiIcon(
-                                    LucideIcons.power,
-                                    size: 32,
-                                    color: color,
-                                  ),
-                                  const SizedBox(height: 6),
-                                  Text(
-                                    widget.running
-                                        ? 'Отключить VPN'
-                                        : 'Подключить',
-                                    style: TextStyle(
-                                      fontSize: 10,
-                                      color: color,
-                                    ),
-                                  ),
-                                ],
+                            : SvoiIcon(
+                                LucideIcons.power,
+                                size: 36,
+                                color: color,
                               ),
                       ),
                     ),
@@ -257,47 +242,6 @@ class _PumpkinPowerState extends State<_PumpkinPower> {
                             ),
                           ),
                         ),
-                      Positioned(
-                        left: 0,
-                        right: 0,
-                        bottom: 1,
-                        child: Center(
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 11,
-                              vertical: 5,
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                if (control.running && !control.busy) ...[
-                                  SvoiIcon(
-                                    control.verified
-                                        ? LucideIcons.shieldCheck
-                                        : LucideIcons.power,
-                                    color: tone,
-                                    size: 12,
-                                  ),
-                                  const SizedBox(width: 5),
-                                ],
-                                Text(
-                                  control.busy
-                                      ? 'Подождите…'
-                                      : control.running
-                                      ? 'Отключить VPN'
-                                      : 'Подключить',
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    color: enabled || control.busy
-                                        ? tone
-                                        : p.muted,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
                     ],
                   ),
                 ),

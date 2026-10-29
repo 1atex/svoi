@@ -63,7 +63,11 @@ func TestSpeedThroughRealVLESSCannotFallBackToDirect(t *testing.T) {
 		mustDecode(t, server.Outbound, &out)
 		out["tag"] = "vpn"
 		server.Profile = mustJSON(t, object{"outbounds": []any{object{"tag": "direct", "protocol": "freedom"}, out}, "routing": object{"rules": []any{object{"type": "field", "network": "tcp,udp", "outboundTag": "direct"}}}})
-		a := &App{engine: &Engine{binary: binary, dir: t.TempDir()}}
+		engine, e := newEngine(binary, t.TempDir())
+		if e != nil {
+			t.Fatal(e)
+		}
+		a := &App{engine: engine}
 		ctx, cancel := context.WithTimeout(context.Background(), 7*time.Second)
 		transport, cleanup, e := a.speedTransport(ctx, 1, []ServerConfig{server})
 		if e != nil {

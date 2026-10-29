@@ -280,7 +280,7 @@ func (a *App) speedTransport(ctx context.Context, index int, servers []ServerCon
 	if err != nil {
 		return nil, nil, err
 	}
-	probe := &Engine{binary: a.engine.binary, dir: dir, status: EngineStatus{State: "stopped", Available: true}}
+	probe := a.engine.probeEngine(dir)
 	cleanup := func() { transport.CloseIdleConnections(); _ = probe.Stop(); _ = os.RemoveAll(dir) }
 	startup, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()

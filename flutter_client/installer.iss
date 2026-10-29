@@ -108,6 +108,10 @@ end;
 
 function AdminLaunchPreference(Param: String): String;
 begin
+  if WizardSilent then begin
+    Result := GetIniString('Launch', 'RunAsAdmin', '0', ExpandConstant('{app}\launch.ini'));
+    Exit;
+  end;
   if WizardIsTaskSelected('runasadmin') then
     Result := '1'
   else

@@ -97,7 +97,8 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(find.text('VPN включён'), findsOneWidget);
-      expect(find.text('Отключить VPN'), findsOneWidget);
+      expect(find.text('Отключить VPN'), findsNothing);
+      expect(find.byTooltip('Отключить VPN'), findsOneWidget);
       expect(find.textContaining('Интернет не подтверждён'), findsOneWidget);
       expect(
         find.textContaining('TUN требует прав администратора'),
@@ -131,7 +132,7 @@ void main() {
           home: SvoiShell(controller: c),
         ),
       );
-      await tester.tap(find.byType(DropdownButtonFormField<String>));
+      await tester.tap(find.byType(DropdownButtonFormField<String>).last);
       await tester.pumpAndSettle();
       await tester.tap(find.text('Все приложения · TUN').last);
       await tester.pumpAndSettle();

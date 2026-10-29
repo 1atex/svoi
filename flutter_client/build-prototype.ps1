@@ -1,5 +1,5 @@
 param(
-    [string]$Version = '0.6.0-beta.6',
+    [string]$Version = '0.7.0-rc.1',
     [string]$FlutterSdk = '',
     [string]$CrtDirectory = '',
     [switch]$SkipChecks
@@ -25,12 +25,14 @@ if (!(Test-Path -LiteralPath "$CrtDirectory/msvcp140.dll")) { throw 'Pass -CrtDi
 $env:CI = 'true'
 Push-Location $root
 try {
+    python scripts/prepare-optional-cores.py --target windows-x64 --output core
+    if ($LASTEXITCODE) { throw 'Optional core verification failed' }
     New-Item -ItemType Directory -Force dist | Out-Null
     & $go build -tags native_core -trimpath -ldflags "-H windowsgui -s -w -X main.nativeVersion=$Version" -o dist/svoi-backend.exe ./backend
     if ($LASTEXITCODE) { throw 'Go backend build failed' }
 
     New-Item -ItemType Directory -Force dist/core | Out-Null
-    foreach ($name in @('xray.exe','wintun.dll','geoip.dat','geosite.dat','LICENSE','LICENSE-Wintun','SOURCE.txt')) {
+    foreach ($name in @('xray.exe','wintun.dll','geoip.dat','geosite.dat','LICENSE','LICENSE-Wintun','SOURCE.txt','sing-box.exe','libcronet.dll','sing-box-LICENSE.txt','sing-box-SOURCE.txt','mihomo.exe','mihomo-LICENSE.txt','mihomo-SOURCE.txt')) {
         Copy-Item -LiteralPath "core/$name" -Destination dist/core
     }
     Push-Location $PSScriptRoot
@@ -62,7 +64,7 @@ try {
     }
     if (Test-Path -LiteralPath "$stage/svoi_flutter.exe") { Remove-Item -LiteralPath "$stage/svoi_flutter.exe" }
     Copy-Item -LiteralPath dist/svoi-backend.exe -Destination "$stage/backend"
-    foreach ($name in @('xray.exe','wintun.dll','geoip.dat','geosite.dat','LICENSE','LICENSE-Wintun','SOURCE.txt')) {
+    foreach ($name in @('xray.exe','wintun.dll','geoip.dat','geosite.dat','LICENSE','LICENSE-Wintun','SOURCE.txt','sing-box.exe','libcronet.dll','sing-box-LICENSE.txt','sing-box-SOURCE.txt','mihomo.exe','mihomo-LICENSE.txt','mihomo-SOURCE.txt')) {
         Copy-Item -LiteralPath "dist/core/$name" -Destination "$stage/backend/core"
     }
     Copy-Item -Path "$CrtDirectory/*.dll" -Destination $stage

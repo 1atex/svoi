@@ -235,6 +235,10 @@ class ConnectionCard extends StatelessWidget {
             ),
             const SizedBox(height: 18),
             ConnectionPath(view: view),
+            if (selected != null)
+              Center(
+                child: ServerPingButton(c: c, server: selected),
+              ),
             const SizedBox(height: 20),
             ModePicker(c: c),
             if (pending) ...[

@@ -59,7 +59,7 @@ class _StartupPanelState extends State<StartupPanel> {
         contentPadding: EdgeInsets.zero,
         title: const Text('Запускать SVOI при входе в Windows'),
         subtitle: const Text(
-          'Приложение запустится в трее. VPN подключается вручную.',
+          'SVOI запустится в трее и сообщит о новой версии, если включена проверка обновлений. VPN подключается вручную.',
         ),
         value: state?['enabled'] == true,
         onChanged: state == null || busy

@@ -2,8 +2,12 @@ part of 'main.dart';
 
 const clientVersion = String.fromEnvironment(
   'SVOI_VERSION',
-  defaultValue: '0.6.0-beta.6',
+  defaultValue: '0.7.0-rc.1',
 );
+
+String get clientDisplayVersion => clientVersion == '0.7.0-rc.1'
+    ? '0.7.0 Beta Release Candidate'
+    : clientVersion;
 
 class ConfigPane extends StatelessWidget {
   const ConfigPane({
@@ -992,7 +996,7 @@ class PreferencesPage extends StatelessWidget {
             Section(
               'Обновления SVOI',
               subtitle:
-                  'Версия $clientVersion. Проверка и загрузка выполняются в приложении.',
+                  'Версия $clientDisplayVersion. Проверка и загрузка выполняются в приложении.',
               children: [
                 RemotePanel(
                   c: c,
@@ -1012,7 +1016,9 @@ class PreferencesPage extends StatelessWidget {
                       'current': 'Установлена актуальная версия',
                       'available': 'Доступна ${u['version']}',
                       'downloading': 'Загружаем ${u['version']}',
-                      'ready': '${u['version']} скачана и проверена',
+                      'ready': u['verification'] == 'ed25519'
+                          ? '${u['version']} · подпись SVOI проверена'
+                          : '${u['version']} скачана · SHA-256 совпадает',
                       'installing': 'Запускаем установщик…',
                       'error': 'Не удалось обновить приложение',
                     };
@@ -1061,7 +1067,8 @@ class PreferencesPage extends StatelessWidget {
                                     : () => act('download', null),
                                 child: const Text('Скачать'),
                               ),
-                            if (state == 'ready')
+                            if (state == 'ready' &&
+                                u['verification'] != 'blocked')
                               FilledButton(
                                 onPressed: working
                                     ? null
@@ -1069,13 +1076,47 @@ class PreferencesPage extends StatelessWidget {
                                         if (await confirmAction(
                                           context,
                                           'Установить обновление?',
-                                          'VPN и zapret будут остановлены. Приложение закроется и откроет установщик новой версии.',
+                                          'После проверки подписи обновления VPN и zapret будут остановлены. SVOI обновит файлы через установщик в фоне и перезапустится. Профили и настройки сохранятся.',
                                         )) {
                                           await act('install', null);
                                         }
                                       },
                                 child: const Text('Установить и перезапустить'),
                               ),
+                            if (u['releaseUrl'] is String &&
+                                (u['releaseUrl'] as String).startsWith(
+                                  'https://github.com/1atex/svoi/releases/tag/',
+                                ))
+                              OutlinedButton.icon(
+                                onPressed: () => windowChannel.invokeMethod(
+                                  'openExternal',
+                                  u['releaseUrl'],
+                                ),
+                                icon: const SvoiIcon(
+                                  LucideIcons.externalLink,
+                                  size: 16,
+                                ),
+                                label: const Text('Открыть релиз · вручную'),
+                              ),
+                            if (state == 'available' || state == 'ready') ...[
+                              TextButton(
+                                onPressed: working
+                                    ? null
+                                    : () => act('snooze', {
+                                        'version': u['version'],
+                                        'hours': 24,
+                                      }),
+                                child: const Text('Напомнить завтра'),
+                              ),
+                              TextButton(
+                                onPressed: working
+                                    ? null
+                                    : () => act('dismiss', {
+                                        'version': u['version'],
+                                      }),
+                                child: const Text('Пропустить эту версию'),
+                              ),
+                            ],
                           ],
                         ),
                         if (u['notes']?.toString().isNotEmpty == true)
@@ -1086,7 +1127,7 @@ class PreferencesPage extends StatelessWidget {
                           ),
                         const SizedBox(height: 12),
                         Text(
-                          'Установка начинается по вашей команде; скачанный файл проверяется по SHA-256.',
+                          'Для установки в фоне SVOI проверяет подписанный манифест выпуска (Ed25519) или цифровую подпись того же издателя (Authenticode), а также SHA-256 файла. При отсутствии подтверждённой подписи доступна страница релиза для ручной установки. Время обновления зависит от загрузки и компьютера.',
                           style: TextStyle(
                             color: appColors(context).muted,
                             fontSize: 12,

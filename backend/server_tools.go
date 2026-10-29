@@ -64,7 +64,11 @@ func (a *App) serverToolsAPI(w http.ResponseWriter, r *http.Request) error {
 		if mode != "local" && mode != "system" && mode != "tun" {
 			return fail(400, "Неизвестный режим")
 		}
-		config, err := buildXrayConfig(server, 10808, 10809, mode)
+		core := "xray"
+		if a.engine != nil {
+			core = a.engine.Status().Core
+		}
+		config, err := buildCoreConfig(core, server, 10808, 10809, mode)
 		if err != nil {
 			return err
 		}
@@ -148,7 +152,9 @@ func probeServer(ctx context.Context, base *Engine, server ServerConfig, options
 		return 0, err
 	}
 	defer os.RemoveAll(dir)
-	probe := &Engine{binary: base.binary, dir: dir, checkURL: settings.URL, checkTimeout: time.Duration(settings.TimeoutSeconds) * time.Second, status: EngineStatus{State: "stopped", Available: true, Logs: []string{}}}
+	probe := base.probeEngine(dir)
+	probe.checkURL = settings.URL
+	probe.checkTimeout = time.Duration(settings.TimeoutSeconds) * time.Second
 	defer probe.Stop()
 	startup, cancelStartup := context.WithTimeout(ctx, 5*time.Second)
 	err = probe.startContext(startup, server, "local")
@@ -157,7 +163,11 @@ func probeServer(ctx context.Context, base *Engine, server ServerConfig, options
 		if ctx.Err() != nil {
 			return 0, ctx.Err()
 		}
-		return 0, fail(503, "Не удалось подготовить Xray к проверке. Лимит запуска — 5 с; это не результат задержки сервера.")
+		var preparation apiError
+		if probe.coreID() != "xray" && errors.As(err, &preparation) && preparation.status == 422 {
+			return 0, err
+		}
+		return 0, fail(503, "Не удалось подготовить выбранное ядро к проверке. Лимит запуска — 5 с; это не результат задержки сервера.")
 	}
 	ctx, cancel := context.WithTimeout(ctx, time.Duration(settings.TimeoutSeconds)*time.Second)
 	defer cancel()

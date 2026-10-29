@@ -187,7 +187,7 @@ func (a *App) siteAPI(w http.ResponseWriter, r *http.Request) error {
 				return e
 			}
 			defer os.RemoveAll(dir)
-			probe := &Engine{binary: a.engine.binary, dir: dir, status: EngineStatus{State: "stopped", Available: true}}
+			probe := a.engine.probeEngine(dir)
 			defer probe.Stop()
 			server.RuntimeDirectDomains = a.localSettings().DirectDomains
 			startup, stopStartup := context.WithTimeout(ctx, 5*time.Second)

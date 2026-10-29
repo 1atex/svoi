@@ -111,7 +111,7 @@ class ConnectionPath extends StatelessWidget {
               view.phase == 'stopping'
                   ? 'Завершается…'
                   : view.running
-                  ? 'Xray запущен'
+                  ? '${coreLabel(view.state['core'] as String?)} запущен'
                   : 'Не запущен',
               view.running
                   ? appColors(context).accent
@@ -238,7 +238,7 @@ Future<void> showDiagnostics(
                   const SizedBox(height: 18),
                 ],
                 SelectableText(
-                  'Xray: ${state['version'] ?? 'не найден'}\nАктивный сервер: ${view.running ? state['serverName'] ?? '—' : '—'}\nРежим: ${modeLabel(state['mode'], state['routing'] == null ? null : Map<String, dynamic>.from(state['routing']))}\nПоследняя проверка: ${clockLabel(view.checkedAt)}',
+                  '${coreLabel(state['core'] as String?)}: ${state['version'] ?? 'не найден'}\nАктивный сервер: ${view.running ? state['serverName'] ?? '—' : '—'}\nРежим: ${modeLabel(state['mode'], state['routing'] == null ? null : Map<String, dynamic>.from(state['routing']))}\nПоследняя проверка: ${clockLabel(view.checkedAt)}',
                   style: const TextStyle(fontSize: 12, height: 1.8),
                 ),
                 if (view.running)
@@ -264,7 +264,7 @@ Future<void> showDiagnostics(
     actions: [
       TextButton(
         onPressed: () => showLogs(context, c),
-        child: const Text('Журнал Xray'),
+        child: const Text('Журнал ядра'),
       ),
       ListenableBuilder(
         listenable: Listenable.merge([c.busy, c.connection, c.checking]),

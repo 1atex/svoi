@@ -20,6 +20,8 @@ import 'data_directory.dart';
 import 'release_notice.dart';
 import 'release_notice_banner.dart';
 part 'features.dart';
+part 'core_picker.dart';
+part 'update_banner.dart';
 part 'design.dart';
 part 'overview.dart';
 part 'desktop_workspace.dart';
@@ -418,6 +420,11 @@ class _SvoiShellState extends State<SvoiShell> {
                   ),
                 ),
                 const Divider(height: 1),
+                if (Platform.isWindows && !widget.demo)
+                  AvailableUpdateBanner(
+                    c: c,
+                    open: () => setState(() => page = 5),
+                  ),
                 if (widget.releaseNotice != null)
                   ReleaseNoticeBanner(
                     store: widget.releaseNotice!,

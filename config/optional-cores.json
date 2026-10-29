@@ -1,0 +1,40 @@
+{
+  "sing-box": {
+    "version": "1.14.4",
+    "source": "https://github.com/SagerNet/sing-box/tree/v1.14.4",
+    "license": "https://raw.githubusercontent.com/SagerNet/sing-box/v1.14.4/LICENSE",
+    "assets": {
+      "windows-x64": {
+        "url": "https://github.com/SagerNet/sing-box/releases/download/v1.14.4/sing-box-1.14.4-windows-amd64.zip",
+        "sha256": "99185d75d314a07dbba4a130c8ad986cbeb629a07927975636b341ca61f991df"
+      },
+      "linux-x64": {
+        "url": "https://github.com/SagerNet/sing-box/releases/download/v1.14.4/sing-box-1.14.4-linux-amd64.tar.gz",
+        "sha256": "699a1b510aa4396b2176d32d1181920399ebf1e267835da6f3b598d0f7c24968"
+      },
+      "macos-arm64": {
+        "url": "https://github.com/SagerNet/sing-box/releases/download/v1.14.4/sing-box-1.14.4-darwin-arm64.tar.gz",
+        "sha256": "0d8c7f5ed5d587b0f1a5e9772a708ec3bfa4ac4c9329604b01d8d9c2ba406838"
+      }
+    }
+  },
+  "mihomo": {
+    "version": "1.19.33",
+    "source": "https://github.com/MetaCubeX/mihomo/tree/v1.19.33",
+    "license": "https://raw.githubusercontent.com/MetaCubeX/mihomo/v1.19.33/LICENSE",
+    "assets": {
+      "windows-x64": {
+        "url": "https://github.com/MetaCubeX/mihomo/releases/download/v1.19.33/mihomo-windows-amd64-v1-v1.19.33.zip",
+        "sha256": "fb0b960eff568459502d4ebe53e9cca203053d86ec9024fe935f19615d74d9aa"
+      },
+      "linux-x64": {
+        "url": "https://github.com/MetaCubeX/mihomo/releases/download/v1.19.33/mihomo-linux-amd64-v1-v1.19.33.gz",
+        "sha256": "8ec92e7b2fdc6b853ba00156bab7e4e965c8b0d843b8c4ac8ab98795f02ad524"
+      },
+      "macos-arm64": {
+        "url": "https://github.com/MetaCubeX/mihomo/releases/download/v1.19.33/mihomo-darwin-arm64-v1.19.33.gz",
+        "sha256": "060b64b0f2c9a310831db0fe4adb2878de67bfa606c311813c1f13966aa504b6"
+      }
+    }
+  }
+}
