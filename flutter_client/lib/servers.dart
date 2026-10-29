@@ -404,62 +404,72 @@ class ServerRow extends StatelessWidget {
               onPressed: () => showConfig(context, c, server),
               icon: const SvoiIcon(LucideIcons.fileCode, size: 16),
             ),
-            ValueListenableBuilder(
-              valueListenable: c.probes.putIfAbsent(
-                server.id,
-                () => ValueNotifier(const ProbeState()),
-              ),
-              builder: (context, result, _) => Tooltip(
-                message:
-                    '${result.error ?? 'GET через профиль · доступность только тестового адреса'}\n${result.url ?? defaultProbeUrl}\n${clockLabel(result.checkedAt)}. Ошибка не запрещает подключение.',
-                child: SizedBox(
-                  width: 96,
-                  child: TextButton(
-                    onPressed:
-                        result.busy ||
-                            c.probing.value ||
-                            c.connection.value['available'] != true
-                        ? null
-                        : () => c.probe([server]),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          result.busy
-                              ? 'Проверка…'
-                              : result.error != null
-                              ? result.setupError
-                                    ? 'Ошибка ядра'
-                                    : 'Нет ответа'
-                              : result.latency != null
-                              ? '${result.latency} мс'
-                              : 'Проверить',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: result.error != null
-                                ? appColors(context).error
-                                : result.latency != null
-                                ? appColors(context).success
-                                : appColors(context).accent,
-                          ),
-                        ),
-                        if (result.checkedAt != null)
-                          Text(
-                            clockLabel(result.checkedAt),
-                            style: TextStyle(
-                              fontSize: 9,
-                              color: appColors(context).muted,
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
+            ServerPingButton(c: c, server: server),
           ],
         ),
       );
     },
   );
+}
+
+/// HTTP GET latency through the selected proxy profile; this is not ICMP.
+class ServerPingButton extends StatelessWidget {
+  const ServerPingButton({super.key, required this.c, required this.server});
+  final SvoiController c;
+  final ServerEntry server;
+
+  @override
+  Widget build(BuildContext context) {
+    final probe = c.probes.putIfAbsent(
+      server.id,
+      () => ValueNotifier(const ProbeState()),
+    );
+    return ListenableBuilder(
+      listenable: Listenable.merge([probe, c.probing, c.connection]),
+      builder: (context, _) {
+        final result = probe.value;
+        final available = c.connection.value['available'] == true;
+        final label = result.busy
+            ? 'Проверка…'
+            : !available
+            ? 'Ядро недоступно'
+            : result.error != null
+            ? (result.setupError ? 'Ошибка ядра' : 'Нет ответа')
+            : result.latency != null
+            ? '${result.latency} мс'
+            : 'Проверить пинг';
+        final color = result.error != null
+            ? appColors(context).error
+            : result.latency != null
+            ? appColors(context).success
+            : appColors(context).accent;
+        return Tooltip(
+          message:
+              'Проверить пинг\nHTTP GET через профиль · не ICMP\n'
+              '${result.error ?? result.url ?? defaultProbeUrl}\n'
+              '${clockLabel(result.checkedAt)}. Ошибка не запрещает подключение.',
+          child: TextButton.icon(
+            key: ValueKey('ping-${server.id}'),
+            onPressed: !available || result.busy || c.probing.value
+                ? null
+                : () => c.probe([server]),
+            icon: result.busy
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : SvoiIcon(
+                    result.error != null
+                        ? LucideIcons.refreshCw
+                        : LucideIcons.activity,
+                    size: 16,
+                    color: color,
+                  ),
+            label: Text(label, style: TextStyle(fontSize: 12, color: color)),
+          ),
+        );
+      },
+    );
+  }
 }

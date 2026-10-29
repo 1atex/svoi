@@ -99,7 +99,8 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(find.text('VPN включён'), findsOneWidget);
-      expect(find.text('Отключить VPN'), findsOneWidget);
+      expect(find.text('Отключить VPN'), findsNothing);
+      expect(find.byTooltip('Отключить VPN'), findsOneWidget);
       expect(find.textContaining('Интернет не подтверждён'), findsOneWidget);
       expect(
         find.textContaining('TUN требует прав администратора'),

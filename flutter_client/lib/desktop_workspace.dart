@@ -548,43 +548,7 @@ class DesktopServerRow extends StatelessWidget {
                         ],
                       ),
                     ),
-                    ValueListenableBuilder(
-                      valueListenable: c.probes.putIfAbsent(
-                        server.id,
-                        () => ValueNotifier(const ProbeState()),
-                      ),
-                      builder: (context, probe, _) => Tooltip(
-                        message:
-                            '${probe.error ?? 'GET через профиль · доступность только тестового адреса'}\n${probe.url ?? defaultProbeUrl}\n${clockLabel(probe.checkedAt)}${probe.busy && probe.latency != null ? '\nПредыдущий результат: ${probe.latency} мс' : ''}',
-                        child: TextButton(
-                          onPressed:
-                              probe.busy ||
-                                  c.probing.value ||
-                                  c.connection.value['available'] != true
-                              ? null
-                              : () => c.probe([server]),
-                          child: Text(
-                            probe.busy
-                                ? 'Проверяется'
-                                : probe.error != null
-                                ? probe.setupError
-                                      ? 'Ошибка ядра'
-                                      : 'Нет ответа'
-                                : probe.latency != null
-                                ? '${probe.latency} мс'
-                                : 'Не проверен',
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: probe.error != null
-                                  ? appColors(context).error
-                                  : probe.latency != null
-                                  ? appColors(context).success
-                                  : appColors(context).muted,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
+                    ServerPingButton(c: c, server: server),
                     PopupMenuButton<String>(
                       tooltip: 'Действия сервера',
                       icon: SvoiIcon(
@@ -897,6 +861,7 @@ class DesktopConnection extends StatelessWidget {
                 child: Column(
                   children: [
                     PublicIPLine(c: c),
+                    if (server != null) ServerPingButton(c: c, server: server),
                     const SizedBox(height: 12),
                     ModePicker(c: c),
                     const SizedBox(height: 12),
