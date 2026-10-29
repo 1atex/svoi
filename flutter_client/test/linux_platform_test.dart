@@ -52,7 +52,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.byType(DropdownButtonFormField<String>));
+    await tester.tap(find.byType(DropdownButtonFormField<String>).last);
     await tester.pumpAndSettle();
     expect(find.text('Приложения с системным прокси'), findsNothing);
     expect(find.text('Ручная настройка прокси'), findsWidgets);
