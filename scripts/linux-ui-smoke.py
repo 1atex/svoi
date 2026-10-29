@@ -6,6 +6,35 @@ import sys
 import tempfile
 import time
 
+
+def capture_native_crash(app, bundle, output):
+    """Inspect an already exited process without changing its close timing."""
+    if app.returncode is None or app.returncode >= 0:
+        return
+    core_directory = os.environ.get('SVOI_LINUX_CORE_DIR')
+    with open(output / 'linux-close-backtrace.log', 'w') as diagnostic:
+        diagnostic.write(f'GUI PID {app.pid} exited with signal {-app.returncode}\n')
+        if not core_directory:
+            diagnostic.write('SVOI_LINUX_CORE_DIR is not configured; no core dump available.\n')
+            return
+        core = Path(core_directory).resolve() / f'core.{app.pid}'
+        if not core.is_file():
+            diagnostic.write(f'Expected core dump was not produced: {core.name}\n')
+            return
+        try:
+            diagnostic.flush()
+            subprocess.run(['gdb', '--batch', '-ex', 'set pagination off',
+                '-ex', 'info sharedlibrary', '-ex', 'thread apply all bt',
+                str(bundle / 'svoi'), str(core)], stdout=diagnostic,
+                stderr=subprocess.STDOUT, timeout=60, check=False)
+        except (OSError, subprocess.TimeoutExpired) as error:
+            diagnostic.write(f'Core analysis failed: {error}\n')
+        finally:
+            # Only remove this process's generated dump, never a glob or a
+            # directory. Diagnostics must not upload a multi-gigabyte core.
+            core.unlink(missing_ok=True)
+
+
 bundle = Path(sys.argv[1]).resolve()
 output = Path(sys.argv[2]).resolve()
 output.mkdir(parents=True, exist_ok=True)
@@ -16,8 +45,6 @@ with tempfile.TemporaryDirectory(prefix='svoi-linux-ui-') as data:
         wm = subprocess.Popen(['openbox', '--sm-disable'], env=env, stdout=log, stderr=log)
         time.sleep(.7)
         app = subprocess.Popen([str(bundle / 'svoi')], env=env, stdout=log, stderr=log)
-        debugger = None
-        debug_log = None
         try:
             deadline = time.monotonic() + 35
             while time.monotonic() < deadline:
@@ -49,12 +76,6 @@ with tempfile.TemporaryDirectory(prefix='svoi-linux-ui-') as data:
             subprocess.run(['scrot', '--overwrite', str(output / 'linux-first-run.png')], check=True)
             children = subprocess.check_output(['pgrep', '-P', str(app.pid)], text=True).split()
             assert children, 'Native backend was not started'
-            if os.environ.get('SVOI_LINUX_DEBUG_CLOSE') == '1':
-                debug_log = open(output / 'linux-close-backtrace.log', 'w')
-                debugger = subprocess.Popen(['sudo', '-n', 'gdb', '--batch', '-p', str(app.pid),
-                    '-ex', 'set pagination off', '-ex', 'continue', '-ex', 'thread apply all bt',
-                    '-ex', 'kill'], stdout=debug_log, stderr=debug_log)
-                time.sleep(2)
             subprocess.run(['xdotool', 'windowactivate', '--sync', window], check=True)
             subprocess.run(['xdotool', 'key', '--clearmodifiers', 'alt+F4'], check=True)
             app.wait(timeout=15)
@@ -64,9 +85,6 @@ with tempfile.TemporaryDirectory(prefix='svoi-linux-ui-') as data:
             assert not list(Path(data).glob('*.tmp'))
             print('PASS: GTK launch, first-run onboarding, persisted completion, native window close and backend cleanup')
         finally:
-            if debugger is not None:
-                try: debugger.wait(timeout=10)
-                except subprocess.TimeoutExpired: debugger.terminate(); debugger.wait(timeout=5)
-            if debug_log is not None: debug_log.close()
+            capture_native_crash(app, bundle, output)
             if app.poll() is None: app.terminate(); app.wait(timeout=10)
             wm.terminate(); wm.wait(timeout=10)
