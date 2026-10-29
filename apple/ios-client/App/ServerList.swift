@@ -6,6 +6,7 @@ struct ServerList: View {
   @ObservedObject var vpn: VPNController
   let onSelect: () -> Void
   let onImport: () -> Void
+  var header: AnyView? = nil
   @Environment(\.scenePhase) private var scenePhase
   @Environment(\.svoiAccent) private var accent
   @Environment(\.sizeCategory) private var sizeCategory
@@ -17,6 +18,7 @@ struct ServerList: View {
   @State private var checkingAll = false
   @State private var checked = 0
   @State private var batchCount = 0
+  @State private var batchGeneration = UUID()
   @State private var collapsed = Set<String>()
   @State private var removing: SvoiSource?
   @State private var confirmingRemoval = false
@@ -27,19 +29,39 @@ struct ServerList: View {
   }
 
   var body: some View {
-    VStack(spacing: 0) {
-      HStack(spacing: 10) {
-        SvoiGlyph( "magnifyingglass").foregroundStyle(SvoiPalette.muted)
-        TextField("Найти сервер", text: $search).textInputAutocapitalization(.never).autocorrectionDisabled()
-          .accessibilityIdentifier("server-search")
-        if !search.isEmpty { SvoiIconButton(symbol: "xmark.circle.fill", label: "Очистить поиск") { search = "" } }
-      }.padding(.horizontal, 14).frame(minHeight: 50)
-        .background(colors.surface, in: RoundedRectangle(cornerRadius: 16))
-        .padding(.horizontal, 20).padding(.bottom, 12)
-      ScrollView {
-        LazyVStack(alignment: .leading, spacing: 12) {
+    ScrollView {
+        LazyVStack(alignment: .leading, spacing: 6) {
+          if let header = header { header }
           if !model.error.isEmpty { SvoiNotice(text: model.error, symbol: "exclamationmark.circle") }
-          if model.servers.isEmpty && model.sources.isEmpty {
+          if !model.sources.isEmpty || !model.servers.isEmpty {
+            HStack {
+              Text("Подписки").font(.title3.weight(.semibold)).foregroundStyle(SvoiPalette.text)
+              Spacer(minLength: 8)
+              Button { checkingAll ? cancelBatch() : startBatch() } label: {
+                SvoiLabel(checkingAll ? "Стоп" : "Пинг", systemImage: checkingAll ? "stop.circle" : "waveform.path.ecg")
+                  .font(.footnote.weight(.medium)).frame(minHeight: 44)
+              }.disabled(vpn.busy || vpn.active || model.preparingVPN || filtered.isEmpty)
+                .accessibilityLabel(checkingAll ? "Остановить проверку задержки" : "Проверить задержку серверов")
+                .accessibilityIdentifier("servers-probe")
+              Menu {
+                Button(byLatency ? "Порядок из подписки" : "Сортировать по задержке") { byLatency.toggle() }
+                Button(model.sources.allSatisfy { collapsed.contains($0.id) } ? "Развернуть все подписки" : "Свернуть все подписки") {
+                  let ids = Set(model.sources.map(\.id))
+                  collapsed = ids.isSubset(of: collapsed) ? [] : ids
+                }.accessibilityIdentifier("subscriptions-collapse-all")
+              } label: {
+                SvoiGlyph("ellipsis", size: 18).frame(width: 44, height: 44).contentShape(Rectangle())
+              }.accessibilityLabel("Сортировка и подписки")
+            }.id("subscription-list")
+            HStack(spacing: 10) {
+              SvoiGlyph("magnifyingglass", size: 18).foregroundStyle(SvoiPalette.muted)
+              TextField("Найти сервер", text: $search).textInputAutocapitalization(.never).autocorrectionDisabled()
+                .accessibilityIdentifier("server-search")
+              if !search.isEmpty { SvoiIconButton(symbol: "xmark.circle.fill", label: "Очистить поиск") { search = "" } }
+            }.padding(.horizontal, 12).frame(minHeight: 44)
+              .background(colors.surface, in: RoundedRectangle(cornerRadius: 12))
+          }
+          if model.servers.isEmpty && model.sources.isEmpty && header == nil {
             SvoiCard {
               VStack(alignment: .leading, spacing: 16) {
                 SvoiGlyph("square.stack.3d.up", size: 34).foregroundStyle(accent)
@@ -48,21 +70,13 @@ struct ServerList: View {
                 Button("Добавить подписку", action: onImport).buttonStyle(SvoiPrimaryButton())
               }
             }
-          } else if filtered.isEmpty && (!search.isEmpty || model.sources.isEmpty) {
+          } else if filtered.isEmpty && !search.isEmpty {
             VStack(spacing: 12) {
               SvoiGlyph("magnifyingglass", size: 28).foregroundStyle(SvoiPalette.muted)
               Text("Ничего не найдено").font(.headline)
               Button("Очистить поиск") { search = "" }.frame(minHeight: 44)
             }.frame(maxWidth: .infinity).padding(.vertical, 36)
           } else {
-            HStack {
-              Text("Серверов: \(filtered.count)").font(.footnote).foregroundStyle(SvoiPalette.muted)
-              Spacer()
-              Button { byLatency.toggle() } label: {
-                SvoiLabel(byLatency ? "По задержке" : "По подпискам", systemImage: "arrow.up.arrow.down")
-                  .font(.footnote.weight(.medium)).frame(minHeight: 44)
-              }.accessibilityLabel("Сортировка: \(byLatency ? "по задержке" : "по подпискам")")
-            }
             if byLatency { ForEach(filtered) { row($0) } }
             else {
               let groups = Dictionary(grouping: filtered, by: \.subscriptionID)
@@ -82,11 +96,11 @@ struct ServerList: View {
               }
             }
           }
-        }.padding(.horizontal, 20).padding(.bottom, 16).frame(maxWidth: 600).frame(maxWidth: .infinity)
+        }.padding(.horizontal, 16).padding(.bottom, 16).frame(maxWidth: 600).frame(maxWidth: .infinity)
       }.scrollDismissesKeyboard(.interactively)
         .refreshable { await model.refreshSubscriptions() }
-    }.background(colors.canvas)
-      .safeAreaInset(edge: .bottom, spacing: 0) { probeBar }
+      .background(colors.canvas)
+      .safeAreaInset(edge: .bottom, spacing: 0) { if checkingAll { probeBar } }
       .sheet(isPresented: $showingConfig) {
         NavigationStack {
           ScrollView { Text(config ?? "Готовим конфигурацию…").font(.system(.footnote, design: .monospaced)).textSelection(.enabled).padding(20) }
@@ -96,7 +110,13 @@ struct ServerList: View {
       }
       .onDisappear { cancelBatch() }
       .onChange(of: scenePhase) { if $0 != .active { cancelBatch() } }
-      .onChange(of: model.profileID) { _ in collapsed = []; removing = nil }
+      .onAppear { restoreCollapsed() }
+      .onChange(of: collapsed) { value in
+        UserDefaults.standard.set(value.sorted(), forKey: "collapsedSubscriptions:\(model.profileID)")
+      }
+      .onChange(of: model.profileID) { _ in cancelBatch(); restoreCollapsed(); removing = nil }
+      .onChange(of: vpn.active) { if $0 { cancelBatch() } }
+      .onChange(of: model.preparingVPN) { if $0 { cancelBatch() } }
       .alert("Удалить подписку?", isPresented: $confirmingRemoval) {
         Button("Удалить подписку", role: .destructive) {
           guard let source = removing else { return }
@@ -127,104 +147,101 @@ struct ServerList: View {
 
   private func row(_ server: SvoiServer) -> some View {
     let selected = server.id == model.selectedID
-    return VStack(alignment: .leading, spacing: 4) {
-      HStack(alignment: .center, spacing: 8) {
-        Button {
-          model.selectedID = server.id
-          onSelect()
-        } label: {
-          Group {
-            if sizeCategory.isAccessibilityCategory {
-              VStack(alignment: .leading, spacing: 12) {
-                HStack { ServerFlag(name: server.name); Spacer(); if selected { SvoiGlyph( "checkmark.circle.fill").foregroundStyle(accent) } }
-                serverText(server, selected: selected)
-              }
-            } else {
-              HStack(spacing: 12) {
-                ServerFlag(name: server.name)
-                serverText(server, selected: selected)
-                Spacer(minLength: 0)
-                if selected { SvoiGlyph( "checkmark.circle.fill").foregroundStyle(accent) }
-              }
-            }
-          }.frame(minHeight: 52).contentShape(Rectangle())
-        }.buttonStyle(SvoiPressStyle()).accessibilityIdentifier("server-\(server.id)")
-        Menu {
-          Button { showConfig(server) } label: { SvoiLabel("Конфигурация", systemImage: "curlybraces") }
-          Button { Task { await model.probe(server) } } label: { SvoiLabel("Проверить задержку", systemImage: "waveform.path.ecg") }
-            .disabled(vpn.active || vpn.busy || model.checking.count >= 2)
-        } label: { SvoiGlyph( "ellipsis").frame(width: 44, height: 44).contentShape(Rectangle()).foregroundStyle(SvoiPalette.muted) }
-          .accessibilityLabel("Действия: \(displayServerName(server.name))")
-      }
-      Group {
-        if sizeCategory.isAccessibilityCategory {
-          VStack(alignment: .leading, spacing: 8) { serverDetail(server); probeButton(server) }
-        } else { HStack { serverDetail(server); Spacer(minLength: 4); probeButton(server) } }
-      }
-    }.padding(.horizontal, 14).padding(.top, 12).padding(.bottom, 4)
-      .background(selected ? accent.opacity(0.09) : colors.surface, in: RoundedRectangle(cornerRadius: 20))
-      .overlay(RoundedRectangle(cornerRadius: 20).strokeBorder(selected ? accent.opacity(0.55) : .clear))
-  }
-
-  private func serverText(_ server: SvoiServer, selected: Bool) -> some View {
-    VStack(alignment: .leading, spacing: 5) {
-      Text(displayServerName(server.name)).font(.headline).foregroundStyle(SvoiPalette.text).fixedSize(horizontal: false, vertical: true)
-      Text(server.kind + (selected ? " · Выбран" : "")).font(.caption).foregroundStyle(selected ? accent : SvoiPalette.muted)
-    }
-  }
-
-  private func serverDetail(_ server: SvoiServer) -> some View {
-    Text(server.detail).font(.caption).foregroundStyle(SvoiPalette.muted).lineLimit(sizeCategory.isAccessibilityCategory ? nil : 2)
-  }
-
-  private func probeButton(_ server: SvoiServer) -> some View {
-    Button { Task { await model.probe(server) } } label: {
-      if model.checking.contains(server.id) { ProgressView().frame(minWidth: 76, minHeight: 44) }
-      else { Text(model.latencies[server.id] ?? "Проверить").font(.caption.weight(.medium)).monospacedDigit().frame(minWidth: 76, minHeight: 44) }
-    }.disabled(model.checking.contains(server.id) || model.checking.count >= 2 || vpn.busy || vpn.active)
-      .accessibilityLabel("Задержка \(server.name): \(model.latencies[server.id] ?? "не проверена")")
+    return HStack(spacing: 0) {
+      Button {
+        model.selectedID = server.id
+        onSelect()
+      } label: {
+        HStack(spacing: 10) {
+          ServerFlag(name: server.name, size: 36)
+          VStack(alignment: .leading, spacing: 4) {
+            Text(displayServerName(server.name)).font(.subheadline.weight(.semibold))
+              .foregroundStyle(SvoiPalette.text).multilineTextAlignment(.leading)
+              .lineLimit(sizeCategory.isAccessibilityCategory ? nil : 2)
+            Text(([server.kind, server.detail].filter { !$0.isEmpty }).joined(separator: " · "))
+              .font(.caption).foregroundStyle(SvoiPalette.muted)
+              .multilineTextAlignment(.leading).lineLimit(sizeCategory.isAccessibilityCategory ? nil : 1)
+          }.frame(maxWidth: .infinity, alignment: .leading)
+          if selected { SvoiGlyph("checkmark.circle.fill", size: 18).foregroundStyle(accent) }
+          if !sizeCategory.isAccessibilityCategory, let latency = model.latencies[server.id] {
+            Text(latency).font(.caption2).monospacedDigit().foregroundStyle(SvoiPalette.muted)
+          }
+          if model.checking.contains(server.id) { ProgressView().controlSize(.small) }
+        }.padding(.leading, 12).padding(.vertical, 12).frame(minHeight: 66).contentShape(Rectangle())
+      }.buttonStyle(SvoiPressStyle()).accessibilityIdentifier("server-\(server.id)")
+        .accessibilityAddTraits(selected ? .isSelected : [])
+      Menu {
+        Button { showConfig(server) } label: { SvoiLabel("Конфигурация", systemImage: "curlybraces") }
+        Button { Task { await model.probe(server) } } label: { SvoiLabel("Проверить задержку", systemImage: "waveform.path.ecg") }
+          .disabled(vpn.active || vpn.busy || model.checking.count >= 2)
+      } label: {
+        SvoiGlyph("ellipsis", size: 18).frame(width: 44, height: 54).contentShape(Rectangle()).foregroundStyle(SvoiPalette.muted)
+      }.accessibilityLabel("Действия: \(displayServerName(server.name))")
+    }.background(selected ? accent.opacity(0.09) : colors.surface, in: RoundedRectangle(cornerRadius: 14))
+      .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(selected ? accent.opacity(0.55) : .clear))
   }
 
   private func sourceHeader(_ source: SvoiSource) -> some View {
-    VStack(alignment: .leading, spacing: 10) {
-      HStack {
-        Button {
-          if collapsed.contains(source.id) { collapsed.remove(source.id) }
-          else { collapsed.insert(source.id) }
-        } label: {
-          HStack(spacing: 8) {
-            SvoiGlyph("chevron.down", size: 14).rotationEffect(.degrees(collapsed.contains(source.id) ? -90 : 0))
-            Text(source.name).font(.headline).multilineTextAlignment(.leading)
-            Text("\(source.count)").font(.caption).foregroundStyle(SvoiPalette.muted)
-          }.frame(minHeight: 44).contentShape(Rectangle())
-        }.buttonStyle(.plain).accessibilityIdentifier("subscription-toggle-\(source.id)")
-          .accessibilityLabel("\(collapsed.contains(source.id) ? "Развернуть" : "Свернуть") подписку \(source.name)")
-        Spacer(minLength: 4)
-        if source.remote {
-          Button { Task { await model.refreshSubscription(source) } } label: { SvoiGlyph( "arrow.clockwise").frame(width: 44, height: 44) }
-            .disabled(model.working).accessibilityLabel("Обновить \(source.name)")
+    VStack(alignment: .leading, spacing: 8) {
+      Group {
+        if sizeCategory.isAccessibilityCategory {
+          VStack(alignment: .leading, spacing: 4) { sourceToggle(source); sourceActions(source) }
+        } else {
+          HStack(spacing: 0) { sourceToggle(source); sourceActions(source) }
         }
-        Button {
-          removing = source
-          confirmingRemoval = true
-        } label: {
-          SvoiGlyph("trash").foregroundStyle(SvoiPalette.muted).frame(width: 44, height: 44).contentShape(Rectangle())
-        }.disabled(model.working || vpn.busy || model.preparingVPN)
-          .accessibilityLabel("Удалить подписку \(source.name)").accessibilityIdentifier("subscription-delete-\(source.id)")
       }
+      if !source.statusText.isEmpty { Text(source.statusText).font(.caption2).foregroundStyle(SvoiPalette.muted) }
       if let download = source.metadata["download"] as? NSNumber {
         let used = download.int64Value + ((source.metadata["upload"] as? NSNumber)?.int64Value ?? 0)
         let total = (source.metadata["total"] as? NSNumber)?.int64Value ?? 0
-        let amount = ByteCountFormatter.string(fromByteCount: used, countStyle: .binary)
-        Text(total > 0 ? "\(amount) из \(ByteCountFormatter.string(fromByteCount: total, countStyle: .binary))" : "Использовано \(amount) · без лимита")
+        Text(total > 0 ? "\(ByteCountFormatter.string(fromByteCount: used, countStyle: .binary)) из \(ByteCountFormatter.string(fromByteCount: total, countStyle: .binary))" : "Использовано \(ByteCountFormatter.string(fromByteCount: used, countStyle: .binary)) · без лимита")
           .font(.caption).foregroundStyle(SvoiPalette.muted)
         if total > 0 { ProgressView(value: min(1, max(0, Double(used) / Double(total)))).tint(accent) }
       }
       if let expire = source.metadata["expire"] as? NSNumber, expire.doubleValue > 0 {
         Text("До \(Date(timeIntervalSince1970: expire.doubleValue).formatted(date: .numeric, time: .omitted))").font(.caption).foregroundStyle(SvoiPalette.muted)
       }
-      if let message = source.metadata["announcement"] as? String, !message.isEmpty { Text(message).font(.caption).foregroundStyle(SvoiPalette.muted) }
-    }.padding(.horizontal, 6).padding(.bottom, 4)
+      if let message = source.metadata["announcement"] as? String, !message.isEmpty {
+        Text(message).font(.caption).foregroundStyle(SvoiPalette.muted).fixedSize(horizontal: false, vertical: true)
+      }
+    }.padding(12).background(colors.surface, in: RoundedRectangle(cornerRadius: 16))
+  }
+
+  private func sourceToggle(_ source: SvoiSource) -> some View {
+    Button {
+      if collapsed.contains(source.id) { collapsed.remove(source.id) }
+      else { collapsed.insert(source.id) }
+    } label: {
+      HStack(spacing: 8) {
+        SvoiGlyph("chevron.down", size: 14).rotationEffect(.degrees(collapsed.contains(source.id) ? -90 : 0))
+        Text(source.name).font(.headline).multilineTextAlignment(.leading).foregroundStyle(SvoiPalette.text)
+        Text("\(source.count)").font(.caption).foregroundStyle(SvoiPalette.muted)
+        Spacer(minLength: 0)
+      }.frame(minHeight: 44).contentShape(Rectangle())
+    }.buttonStyle(SvoiPressStyle()).accessibilityIdentifier("subscription-toggle-\(source.id)")
+      .accessibilityLabel("\(collapsed.contains(source.id) ? "Развернуть" : "Свернуть") подписку \(source.name)")
+      .accessibilityValue(collapsed.contains(source.id) ? "Свёрнута" : "Развёрнута")
+  }
+
+  private func sourceActions(_ source: SvoiSource) -> some View {
+    HStack(spacing: 0) {
+      if source.remote {
+        SvoiIconButton(symbol: "arrow.clockwise", label: "Обновить \(source.name)") {
+          Task { await model.refreshSubscription(source) }
+        }.disabled(model.working)
+      }
+      if let text = source.metadata["supportUrl"] as? String, let url = URL(string: text),
+         ["https", "tg"].contains(url.scheme?.lowercased() ?? "") {
+        Link(destination: url) {
+          SvoiGlyph("paperplane", size: 18).frame(width: 44, height: 44)
+        }.accessibilityLabel("Поддержка \(source.name)")
+      }
+      SvoiIconButton(symbol: "trash", label: "Удалить подписку \(source.name)") {
+        removing = source
+        confirmingRemoval = true
+      }.disabled(model.working || vpn.busy || model.preparingVPN)
+        .accessibilityIdentifier("subscription-delete-\(source.id)")
+    }
   }
 
   private func latency(_ server: SvoiServer) -> Int {
@@ -245,17 +262,29 @@ struct ServerList: View {
     checked = 0
     batchCount = servers.count
     checkingAll = true
+    let generation = UUID()
+    batchGeneration = generation
     batch = Task {
-      defer { checkingAll = false; batch = nil }
+      defer { if batchGeneration == generation { checkingAll = false; batch = nil } }
       for index in stride(from: 0, to: servers.count, by: 2) {
-        if Task.isCancelled { break }
+        if Task.isCancelled || batchGeneration != generation { break }
         async let first: Void = model.probe(servers[index])
         async let second: Void = index + 1 < servers.count ? model.probe(servers[index + 1]) : ()
         _ = await (first, second)
-        if !Task.isCancelled { checked = min(index + 2, servers.count) }
+        if !Task.isCancelled && batchGeneration == generation { checked = min(index + 2, servers.count) }
       }
     }
   }
 
-  private func cancelBatch() { batch?.cancel(); model.cancelProbes() }
+  private func restoreCollapsed() {
+    collapsed = Set(UserDefaults.standard.stringArray(forKey: "collapsedSubscriptions:\(model.profileID)") ?? [])
+  }
+
+  private func cancelBatch() {
+    batchGeneration = UUID()
+    batch?.cancel()
+    batch = nil
+    checkingAll = false
+    model.cancelProbes()
+  }
 }

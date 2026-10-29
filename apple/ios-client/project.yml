@@ -7,7 +7,7 @@ settings:
   base:
     SWIFT_VERSION: '5.0'
     MARKETING_VERSION: '0.1.0'
-    CURRENT_PROJECT_VERSION: '5'
+    CURRENT_PROJECT_VERSION: '6'
     CODE_SIGNING_ALLOWED: 'NO'
     TARGETED_DEVICE_FAMILY: '1,2'
     ENABLE_BITCODE: 'NO'
@@ -117,7 +117,9 @@ targets:
     platform: iOS
     sources:
       - path: App/NetworkChecks.swift
+      - path: PacketTunnel/PacketSocket.swift
       - path: ../../tests/ios/NetworkTests.swift
+      - path: ../../tests/ios/PacketSocketTests.swift
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: dev.svoi.networktests

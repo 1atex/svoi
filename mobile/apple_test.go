@@ -36,3 +36,21 @@ func TestAppleConfigRequiresExactlyOneTun(t *testing.T) {
 		}
 	}
 }
+
+func TestAppleConfigDisablesPerConnectionAccessLogs(t *testing.T) {
+	result, err := appleConfig(`{"inbounds":[{"protocol":"tun"}],"log":{"loglevel":"debug","access":"/tmp/access.log","dnsLog":true},"burstObservatory":{"pingConfig":{"interval":"30s"}}}`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var config map[string]any
+	if err := json.Unmarshal([]byte(result), &config); err != nil {
+		t.Fatal(err)
+	}
+	log := config["log"].(map[string]any)
+	if log["access"] != "none" || log["loglevel"] != "warning" || log["dnsLog"] == true {
+		t.Fatal("verbose traffic logging is enabled", log)
+	}
+	if config["burstObservatory"] == nil {
+		t.Fatal("provider health checks must be preserved")
+	}
+}

@@ -5,6 +5,9 @@ extension SvoiModel {
   func prepareInterfacePreview() {
     guard !ready else { return }
     group = ["id": "preview", "name": "Моя сеть"]
+    if ProcessInfo.processInfo.arguments.contains("--reset-collapse") {
+      UserDefaults.standard.removeObject(forKey: "collapsedSubscriptions:preview")
+    }
     profiles = [SavedProfile(id: "preview", name: "Моя сеть", token: "interface-preview")]
     guard !ProcessInfo.processInfo.arguments.contains("--empty") else {
       if ProcessInfo.processInfo.arguments.contains("--connected") { vpn.setInterfacePreview(connected: true, serverID: "previous-server") }

@@ -15,6 +15,7 @@ struct ConnectionTools: View {
   @State private var checking = false
   @State private var checkResult = ""
   @State private var checkTask: Task<Void, Never>?
+  @State private var ipTask: Task<Void, Never>?
   @State private var ipRevision = UUID()
   @State private var copied = false
   var body: some View {
@@ -43,13 +44,15 @@ struct ConnectionTools: View {
       .overlay(RoundedRectangle(cornerRadius: 24).strokeBorder(colors.line))
       .task(id: "\(vpn.status.rawValue):\(vpn.serverID):\(scenePhase)") {
         checkTask?.cancel()
+        ipTask?.cancel()
+        ipRevision = UUID()
         checkResult = ""
         ip = ""
         ipError = ""
         copied = false
         if scenePhase == .active && (!vpn.active || vpn.connected) { await refreshIP() }
       }
-      .onDisappear { checkTask?.cancel() }
+      .onDisappear { checkTask?.cancel(); ipTask?.cancel(); ipRevision = UUID() }
   }
 
   private var ipSummary: some View {
@@ -67,7 +70,7 @@ struct ConnectionTools: View {
       if !ip.isEmpty {
         SvoiIconButton(symbol: copied ? "checkmark" : "doc.on.doc", label: "Скопировать IP") { UIPasteboard.general.string = ip; copied = true }
       }
-      SvoiIconButton(symbol: "arrow.clockwise", label: "Обновить IP") { Task { await refreshIP() } }.disabled(refreshing || vpn.busy)
+      SvoiIconButton(symbol: "arrow.clockwise", label: "Обновить IP") { ipTask?.cancel(); ipTask = Task { await refreshIP() } }.disabled(refreshing || vpn.busy)
     }
   }
 

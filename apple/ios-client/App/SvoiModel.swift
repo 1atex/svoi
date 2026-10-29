@@ -29,12 +29,22 @@ struct SvoiSource: Identifiable {
   let count: Int
   let remote: Bool
   let metadata: [String: Any]
+  let statusText: String
   init(_ value: [String: Any]) {
     id = value["id"] as? String ?? ""
     metadata = value["metadata"] as? [String: Any] ?? [:]
     name = metadata["title"] as? String ?? value["name"] as? String ?? "Подписка"
     count = value["count"] as? Int ?? 0
     remote = value["remote"] as? Bool ?? false
+    let report = value["report"] as? [String: Any] ?? [:]
+    let fetched = report["fetchedAt"] as? String ?? ""
+    let formatter = ISO8601DateFormatter()
+    formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+    let date = formatter.date(from: fetched) ?? ISO8601DateFormatter().date(from: fetched)
+    var parts: [String] = []
+    if let date = date { parts.append("Обновлено " + date.formatted(date: .numeric, time: .shortened)) }
+    if let hours = metadata["updateHours"] as? Int, hours > 0 { parts.append("Интервал: \(hours) ч") }
+    statusText = parts.joined(separator: " · ")
   }
 }
 

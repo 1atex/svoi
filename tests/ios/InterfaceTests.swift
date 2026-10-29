@@ -30,8 +30,9 @@ final class InterfaceTests: XCTestCase {
     power.tap()
     XCTAssertTrue(app.staticTexts["VPN включён"].waitForExistence(timeout: 5))
     capture("02-connected")
-    app.tabBars.buttons["Серверы"].tap()
+    app.buttons["selected-server"].tap()
     let next = app.buttons["server-nl"]
+    for _ in 0..<5 where !next.isHittable { app.swipeUp() }
     XCTAssertTrue(next.waitForExistence(timeout: 5))
     capture("03-servers")
     next.tap()
@@ -41,7 +42,7 @@ final class InterfaceTests: XCTestCase {
     XCTAssertEqual(app.buttons["vpn-toggle"].label, "Отключить VPN")
     app.buttons["vpn-toggle"].tap()
     XCTAssertTrue(app.staticTexts["VPN выключен"].waitForExistence(timeout: 5))
-    XCTAssertEqual(app.tabBars.buttons.count, 4)
+    XCTAssertEqual(app.tabBars.buttons.count, 3)
     app.tabBars.buttons["Настройки"].tap()
     app.buttons["settings-profile"].tap()
     XCTAssertTrue(app.staticTexts["Свои — рядом."].waitForExistence(timeout: 5))
@@ -55,10 +56,11 @@ final class InterfaceTests: XCTestCase {
   }
 
   func testSubscriptionCollapseAndRemoval() {
-    let app = launch(["--connected"])
-    app.tabBars.buttons["Серверы"].tap()
+    let app = launch(["--connected", "--reset-collapse"])
+    app.buttons["selected-server"].tap()
     let toggle = app.buttons["subscription-toggle-demo"]
     XCTAssertTrue(toggle.waitForExistence(timeout: 5))
+    for _ in 0..<5 where !toggle.isHittable { app.swipeUp() }
     toggle.tap()
     XCTAssertFalse(app.buttons["server-fi"].exists)
     capture("18-collapsed-subscription")
@@ -71,10 +73,22 @@ final class InterfaceTests: XCTestCase {
     XCTAssertTrue(app.buttons["server-fi"].exists)
     app.buttons["subscription-delete-demo"].tap()
     app.alerts.buttons["Удалить подписку"].tap()
-    XCTAssertTrue(app.staticTexts["Здесь будут ваши серверы"].waitForExistence(timeout: 5))
-    app.tabBars.buttons["Подключение"].tap()
-    XCTAssertTrue(app.buttons["welcome-import"].waitForExistence(timeout: 5))
+    let welcome = app.buttons["welcome-import"]
+    for _ in 0..<4 where !welcome.isHittable { app.swipeDown() }
+    XCTAssertTrue(welcome.waitForExistence(timeout: 5))
     capture("19-removed-subscription")
+  }
+
+  func testConnectionDetailsAreOpenedOnDemand() {
+    let app = launch()
+    let details = app.buttons["connection-details"]
+    XCTAssertTrue(details.isHittable)
+    XCTAssertFalse(app.staticTexts["IP без подключения SVOI"].exists)
+    details.tap()
+    XCTAssertTrue(app.staticTexts["IP без подключения SVOI"].waitForExistence(timeout: 5))
+    capture("21-connection-details")
+    app.buttons["Готово"].tap()
+    XCTAssertTrue(app.buttons["vpn-toggle"].isHittable)
   }
 
   func testAMOLEDAndTools() {

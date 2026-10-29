@@ -8,6 +8,7 @@ final class PacketPump {
   private let queue = DispatchQueue(label: "dev.svoi.packets", qos: .userInitiated)
   private var source: DispatchSourceRead?
   private var active = false
+  private var receiveBuffer = [UInt8](repeating: 0, count: 65540)
   private let failed: () -> Void
 
   init(flow: NEPacketTunnelFlow, descriptor: Int32, failed: @escaping () -> Void) {
@@ -46,11 +47,7 @@ final class PacketPump {
         for (packet, family) in zip(packets, families) {
           guard !packet.isEmpty, packet.count <= 65535,
                 family.int32Value == AF_INET || family.int32Value == AF_INET6 else { continue }
-          var framed = Data([0, 0, 0, UInt8(family.int32Value)])
-          framed.append(packet)
-          let result = framed.withUnsafeBytes { bytes in
-            Darwin.send(self.descriptor, bytes.baseAddress, bytes.count, 0)
-          }
+          let result = PacketSocket.send(packet, family: family.int32Value, descriptor: self.descriptor)
           if result < 0 && errno != EAGAIN && errno != EWOULDBLOCK && errno != EINTR {
             self.fail()
             return
@@ -63,11 +60,12 @@ final class PacketPump {
 
   private func receive() {
     guard active else { return }
-    var buffer = [UInt8](repeating: 0, count: 65540)
     var packets: [Data] = []
     var protocols: [NSNumber] = []
+    packets.reserveCapacity(64)
+    protocols.reserveCapacity(64)
     for _ in 0..<64 {
-      let count = Darwin.recv(descriptor, &buffer, buffer.count, 0)
+      let count = Darwin.recv(descriptor, &receiveBuffer, 65540, 0)
       if count < 0 {
         if errno == EAGAIN || errno == EWOULDBLOCK { break }
         if errno == EINTR { continue }
@@ -76,9 +74,9 @@ final class PacketPump {
       }
       if count == 0 { fail(); return }
       guard count > 4 else { continue }
-      let family = Int32(buffer[3])
+      let family = Int32(receiveBuffer[3])
       guard family == AF_INET || family == AF_INET6 else { continue }
-      packets.append(Data(buffer[4..<count]))
+      packets.append(Data(receiveBuffer[4..<count]))
       protocols.append(NSNumber(value: family))
     }
     if !packets.isEmpty { _ = flow.writePackets(packets, withProtocols: protocols) }
@@ -87,6 +85,8 @@ final class PacketPump {
   private func fail() {
     guard active else { return }
     active = false
+    source?.cancel()
+    source = nil
     failed()
   }
 }

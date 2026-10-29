@@ -38,17 +38,8 @@ struct SvoiRoot: View {
       if model.ready {
         TabView(selection: $tab) {
           NavigationStack {
-            ConnectionScreen(model: model, vpn: vpn, openServers: { tab = 1 }, add: openImport)
+            ConnectionScreen(model: model, vpn: vpn, add: openImport)
           }.tabItem { Label("Подключение", image: SvoiIconAssets.name("power", style: iconStyle)) }.tag(0)
-          NavigationStack {
-            ServerList(model: model, vpn: vpn, onSelect: { tab = 0 }, onImport: { openImport(false) })
-              .navigationTitle("Серверы")
-              .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                  SvoiIconButton(symbol: "plus", label: "Добавить подписку") { openImport(false) }.disabled(model.working)
-                }
-              }
-          }.tabItem { Label("Серверы", image: SvoiIconAssets.name("server.rack", style: iconStyle)) }.tag(1)
           NavigationStack {
             ToolsScreen(model: model, vpn: vpn).navigationTitle("Инструменты")
           }.tabItem { Label("Инструменты", image: SvoiIconAssets.name("wrench.and.screwdriver", style: iconStyle)) }.tag(4)

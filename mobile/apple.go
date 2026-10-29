@@ -51,6 +51,7 @@ func appleConfig(raw string) (string, error) {
 		return "", errors.New("Конфигурация должна содержать один входящий TUN")
 	}
 	config["inbounds"] = kept
+	config["log"] = map[string]any{"access": "none", "loglevel": "warning"}
 	encoded, err := json.Marshal(config)
 	return string(encoded), err
 }
