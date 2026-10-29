@@ -72,6 +72,14 @@ static GtkWidget* make_menu(MyApplication* self, FlValue* items) {
 }
 static gboolean close_window(gpointer data) {
   auto self = MY_APPLICATION(data);
+  // Stop custom callbacks while the Flutter view and messenger are still alive.
+  if (self->channel) {
+    fl_method_channel_set_method_call_handler(self->channel, nullptr, nullptr, nullptr);
+    g_clear_object(&self->channel);
+  }
+  if (self->indicator) app_indicator_set_status(self->indicator, APP_INDICATOR_STATUS_PASSIVE);
+  g_clear_object(&self->indicator);
+  if (self->menu) { gtk_widget_destroy(self->menu); g_clear_object(&self->menu); }
   if (self->window) gtk_window_close(self->window);
   return G_SOURCE_REMOVE;
 }
@@ -79,6 +87,7 @@ static void handle(FlMethodChannel*, FlMethodCall* call, gpointer user_data) {
   auto self = MY_APPLICATION(user_data);
   const char* name = fl_method_call_get_name(call);
   FlValue* args = fl_method_call_get_args(call);
+  if (self->closing) { reply(call); return; }
   if (g_str_equal(name, "ready")) reply(call);
   else if (g_str_equal(name, "show")) { show(self); reply(call); }
   else if (g_str_equal(name, "tray") || g_str_equal(name, "minimize")) {
@@ -141,6 +150,7 @@ static void handle(FlMethodChannel*, FlMethodCall* call, gpointer user_data) {
 static gboolean on_delete(GtkWidget*, GdkEvent*, gpointer user_data) {
   auto self = MY_APPLICATION(user_data);
   if (self->closing) return FALSE;
+  gtk_widget_set_sensitive(GTK_WIDGET(self->window), FALSE);
   emit(self, "requestClose", nullptr);
   return TRUE;
 }
@@ -150,7 +160,12 @@ static gboolean on_state(GtkWidget*, GdkEventWindowState* event, gpointer user_d
   emit(self, "visibility", value);
   return FALSE;
 }
-static void first_frame(MyApplication* self, FlView*) { gtk_widget_show(GTK_WIDGET(self->window)); }
+static void first_frame(MyApplication* self, FlView*) {
+  if (self->window && !self->closing) gtk_widget_show(GTK_WIDGET(self->window));
+}
+static void on_window_destroy(GtkWidget*, gpointer data) {
+  MY_APPLICATION(data)->window = nullptr;
+}
 static void activate(GApplication* application) {
   auto self = MY_APPLICATION(application);
   if (self->window) { show(self); return; }
@@ -161,6 +176,7 @@ static void activate(GApplication* application) {
   gtk_window_set_geometry_hints(self->window, nullptr, &geometry, GDK_HINT_MIN_SIZE);
   gtk_window_set_icon_name(self->window, "dev.svoi.app");
   g_signal_connect(self->window, "delete-event", G_CALLBACK(on_delete), self);
+  g_signal_connect(self->window, "destroy", G_CALLBACK(on_window_destroy), self);
   g_signal_connect(self->window, "window-state-event", G_CALLBACK(on_state), self);
   g_autoptr(FlDartProject) project = fl_dart_project_new();
   fl_dart_project_set_dart_entrypoint_arguments(project, self->arguments);

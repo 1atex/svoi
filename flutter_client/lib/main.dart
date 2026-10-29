@@ -183,7 +183,13 @@ class _BootstrapState extends State<Bootstrap> with WidgetsBindingObserver {
 
   Future<void> _close() async {
     if (_closing) return;
-    setState(() => _closing = true);
+    // Linux destroys its GL view after asynchronous backend cleanup. Keep the
+    // existing scene until then instead of rebuilding the entire tree at exit.
+    if (Platform.isLinux) {
+      _closing = true;
+    } else {
+      setState(() => _closing = true);
+    }
     if (_controller == null) await _launch;
     await _controller?.close();
     await _appearance.flush().catchError((Object _) {});
@@ -245,7 +251,7 @@ class _BootstrapState extends State<Bootstrap> with WidgetsBindingObserver {
                     TickerMode(enabled: visible, child: child!),
               ),
         home: Builder(
-          builder: (context) => _closing
+          builder: (context) => _closing && !Platform.isLinux
               ? const DesktopStartup(
                   child: Center(child: Text('Завершаем соединение…')),
                 )
