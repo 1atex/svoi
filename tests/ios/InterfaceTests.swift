@@ -164,7 +164,11 @@ final class InterfaceTests: XCTestCase {
     let app = launch(["--large-type"])
     XCTAssertTrue(app.buttons["vpn-toggle"].waitForExistence(timeout: 5))
     capture("08-accessibility-text")
-    app.swipeUp()
+    app.buttons["selected-server"].tap()
+    let search = app.textFields["server-search"]
+    for _ in 0..<5 where !search.isHittable { app.swipeUp() }
+    XCTAssertTrue(search.isHittable)
+    capture("22-accessibility-subscriptions")
     app.tabBars.buttons["Настройки"].tap()
     for _ in 0..<4 where !app.buttons["Тема SVOI"].isHittable { app.swipeUp() }
     XCTAssertTrue(app.buttons["Тема SVOI"].waitForExistence(timeout: 5))

@@ -38,7 +38,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: svoi-ios-${{ inputs.package_only && 'package' || 'preview' }}
+  group: svoi-ios-${{ github.ref_name }}-${{ inputs.package_only && 'package' || inputs.connection_only && 'connection' || 'preview' }}
   cancel-in-progress: true
 jobs:
   visual:

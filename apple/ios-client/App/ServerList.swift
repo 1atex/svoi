@@ -34,25 +34,7 @@ struct ServerList: View {
           if let header = header { header.id("connection") }
           if !model.error.isEmpty { SvoiNotice(text: model.error, symbol: "exclamationmark.circle") }
           if !model.sources.isEmpty || !model.servers.isEmpty {
-            HStack {
-              Text("Подписки").font(.title3.weight(.semibold)).foregroundStyle(SvoiPalette.text)
-              Spacer(minLength: 8)
-              Button { checkingAll ? cancelBatch() : startBatch() } label: {
-                SvoiLabel(checkingAll ? "Стоп" : "Пинг", systemImage: checkingAll ? "stop.circle" : "waveform.path.ecg")
-                  .font(.footnote.weight(.medium)).frame(minHeight: 44)
-              }.disabled(vpn.busy || vpn.active || model.preparingVPN || filtered.isEmpty)
-                .accessibilityLabel(checkingAll ? "Остановить проверку задержки" : "Проверить задержку серверов")
-                .accessibilityIdentifier("servers-probe")
-              Menu {
-                Button(byLatency ? "Порядок из подписки" : "Сортировать по задержке") { byLatency.toggle() }
-                Button(model.sources.allSatisfy { collapsed.contains($0.id) } ? "Развернуть все подписки" : "Свернуть все подписки") {
-                  let ids = Set(model.sources.map(\.id))
-                  collapsed = ids.isSubset(of: collapsed) ? [] : ids
-                }.accessibilityIdentifier("subscriptions-collapse-all")
-              } label: {
-                SvoiGlyph("ellipsis", size: 18).frame(width: 44, height: 44).contentShape(Rectangle())
-              }.accessibilityLabel("Сортировка и подписки")
-            }.id("subscription-list")
+            subscriptionHeading.id("subscription-list")
             HStack(spacing: 10) {
               SvoiGlyph("magnifyingglass", size: 18).foregroundStyle(SvoiPalette.muted)
               TextField("Найти сервер", text: $search).textInputAutocapitalization(.never).autocorrectionDisabled()
@@ -127,6 +109,41 @@ struct ServerList: View {
       } message: {
         Text("Подписка «\(removing?.name ?? "")» и её серверы будут удалены из текущего профиля. Если через неё работает VPN, он будет отключён. У провайдера подписка останется.")
       }
+  }
+
+  private var subscriptionHeading: some View {
+    Group {
+      if sizeCategory.isAccessibilityCategory {
+        VStack(alignment: .leading, spacing: 4) {
+          Text("Подписки").font(.title3.weight(.semibold)).foregroundStyle(SvoiPalette.text)
+          HStack { subscriptionControls; Spacer(minLength: 0) }
+        }
+      } else {
+        HStack {
+          Text("Подписки").font(.title3.weight(.semibold)).foregroundStyle(SvoiPalette.text)
+          Spacer(minLength: 8)
+          subscriptionControls
+        }
+      }
+    }
+  }
+
+  @ViewBuilder private var subscriptionControls: some View {
+              Button { checkingAll ? cancelBatch() : startBatch() } label: {
+                SvoiLabel(checkingAll ? "Стоп" : "Пинг", systemImage: checkingAll ? "stop.circle" : "waveform.path.ecg")
+                  .font(.footnote.weight(.medium)).frame(minHeight: 44)
+              }.disabled(vpn.busy || vpn.active || model.preparingVPN || filtered.isEmpty)
+                .accessibilityLabel(checkingAll ? "Остановить проверку задержки" : "Проверить задержку серверов")
+                .accessibilityIdentifier("servers-probe")
+              Menu {
+                Button(byLatency ? "Порядок из подписки" : "Сортировать по задержке") { byLatency.toggle() }
+                Button(model.sources.allSatisfy { collapsed.contains($0.id) } ? "Развернуть все подписки" : "Свернуть все подписки") {
+                  let ids = Set(model.sources.map(\.id))
+                  collapsed = ids.isSubset(of: collapsed) ? [] : ids
+                }.accessibilityIdentifier("subscriptions-collapse-all")
+              } label: {
+                SvoiGlyph("ellipsis", size: 18).frame(width: 44, height: 44).contentShape(Rectangle())
+              }.accessibilityLabel("Сортировка и подписки")
   }
 
   private var probeBar: some View {
