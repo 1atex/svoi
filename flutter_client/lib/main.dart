@@ -20,6 +20,7 @@ import 'data_directory.dart';
 import 'release_notice.dart';
 import 'release_notice_banner.dart';
 part 'features.dart';
+part 'settings_sections.dart';
 part 'core_picker.dart';
 part 'update_banner.dart';
 part 'design.dart';

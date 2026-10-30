@@ -1,7 +1,7 @@
 name: svoi_flutter
 description: SVOI VPN client for Windows
 publish_to: none
-version: 0.7.0-rc.2+2
+version: 0.7.0-rc.3+3
 environment:
   sdk: ^3.13.5
 dependencies:

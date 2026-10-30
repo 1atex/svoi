@@ -27,7 +27,7 @@ import (
 )
 
 var appVersion = "0.4.0-prebeta.3"
-var nativeVersion = "0.7.0-rc.2"
+var nativeVersion = "0.7.0-rc.3"
 
 //go:embed web/*
 var assets embed.FS
@@ -137,6 +137,9 @@ func openApp(path string) (*App, error) {
 		}
 	}
 	for i := range a.state.Groups {
+		if a.state.Groups[i].Identity.UserAgent == "" || a.state.Groups[i].Identity.UserAgent == "SVOI/0.2" {
+			a.state.Groups[i].Identity.UserAgent = "Happ/0.4.1"
+		}
 		migrateSubscriptions(&a.state.Groups[i])
 		for j := range a.state.Groups[i].Servers {
 			a.state.Groups[i].Servers[j].updateProtocolMetadata()
@@ -317,7 +320,7 @@ func (a *App) dispatch(w http.ResponseWriter, r *http.Request) error {
 					return fail(409, "Лимит групп на этом сервере достигнут")
 				}
 				member.Device.Owner = true
-				g := Group{ID: secret(), Name: strings.TrimSpace(in.Name), Identity: Identity{HWID: digest(secret())[:32], OS: platformIdentityOS(), Model: "SVOI Group", Locale: "ru-RU", UserAgent: "SVOI/0.2"}, Devices: []Member{member}}
+				g := Group{ID: secret(), Name: strings.TrimSpace(in.Name), Identity: Identity{HWID: digest(secret())[:32], OS: platformIdentityOS(), Model: "SVOI Group", Locale: "ru-RU", UserAgent: "Happ/0.4.1"}, Devices: []Member{member}}
 				a.state.Groups = append(a.state.Groups, g)
 				result = snapshot(&g, &member)
 			} else {
@@ -575,6 +578,9 @@ func subscriptionClient() *http.Client {
 	return &http.Client{Timeout: 20 * time.Second, Transport: &http.Transport{DialContext: dial, TLSHandshakeTimeout: 8 * time.Second, ResponseHeaderTimeout: 10 * time.Second, MaxIdleConns: 10, IdleConnTimeout: 30 * time.Second}, CheckRedirect: func(_ *http.Request, _ []*http.Request) error { return http.ErrUseLastResponse }}
 }
 func headers(i Identity) map[string]string {
+	if i.UserAgent == "" || i.UserAgent == "SVOI/0.2" {
+		i.UserAgent = "Happ/0.4.1"
+	}
 	return map[string]string{"x-hwid": i.HWID, "x-device-os": i.OS, "x-device-model": i.Model, "x-device-locale": i.Locale, "User-Agent": i.UserAgent}
 }
 func inspectSubscription(b []byte) (Report, error) {

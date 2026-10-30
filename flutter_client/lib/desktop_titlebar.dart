@@ -16,9 +16,39 @@ class DesktopTitlebar extends StatefulWidget {
 class _DesktopTitlebarState extends State<DesktopTitlebar> {
   final _brand = GlobalKey(), _gap = GlobalKey(), _maximize = GlobalKey();
   String _geometry = '';
+  Animation<double>? _routeAnimation, _secondaryAnimation;
+
+  void _animationStatus(AnimationStatus _) {
+    WidgetsBinding.instance.addPostFrameCallback((_) => _reportFrame());
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final route = ModalRoute.of(context);
+    _routeAnimation?.removeStatusListener(_animationStatus);
+    _secondaryAnimation?.removeStatusListener(_animationStatus);
+    _routeAnimation = route?.animation;
+    _secondaryAnimation = route?.secondaryAnimation;
+    _routeAnimation?.addStatusListener(_animationStatus);
+    _secondaryAnimation?.addStatusListener(_animationStatus);
+  }
+
+  @override
+  void dispose() {
+    _routeAnimation?.removeStatusListener(_animationStatus);
+    _secondaryAnimation?.removeStatusListener(_animationStatus);
+    super.dispose();
+  }
 
   void _reportFrame() {
-    if (!mounted || !Platform.isWindows) return;
+    if (!mounted ||
+        !Platform.isWindows ||
+        ModalRoute.of(context)?.isCurrent == false ||
+        (_routeAnimation?.isAnimating ?? false) ||
+        (_secondaryAnimation?.isAnimating ?? false)) {
+      return;
+    }
     List<double>? rect(GlobalKey key) {
       final box = key.currentContext?.findRenderObject();
       if (box is! RenderBox || !box.hasSize) return null;
@@ -40,7 +70,11 @@ class _DesktopTitlebarState extends State<DesktopTitlebar> {
   @override
   Widget build(BuildContext context) => LayoutBuilder(
     builder: (context, bounds) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => _reportFrame());
+      if (ModalRoute.of(context)?.isCurrent ?? true) {
+        WidgetsBinding.instance.addPostFrameCallback((_) => _reportFrame());
+      } else {
+        _geometry = '';
+      }
       final narrow = bounds.maxWidth < 600;
       final tabs = [
         (0, 'Подключение', LucideIcons.power),

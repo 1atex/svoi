@@ -2,11 +2,11 @@ part of 'main.dart';
 
 const clientVersion = String.fromEnvironment(
   'SVOI_VERSION',
-  defaultValue: '0.7.0-rc.2',
+  defaultValue: '0.7.0-rc.3',
 );
 
-String get clientDisplayVersion => clientVersion == '0.7.0-rc.2'
-    ? '0.7.0 Beta Release Candidate 2'
+String get clientDisplayVersion => clientVersion == '0.7.0-rc.3'
+    ? '0.7.0 Beta Release Candidate 3'
     : clientVersion;
 
 class ConfigPane extends StatelessWidget {
@@ -902,7 +902,7 @@ class PreferencesPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Platform.isLinux
       ? LinuxPreferences(c: c)
-      : FeatureBody(
+      : SettingsBody(
           children: [
             const AppearancePanel(),
             Section(

@@ -218,21 +218,26 @@ class ConnectionCard extends StatelessWidget {
                 hint: hint,
               ),
             ),
-            Text(
-              view.title,
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 23, fontWeight: FontWeight.w600),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              view.detail,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: appColors(context).muted,
-                fontSize: 12,
-                height: 1.5,
+            if (view.needsStatus) ...[
+              Text(
+                view.title,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 23,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
-            ),
+              const SizedBox(height: 8),
+              Text(
+                view.detail,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: appColors(context).muted,
+                  fontSize: 12,
+                  height: 1.5,
+                ),
+              ),
+            ],
             const SizedBox(height: 18),
             ConnectionPath(view: view),
             if (selected != null)

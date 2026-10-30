@@ -4,7 +4,7 @@ class LinuxPreferences extends StatelessWidget {
   const LinuxPreferences({super.key, required this.c});
   final SvoiController c;
   @override
-  Widget build(BuildContext context) => FeatureBody(
+  Widget build(BuildContext context) => SettingsBody(
     children: [
       const AppearancePanel(),
       ProbeSettingsPanel(c: c),

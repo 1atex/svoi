@@ -100,18 +100,22 @@ void main() {
       250,
       scrollable: find
           .descendant(
-            of: find.byType(PreferencesPage),
+            of: find.byType(Scaffold).last,
             matching: find.byType(Scrollable),
           )
           .first,
     );
     expect(find.text('Проверка задержки'), findsOneWidget);
+    await tester.tap(
+      find.byKey(const ValueKey('settings-section-Автоматизация')),
+    );
+    await tester.pumpAndSettle();
     await tester.scrollUntilVisible(
       find.text('Обновлять при запуске'),
       300,
       scrollable: find
           .descendant(
-            of: find.byType(PreferencesPage),
+            of: find.byType(Scaffold).last,
             matching: find.byType(Scrollable),
           )
           .first,

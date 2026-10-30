@@ -33,7 +33,7 @@ func TestSubscriptionRefreshUsesProviderUserAgentRules(t *testing.T) {
 		}
 	}
 	a, token, id := variantTestSubscription(t)
-	a.state.Groups[0].Identity.UserAgent = "SVOI/0.7"
+	a.state.Groups[0].Identity.UserAgent = "Happ/0.4.1"
 	identity := a.state.Groups[0].Identity
 	var mu sync.Mutex
 	counts := map[string]int{}

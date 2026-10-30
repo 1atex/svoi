@@ -172,19 +172,11 @@ class _DesktopLibraryState extends State<DesktopLibrary> {
           ),
           latency: byLatency,
         );
-        final quick = filtered
-            .where(
-              (s) =>
-                  c.favorites.value.contains(s.id) || s.id == c.lastUsed.value,
-            )
-            .toList();
         final knownSources = c.subscriptions.value
             .map((s) => s['id'].toString())
             .toSet();
         final groups =
             <(String, String, List<ServerEntry>, Map<String, dynamic>?)>[
-              if (quick.isNotEmpty)
-                ('quick', 'Избранные и недавние', quick, null),
               for (final source in c.subscriptions.value)
                 (
                   'source:${source['id']}',
@@ -871,21 +863,26 @@ class DesktopConnection extends StatelessWidget {
                 hint: action,
               ),
             ),
-            Text(
-              view.title,
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 23, fontWeight: FontWeight.w600),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              detail,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 12,
-                color: appColors(context).muted,
-                height: 1.5,
+            if (view.needsStatus) ...[
+              Text(
+                view.title,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 23,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
-            ),
+              const SizedBox(height: 8),
+              Text(
+                detail,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: appColors(context).muted,
+                  height: 1.5,
+                ),
+              ),
+            ],
             if (pending)
               Padding(
                 padding: const EdgeInsets.only(top: 10),

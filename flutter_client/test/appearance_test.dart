@@ -136,14 +136,24 @@ void main() {
       final backend = ConnectionBackend();
       await tester.pumpWidget(Bootstrap(demo: true, backend: backend));
       await tester.pumpAndSettle();
-      final shell = tester.widget<SvoiShell>(find.byType(SvoiShell));
-      final shellState = tester.state(find.byType(SvoiShell));
-      final store = AppearanceScope.of(tester.element(find.byType(SvoiShell)))!;
+      final shell = tester.widget<SvoiShell>(
+        find.byType(SvoiShell, skipOffstage: false),
+      );
+      final shellState = tester.state(
+        find.byType(SvoiShell, skipOffstage: false),
+      );
+      final store = AppearanceScope.of(
+        tester.element(find.byType(SvoiShell, skipOffstage: false)),
+      )!;
       final controller = shell.controller;
       final selected = controller.selected.value;
       await controller.toggleConnection();
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const ValueKey('desktop-tab-5')));
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.byKey(const ValueKey('settings-section-Оформление')),
+      );
       await tester.pumpAndSettle();
       for (final choice in [
         AppAppearance.halloween,
@@ -152,36 +162,50 @@ void main() {
       ]) {
         await tester.tap(find.byKey(ValueKey('theme-${choice.name}')));
         await tester.pumpAndSettle();
-        final context = tester.element(find.byType(PreferencesPage));
+        final context = tester.element(
+          find.byType(PreferencesPage, skipOffstage: false),
+        );
         expect(
           appColors(context).accent,
           SvoiColors.forAppearance(choice).accent,
         );
-        expect(tester.state(find.byType(SvoiShell)), same(shellState));
+        expect(
+          tester.state(find.byType(SvoiShell, skipOffstage: false)),
+          same(shellState),
+        );
         expect(controller.connection.value['state'], 'running');
         expect(controller.connection.value['serverId'], selected);
         expect(backend.state['state'], 'running');
-        expect(find.byType(PreferencesPage), findsOneWidget);
+        expect(
+          find.byType(PreferencesPage, skipOffstage: false),
+          findsOneWidget,
+        );
         expect(tester.takeException(), isNull);
       }
       await store.select(AppAppearance.system);
       tester.platformDispatcher.platformBrightnessTestValue = Brightness.light;
       await tester.pumpAndSettle();
       expect(
-        Theme.of(tester.element(find.byType(PreferencesPage))).brightness,
+        Theme.of(
+          tester.element(find.byType(PreferencesPage, skipOffstage: false)),
+        ).brightness,
         Brightness.light,
       );
       tester.platformDispatcher.platformBrightnessTestValue = Brightness.dark;
       await tester.pumpAndSettle();
       expect(
-        Theme.of(tester.element(find.byType(PreferencesPage))).brightness,
+        Theme.of(
+          tester.element(find.byType(PreferencesPage, skipOffstage: false)),
+        ).brightness,
         Brightness.dark,
       );
       await store.select(AppAppearance.halloween);
       tester.platformDispatcher.platformBrightnessTestValue = Brightness.light;
       await tester.pumpAndSettle();
       expect(
-        appColors(tester.element(find.byType(PreferencesPage))).halloween,
+        appColors(
+          tester.element(find.byType(PreferencesPage, skipOffstage: false)),
+        ).halloween,
         isTrue,
       );
       expect(calls, isNot(contains('close')));

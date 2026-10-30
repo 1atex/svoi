@@ -27,6 +27,8 @@ func applySubscriptionFormatHeaders(h http.Header, format string) {
 		h.Set("User-Agent", "murge")
 	default:
 		h.Set("Accept", "application/json, text/plain, */*")
-		h.Set("User-Agent", "xray (SVOI/"+nativeVersion+")")
+		if h.Get("User-Agent") == "" {
+			h.Set("User-Agent", "Happ/0.4.1")
+		}
 	}
 }
