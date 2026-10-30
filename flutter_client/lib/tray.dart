@@ -44,7 +44,11 @@ Map<String, dynamic> trayState(SvoiController c) {
         'enabled': !locked,
         'children': [
           for (final scene in c.currentScenarios)
-            item('scenario:${scene['id']}', scene['name'].toString()),
+            item(
+              'scenario:${scene['id']}',
+              scene['name'].toString(),
+              enabled: c.scenarioAvailableForCore(scene),
+            ),
           if (c.currentScenarios.isNotEmpty) separator,
           item('scenarios', 'Управлять сценариями…'),
         ],
@@ -52,13 +56,15 @@ Map<String, dynamic> trayState(SvoiController c) {
       item(
         view.running ? 'disconnect' : 'connect',
         view.running ? 'Отключить VPN' : 'Подключить VPN',
-        enabled: !locked && (view.running || available && selected != null),
+        enabled:
+            !locked &&
+            (view.running || available && selected?.availableForCore == true),
       ),
       if (c.pendingConnectionChoice)
         item(
           'apply',
           'Применить выбранный сервер и режим',
-          enabled: !locked && available && selected != null,
+          enabled: !locked && available && selected?.availableForCore == true,
         ),
       {
         'label': view.running
@@ -71,6 +77,7 @@ Map<String, dynamic> trayState(SvoiController c) {
               'server:${server.id}',
               '${c.favorites.value.contains(server.id) ? '★ ' : ''}${server.country.title}',
               checked: server.id == c.selected.value,
+              enabled: server.availableForCore,
             ),
           separator,
           item('servers', 'Все серверы…'),
@@ -193,7 +200,9 @@ class TrayBridge {
     final running = c.connection.value['state'] == 'running';
     final ready =
         c.connection.value['available'] == true &&
-        c.servers.value.any((s) => s.id == c.selected.value);
+        c.servers.value.any(
+          (s) => s.id == c.selected.value && s.availableForCore,
+        );
     if (command.startsWith('scenario:')) {
       await c.applyScenario(command.substring(9));
     } else if (command == 'connect' && !running && ready ||
@@ -208,7 +217,7 @@ class TrayBridge {
       await c.refreshSubscriptions();
     } else if (command.startsWith('server:')) {
       final id = command.substring(7);
-      if (c.servers.value.any((s) => s.id == id)) {
+      if (c.servers.value.any((s) => s.id == id && s.availableForCore)) {
         await c.action(() => c.select(id));
       }
     } else if (command.startsWith('mode:')) {

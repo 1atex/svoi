@@ -45,12 +45,16 @@ func (a *App) serverToolsAPI(w http.ResponseWriter, r *http.Request) error {
 	}
 	var server ServerConfig
 	found := false
-	for _, s := range g.Servers {
+	for _, s := range groupServerViews(g) {
 		if s.ID == parts[0] {
 			server = s
 			found = true
 			break
 		}
+	}
+	probeSettings := serverProbeSettings(a.localSettings().Probe, g, server)
+	if a.engine != nil {
+		server = bindSubscriptionFallback(g, a.engine.Status().Core, server)
 	}
 	a.mu.Unlock()
 	if !found {
@@ -83,6 +87,11 @@ func (a *App) serverToolsAPI(w http.ResponseWriter, r *http.Request) error {
 		_ = json.Unmarshal(config, &effective)
 		routing := obj(effective["routing"])
 		rules, _ := routing["rules"].([]any)
+		if core == "sing-box" {
+			rules, _ = obj(effective["route"])["rules"].([]any)
+		} else if core == "mihomo" {
+			rules, _ = effective["rules"].([]any)
+		}
 		balancers, _ := routing["balancers"].([]any)
 		writeJSON(w, 200, map[string]any{"server": server.ServerInfo, "original": original, "effective": json.RawMessage(config), "mode": mode, "rules": len(rules), "balancers": len(balancers)})
 		return nil
@@ -103,6 +112,7 @@ func (a *App) serverToolsAPI(w http.ResponseWriter, r *http.Request) error {
 		return fail(429, fmt.Sprintf("Все %d слотов проверки заняты", settings.Parallel))
 	}
 	defer func() { <-a.probeSlots }()
+	settings.URL = probeSettings.URL
 	if parts[1] == "tcp" {
 		if isHysteriaServer(server.ServerInfo) {
 			return fail(400, "Hysteria2 работает через UDP. Используйте проверку задержки через профиль вместо TCP-теста.")
@@ -140,14 +150,22 @@ func (a *App) serverToolsAPI(w http.ResponseWriter, r *http.Request) error {
 }
 
 func probeServer(ctx context.Context, base *Engine, server ServerConfig, options ...ProbeSettings) (int64, error) {
-	settings := ProbeSettings{URL: base.checkURL}
+	settings := ProbeSettings{}
 	if len(options) > 0 {
 		settings = options[0]
+	} else {
+		base.mu.Lock()
+		settings.URL = base.checkURL
+		base.mu.Unlock()
 	}
 	if err := validateProbeSettings(&settings); err != nil {
 		return 0, err
 	}
 	if err := ctx.Err(); err != nil {
+		return 0, err
+	}
+	server, err := prepareProviderNodeProbe(server)
+	if err != nil {
 		return 0, err
 	}
 	dir, err := os.MkdirTemp(base.dir, "probe-")

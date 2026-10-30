@@ -109,7 +109,19 @@ func TestTransferAcrossIndependentApps(t *testing.T) {
 	expect(t, call(receiver, "GET", "/api/me", owner, nil), 401)
 	expect(t, call(sender, "GET", "/api/me", remoteToken, nil), 401)
 	receiver.client = &http.Client{Transport: transportFunc(func(r *http.Request) (*http.Response, error) {
+		expected := make(http.Header)
 		for key, value := range headers(original.Identity) {
+			expected.Set(key, value)
+		}
+		format := "auto"
+		if r.Header.Get("User-Agent") == "singbox" {
+			format = "sing-box"
+		} else if r.Header.Get("User-Agent") == "murge" {
+			format = "mihomo"
+		}
+		applySubscriptionFormatHeaders(expected, format)
+		for key, values := range expected {
+			value := values[0]
 			if r.Header.Get(key) != value {
 				t.Errorf("different shared header: %s", key)
 			}

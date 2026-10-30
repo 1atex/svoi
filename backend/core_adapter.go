@@ -19,11 +19,22 @@ type CoreCapability struct {
 	Version        string   `json:"version"`
 	SupportedModes []string `json:"supportedModes"`
 	FullProfiles   bool     `json:"fullProfiles"`
+	ProfileSupport string   `json:"profileSupport"`
 }
 type CoreCapabilities struct {
 	Cores          []CoreCapability `json:"cores"`
 	SupportedModes []string         `json:"supportedModes"`
 	FullProfiles   bool             `json:"fullProfiles"`
+	ProfileSupport string           `json:"profileSupport"`
+}
+
+// FullProfiles retains its existing meaning: arbitrary supported Xray profile
+// semantics. Optional cores accept a validated subset, advertised separately.
+func coreProfileSupport(id string) string {
+	if id == "" || id == "xray" {
+		return "native"
+	}
+	return "limited"
 }
 
 func (e *Engine) coreID() string {
@@ -45,10 +56,7 @@ func coreModes(id string) []string {
 		}
 		return []string{"local"}
 	}
-	if id == "xray" {
-		return []string{"local", "system", "tun"}
-	}
-	return []string{"local", "system"}
+	return []string{"local", "system", "tun"}
 }
 func coreArgs(id, action, path, dir string) []string {
 	switch id {
@@ -57,9 +65,9 @@ func coreArgs(id, action, path, dir string) []string {
 		case "version":
 			return []string{"version"}
 		case "check":
-			return []string{"check", "-c", path}
+			return []string{"check", "-D", dir, "-c", path}
 		default:
-			return []string{"run", "-c", path}
+			return []string{"run", "-D", dir, "-c", path}
 		}
 	case "mihomo":
 		switch action {
@@ -110,7 +118,7 @@ func (e *Engine) initializeCores() {
 func (e *Engine) refreshCores() {
 	all := []CoreCapability{}
 	for _, id := range []string{"xray", "sing-box", "mihomo"} {
-		c := CoreCapability{ID: id, SupportedModes: coreModes(id), FullProfiles: id == "xray"}
+		c := CoreCapability{ID: id, SupportedModes: coreModes(id), FullProfiles: id == "xray", ProfileSupport: coreProfileSupport(id)}
 		path := e.coreBinary(id)
 		if fi, err := os.Stat(path); err == nil && !fi.IsDir() {
 			c.Installed = true
@@ -130,6 +138,7 @@ func (e *Engine) refreshCores() {
 	e.status.Core = e.coreID()
 	e.status.Capabilities.SupportedModes = coreModes(e.coreID())
 	e.status.Capabilities.FullProfiles = e.coreID() == "xray"
+	e.status.Capabilities.ProfileSupport = coreProfileSupport(e.coreID())
 }
 func (e *Engine) applyCore(id string) {
 	e.core = id
@@ -137,6 +146,7 @@ func (e *Engine) applyCore(id string) {
 	e.status.Core = id
 	e.status.Capabilities.SupportedModes = coreModes(id)
 	e.status.Capabilities.FullProfiles = id == "xray"
+	e.status.Capabilities.ProfileSupport = coreProfileSupport(id)
 	for _, c := range e.status.Capabilities.Cores {
 		if c.ID == id {
 			e.status.Available = c.Available
@@ -194,9 +204,66 @@ func (e *Engine) SelectCore(id string) error {
 	return nil
 }
 
+func bindSubscriptionFallback(g *Group, core string, server ServerConfig) ServerConfig {
+	server.RuntimeFallbackCore = ""
+	if server.SubscriptionCore != "xray" || server.FullProfile || len(server.Profile) != 0 || server.SourceProfileCore != "" || (core != "sing-box" && core != "mihomo") {
+		return server
+	}
+	for _, sub := range g.Subscriptions {
+		if sub.ID == server.SubscriptionID {
+			status, ok := sub.Variants[core]
+			if ok && status.State == "unavailable" && status.Count == 0 {
+				server.RuntimeFallbackCore = core
+			}
+			break
+		}
+	}
+	return server
+}
+
 func buildCoreConfig(id string, server ServerConfig, sp, hp int, mode string) ([]byte, error) {
+	if mode == "tun" && (id == "sing-box" || id == "mihomo") {
+		if runtime.GOOS != "windows" {
+			return nil, nativeUnsupported("TUN этого ядра пока доступен только в Windows")
+		}
+		raw, err := buildCoreConfig(id, server, sp, hp, "local")
+		if err != nil {
+			return nil, err
+		}
+		if id == "mihomo" && server.SourceProfileCore == "" && !server.FullProfile && len(server.Profile) == 0 {
+			var config object
+			if err := json.Unmarshal(raw, &config); err != nil {
+				return nil, err
+			}
+			proxies, _ := config["proxies"].([]any)
+			for _, proxy := range proxies {
+				obj(proxy)["udp"] = true
+			}
+			raw, err = json.Marshal(config)
+			if err != nil {
+				return nil, err
+			}
+		}
+		return nativeWindowsTunConfig(id, raw)
+	}
+	if id == "" {
+		id = "xray"
+	}
+	standaloneFallback := server.SubscriptionCore == "xray" && !server.FullProfile && len(server.Profile) == 0 && server.SourceProfileCore == "" && server.RuntimeFallbackCore == id && (id == "sing-box" || id == "mihomo")
+	if server.SubscriptionCore != "" && server.SubscriptionCore != id && !standaloneFallback {
+		return nil, fail(409, "Ядро изменилось. Выберите сервер из списка для текущего ядра; при необходимости обновите подписку.")
+	}
 	if mode == "system" && runtime.GOOS != "windows" {
 		return nil, fail(422, "Системный прокси не поддерживается на этой платформе. Выберите локальный прокси или TUN с Xray.")
+	}
+	if server.SourceProfileCore != "" {
+		if server.SourceProfileCore != "sing-box" && server.SourceProfileCore != "mihomo" {
+			return nil, fail(422, "Неизвестное ядро исходного профиля")
+		}
+		if id != server.SourceProfileCore {
+			return nil, fail(422, "Этот профиль предназначен для "+coreName(server.SourceProfileCore)+". Выберите это ядро для подключения и проверки.")
+		}
+		return buildProviderNativeConfig(id, server, sp, hp, mode)
 	}
 	if id == "" || id == "xray" {
 		return buildXrayConfig(server, sp, hp, mode)

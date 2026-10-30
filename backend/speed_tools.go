@@ -65,7 +65,13 @@ func (a *App) speedAPI(w http.ResponseWriter, r *http.Request) error {
 	var servers []ServerConfig
 	if err == nil {
 		group = g.ID
-		servers = append(servers, g.Servers...)
+		servers = groupServerViews(g)
+		if a.engine != nil {
+			core := a.engine.Status().Core
+			for i := range servers {
+				servers[i] = bindSubscriptionFallback(g, core, servers[i])
+			}
+		}
 	}
 	a.mu.Unlock()
 	if err != nil {

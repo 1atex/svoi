@@ -158,9 +158,9 @@ func (a *App) siteAPI(w http.ResponseWriter, r *http.Request) error {
 		var server ServerConfig
 		found := false
 		if authErr == nil {
-			for _, s := range g.Servers {
+			for _, s := range groupServerViews(g) {
 				if s.ID == in.ServerID {
-					server = s
+					server = bindSubscriptionFallback(g, a.engine.Status().Core, s)
 					found = true
 					break
 				}

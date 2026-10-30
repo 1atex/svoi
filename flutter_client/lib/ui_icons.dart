@@ -46,16 +46,20 @@ class SvoiIcon extends Icon {
     return Semantics(
       label: semanticLabel,
       child: ExcludeSemantics(
-        child: SizedBox(
-          width: dimension,
-          height: dimension,
-          child: SvgPicture.asset(
-            'assets/ui-icons/${choice.name}/$name.svg',
+        child: Center(
+          widthFactor: 1,
+          heightFactor: 1,
+          child: SizedBox(
             width: dimension,
             height: dimension,
-            colorFilter: ColorFilter.mode(ink, BlendMode.srcIn),
-            matchTextDirection: icon?.matchTextDirection ?? false,
-            excludeFromSemantics: true,
+            child: SvgPicture.asset(
+              'assets/ui-icons/${choice.name}/$name.svg',
+              width: dimension,
+              height: dimension,
+              colorFilter: ColorFilter.mode(ink, BlendMode.srcIn),
+              matchTextDirection: icon?.matchTextDirection ?? false,
+              excludeFromSemantics: true,
+            ),
           ),
         ),
       ),

@@ -74,7 +74,10 @@ class _SpeedToolsState extends State<SpeedTools> {
   bool working = false, stopping = false, starting = false, showSetup = true;
   int generation = 0;
   String get currentRoute =>
-      '${c.connection.value['state']}/${c.connection.value['serverId']}/${c.connection.value['startedAt']}';
+      '${c.connection.value['core']}/${c.connection.value['state']}/${c.connection.value['serverId']}/${c.connection.value['startedAt']}';
+
+  bool availableServer(String id) =>
+      c.servers.value.any((s) => s.id == id && s.availableForCore);
   bool get tunActive =>
       c.connection.value['state'] == 'running' &&
       c.connection.value['mode'] == 'tun';
@@ -94,11 +97,10 @@ class _SpeedToolsState extends State<SpeedTools> {
         (saved['selected'] as List? ?? []).map((e) => e.toString()),
       );
     }
-    if (selected.isEmpty &&
-        c.servers.value.any((s) => s.id == c.selected.value)) {
+    if (selected.isEmpty && availableServer(c.selected.value)) {
       selected.add(c.selected.value);
     }
-    selected.removeWhere((id) => !c.servers.value.any((s) => s.id == id));
+    selected.removeWhere((id) => !availableServer(id));
     working = data['state'] == 'running';
     showSetup = results.isEmpty;
     if (working) _schedule();
@@ -173,9 +175,10 @@ class _SpeedToolsState extends State<SpeedTools> {
   }
 
   void _serversChanged() {
-    if (!working) {
-      selected.removeWhere((id) => !c.servers.value.any((s) => s.id == id));
-    }
+    final unavailable = selected.any((id) => !availableServer(id));
+    if (unavailable && working) unawaited(stop());
+    selected.removeWhere((id) => !availableServer(id));
+    if (unavailable) _save();
     if (mounted) setState(() {});
   }
 
@@ -197,6 +200,12 @@ class _SpeedToolsState extends State<SpeedTools> {
         tunActive ||
         c.busy.value ||
         c.connectionPhase.value.isNotEmpty) {
+      return;
+    }
+    if (selected.any((id) => !availableServer(id))) {
+      setState(
+        () => error = 'Выбранный сервер недоступен для текущего ядра. Выберите доступный сервер.',
+      );
       return;
     }
     c.cancelProbes();
@@ -422,11 +431,12 @@ class _SpeedToolsState extends State<SpeedTools> {
                               itemBuilder: (context, i) {
                                 final s = visible[i];
                                 return CheckboxListTile(
+                                  key: ValueKey('speed-server-${s.id}'),
                                   secondary: CountryMark(country: s.country),
                                   dense: true,
                                   contentPadding: EdgeInsets.zero,
                                   value: selected.contains(s.id),
-                                  onChanged: working
+                                  onChanged: working || !s.availableForCore
                                       ? null
                                       : (value) {
                                           if (value == true &&
@@ -452,7 +462,9 @@ class _SpeedToolsState extends State<SpeedTools> {
                                     overflow: TextOverflow.ellipsis,
                                   ),
                                   subtitle: Text(
-                                    s.json['fullProfile'] == true
+                                    !s.availableForCore
+                                        ? 'Недоступен для выбранного ядра'
+                                        : s.json['fullProfile'] == true
                                         ? 'Полный профиль Xray'
                                         : '${s.protocol.toUpperCase()} · ${s.country.label}',
                                     maxLines: 1,

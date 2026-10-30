@@ -118,6 +118,7 @@ class ScenarioLauncher extends StatelessWidget {
       c.busy,
       c.scenarioApplying,
       c.lastScenario,
+      c.servers,
     ]),
     builder: (context, _) => PopupMenuButton<String>(
       tooltip:
@@ -138,6 +139,7 @@ class ScenarioLauncher extends StatelessWidget {
         for (final scene in c.currentScenarios)
           PopupMenuItem(
             value: scene['id'].toString(),
+            enabled: c.scenarioAvailableForCore(scene),
             child: ListTile(
               dense: true,
               contentPadding: EdgeInsets.zero,
@@ -193,6 +195,7 @@ class ScenarioManager extends StatelessWidget {
       c.group,
       c.busy,
       c.lastScenario,
+      c.servers,
     ]),
     builder: (context, _) => FeatureBody(
       children: [
@@ -225,12 +228,17 @@ class ScenarioManager extends StatelessWidget {
               ListTile(
                 contentPadding: EdgeInsets.zero,
                 title: Text(scene['name'].toString()),
-                subtitle: Text(scenarioDetail(scene)),
+                subtitle: Text(
+                  c.scenarioAvailableForCore(scene)
+                      ? scenarioDetail(scene)
+                      : '${scenarioDetail(scene)}\nНедоступен для выбранного ядра',
+                ),
                 trailing: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     TextButton(
-                      onPressed: c.busy.value
+                      onPressed:
+                          c.busy.value || !c.scenarioAvailableForCore(scene)
                           ? null
                           : () => c.applyScenario(scene['id']),
                       child: const Text('Запустить'),

@@ -65,6 +65,9 @@ type Engine struct {
 	checkID       uint64
 	coreStarted   bool
 	startupOutput string
+	tunDevice     string
+	tunReady      bool
+	tunError      bool
 }
 
 func newEngine(binary, dir string) (*Engine, error) {
@@ -111,7 +114,7 @@ func (e *Engine) snapshot(includeLogs bool) EngineStatus {
 	s := e.status
 	s.DirectDomains = append([]string{}, s.DirectDomains...)
 	s.Core = e.coreID()
-	s.Elevated = e.coreID() == "xray" && canCreateTun(e.binary)
+	s.Elevated = canCreateTun(e.binary)
 	s.Capabilities.Cores = append([]CoreCapability{}, s.Capabilities.Cores...)
 	for i := range s.Capabilities.Cores {
 		s.Capabilities.Cores[i].SupportedModes = append([]string{}, s.Capabilities.Cores[i].SupportedModes...)
@@ -127,18 +130,33 @@ func (e *Engine) snapshot(includeLogs bool) EngineStatus {
 func (e *Engine) Write(p []byte) (int, error) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
-	if !e.coreStarted {
-		e.startupOutput += string(p)
+	clean := stripCoreANSI(string(p))
+	if !e.coreStarted || e.tunDevice != "" {
+		e.startupOutput += clean
 		for _, line := range strings.Split(e.startupOutput, "\n") {
 			if strings.Contains(line, "[Warning] core: Xray ") && strings.HasSuffix(strings.TrimSpace(line), " started") {
 				e.coreStarted = true
+			}
+			if e.coreID() == "sing-box" && strings.Contains(line, "sing-box started (") {
+				e.coreStarted = true
+				if e.tunDevice != "" {
+					e.tunReady = true
+				}
+			}
+			if e.coreID() == "mihomo" && e.tunDevice != "" {
+				if strings.Contains(line, "[TUN] Tun adapter listening at: "+e.tunDevice) {
+					e.tunReady = true
+				}
+				if strings.Contains(line, "Start TUN listening error:") {
+					e.tunError = true
+				}
 			}
 		}
 		if len(e.startupOutput) > 1024 {
 			e.startupOutput = e.startupOutput[len(e.startupOutput)-1024:]
 		}
 	}
-	for _, line := range strings.Split(strings.TrimSpace(string(p)), "\n") {
+	for _, line := range strings.Split(strings.TrimSpace(clean), "\n") {
 		if line == "" {
 			continue
 		}
@@ -198,7 +216,7 @@ func credentialStrings(v any) []string {
 	case map[string]any:
 		for k, v := range x {
 			switch strings.ToLower(k) {
-			case "id", "password", "pass", "auth":
+			case "id", "uuid", "username", "password", "pass", "auth", "auth_str", "auth-str", "obfs-password", "obfs_password", "private_key", "private-key", "token", "secret", "authorization", "proxy-authorization", "cookie", "access-token", "api-key", "api_key":
 				if s, ok := v.(string); ok && len(s) > 3 {
 					all = append(all, s)
 				}
@@ -208,6 +226,13 @@ func credentialStrings(v any) []string {
 	case []any:
 		for _, v := range x {
 			all = append(all, credentialStrings(v)...)
+		}
+	case string:
+		if parsed, err := url.Parse(x); err == nil && parsed.User != nil {
+			all = append(all, x, parsed.User.String())
+			if password, exists := parsed.User.Password(); exists && password != "" {
+				all = append(all, password)
+			}
 		}
 	}
 	return all
@@ -227,7 +252,7 @@ func (e *Engine) startContext(parent context.Context, server ServerConfig, mode 
 	if !e.Status().Available {
 		return fail(503, "Выбранное ядро недоступно. Установите полный пакет вместе с папкой core.")
 	}
-	if e.coreID() != "xray" && mode == "tun" {
+	if e.coreID() != "xray" && mode == "tun" && runtime.GOOS != "windows" {
 		return nativeUnsupported("TUN для " + e.coreID())
 	}
 	if mode == "tun" && !canCreateTun(e.binary) {
@@ -250,6 +275,13 @@ func (e *Engine) startContext(parent context.Context, server ServerConfig, mode 
 	config, err := buildCoreConfig(e.coreID(), server, sp, hp, mode)
 	if err != nil {
 		return err
+	}
+	config, err = coreStartupConfig(e.coreID(), config)
+	if err != nil {
+		return err
+	}
+	if mode == "tun" && e.coreID() != "xray" && nativeTunDeviceFromConfig(e.coreID(), config) == "" {
+		return fail(422, "Не удалось подготовить TUN-адаптер выбранного ядра")
 	}
 	f, err := os.CreateTemp(e.dir, e.coreID()+"-*.json")
 	if err != nil {
@@ -278,6 +310,7 @@ func (e *Engine) startContext(parent context.Context, server ServerConfig, mode 
 	validate := exec.CommandContext(ctx, e.binary, coreArgs(e.coreID(), "check", path, e.dir)...)
 	hideCommand(validate)
 	validate.Dir = filepath.Dir(e.binary)
+	validate.Env = coreEnvironment(e.coreID())
 	validate.Stdout = validationOutput
 	validate.Stderr = validationOutput
 	if err = validate.Run(); err != nil {
@@ -298,6 +331,9 @@ func (e *Engine) startContext(parent context.Context, server ServerConfig, mode 
 	}
 	e.mu.Lock()
 	e.status.State = "starting"
+	if server.RuntimeProbeURL != "" {
+		e.checkURL = server.RuntimeProbeURL
+	}
 	e.status.Error = ""
 	e.status.Checked = false
 	e.status.CheckedAt = nil
@@ -305,11 +341,21 @@ func (e *Engine) startContext(parent context.Context, server ServerConfig, mode 
 	e.status.Logs = []string{}
 	e.coreStarted = false
 	e.startupOutput = ""
+	e.tunDevice, e.tunReady, e.tunError = "", false, false
+	if mode == "tun" && e.coreID() != "xray" {
+		e.tunDevice = nativeTunDeviceFromConfig(e.coreID(), config)
+	}
 	e.redactions = credentialStrings(outbound)
 	e.mu.Unlock()
 	cmd := exec.Command(e.binary, coreArgs(e.coreID(), "run", path, e.dir)...)
 	prepareXrayCommand(cmd)
 	cmd.Dir = filepath.Dir(e.binary)
+	engineReady, cleanupReady, err := prepareEngineReadiness(cmd, e.coreID(), e.dir)
+	if err != nil {
+		e.setError(err)
+		return err
+	}
+	defer cleanupReady()
 	cmd.Stdout = e
 	cmd.Stderr = e
 	socks.Close()
@@ -366,9 +412,20 @@ func (e *Engine) startContext(parent context.Context, server ServerConfig, mode 
 		default:
 		}
 		e.mu.Lock()
-		coreStarted := e.coreStarted || e.coreID() != "xray"
+		coreStarted := e.coreStarted || e.coreID() == "mihomo"
+		tunDevice, tunReady, tunError := e.tunDevice, e.tunReady, e.tunError
 		e.mu.Unlock()
-		if !coreStarted {
+		if tunError {
+			err = fail(502, "Mihomo не смог создать TUN-адаптер. Проверьте права администратора и журнал подключения.")
+			e.stopLocked()
+			e.setError(err)
+			return err
+		}
+		if !coreStarted || !engineReady() {
+			time.Sleep(30 * time.Millisecond)
+			continue
+		}
+		if tunDevice != "" && (!tunReady || !nativeTunInterfaceReady(tunDevice)) {
 			time.Sleep(30 * time.Millisecond)
 			continue
 		}
@@ -490,6 +547,15 @@ func (e *Engine) stopLocked() error {
 		_ = os.Remove(e.configPath)
 		e.configPath = ""
 	}
+	if e.tunDevice != "" {
+		if err := waitNativeTunStopped(e.tunDevice); err != nil {
+			e.setError(err)
+			return err
+		}
+		e.mu.Lock()
+		e.tunDevice, e.tunReady, e.tunError = "", false, false
+		e.mu.Unlock()
+	}
 	e.mu.Lock()
 	e.status.State = "stopped"
 	e.status.Checked = false
@@ -521,6 +587,7 @@ func (e *Engine) Check(ctx context.Context) (int64, error) {
 	}
 	e.checkID++
 	checkID := e.checkID
+	checkURL, checkTimeout := e.checkURL, e.checkTimeout
 	e.checkCancel = cancel
 	e.mu.Unlock()
 	e.op.Unlock()
@@ -531,12 +598,15 @@ func (e *Engine) Check(ctx context.Context) (int64, error) {
 		transport.Proxy = nil
 	}
 	defer transport.CloseIdleConnections()
-	timeout := e.checkTimeout
+	timeout := checkTimeout
 	if timeout == 0 {
 		timeout = 12 * time.Second
 	}
 	client := &http.Client{Transport: transport, Timeout: timeout, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
-	req, _ := http.NewRequestWithContext(ctx, "GET", e.checkURL, nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", checkURL, nil)
+	if err != nil {
+		return 0, fail(400, "Некорректный адрес проверки соединения")
+	}
 	start := time.Now()
 	resp, err := client.Do(req)
 	if err == nil {
@@ -581,7 +651,12 @@ func (a *App) engineAPI(w http.ResponseWriter, r *http.Request) error {
 	var servers []ServerConfig
 
 	if r.Method == "POST" && r.URL.Path == "/api/connection/start" {
-		servers = append([]ServerConfig{}, g.Servers...)
+		servers = groupServerViews(g)
+		probeSettings := a.localSettings().Probe
+		for i := range servers {
+			servers[i] = bindSubscriptionFallback(g, a.engine.Status().Core, servers[i])
+			servers[i].RuntimeProbeURL = serverProbeSettings(probeSettings, g, servers[i]).URL
+		}
 	}
 	a.mu.Unlock()
 	if r.URL.Path != "/api/connection" && r.URL.Path != "/api/connection/check" && r.URL.Path != "/api/connection/ip" {

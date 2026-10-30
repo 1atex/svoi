@@ -27,7 +27,7 @@ import (
 )
 
 var appVersion = "0.4.0-prebeta.3"
-var nativeVersion = "0.7.0-rc.1"
+var nativeVersion = "0.7.0-rc.2"
 
 //go:embed web/*
 var assets embed.FS
@@ -76,33 +76,35 @@ type State struct {
 	Groups []Group `json:"groups"`
 }
 type App struct {
-	speedMu           sync.Mutex
-	speed             *speedRun
-	speedEndpoint     string
-	speedPolicy       *speedPolicy
-	speedDirectDialer *net.Dialer
-	mu                sync.Mutex
-	state             State
-	path              string
-	client            *http.Client
-	limits            map[string][]time.Time
-	engine            *Engine
-	probeSlots        chan struct{}
-	settingsMu        sync.Mutex
-	settings          LocalSettings
-	updates           *Updater
-	zapret            *Zapret
-	networkOp         sync.Mutex
-	handoff           vpnHandoff
-	dnsHost           dnsHost
+	speedMu               sync.Mutex
+	speed                 *speedRun
+	speedEndpoint         string
+	speedPolicy           *speedPolicy
+	speedDirectDialer     *net.Dialer
+	mu                    sync.Mutex
+	state                 State
+	subscriptionRefreshes map[string]uint64
+	path                  string
+	client                *http.Client
+	limits                map[string][]time.Time
+	engine                *Engine
+	probeSlots            chan struct{}
+	settingsMu            sync.Mutex
+	settings              LocalSettings
+	updates               *Updater
+	zapret                *Zapret
+	networkOp             sync.Mutex
+	handoff               vpnHandoff
+	dnsHost               dnsHost
 }
 type input struct {
-	Name       string   `json:"name"`
-	DeviceName string   `json:"deviceName"`
-	Platform   string   `json:"platform"`
-	Invite     string   `json:"invite"`
-	Identity   Identity `json:"identity"`
-	URL        string   `json:"url"`
+	ResponseFormat *string  `json:"responseFormat,omitempty"`
+	Name           string   `json:"name"`
+	DeviceName     string   `json:"deviceName"`
+	Platform       string   `json:"platform"`
+	Invite         string   `json:"invite"`
+	Identity       Identity `json:"identity"`
+	URL            string   `json:"url"`
 }
 type apiError struct {
 	status  int
@@ -136,13 +138,22 @@ func openApp(path string) (*App, error) {
 	}
 	for i := range a.state.Groups {
 		migrateSubscriptions(&a.state.Groups[i])
+		for j := range a.state.Groups[i].Servers {
+			a.state.Groups[i].Servers[j].updateProtocolMetadata()
+		}
 	}
 	return a, nil
 }
 
 func (a *App) transaction(fn func() error) error {
 	before, _ := json.Marshal(a.state)
-	rollback := func(err error) error { _ = json.Unmarshal(before, &a.state); return err }
+	rollback := func(err error) error {
+		var restored State
+		if json.Unmarshal(before, &restored) == nil {
+			a.state = restored
+		}
+		return err
+	}
 	if err := fn(); err != nil {
 		return rollback(err)
 	}
@@ -218,7 +229,7 @@ func snapshot(g *Group, d *Member) map[string]any {
 		host = u.Hostname()
 	}
 	servers := make([]ServerInfo, 0, len(g.Servers))
-	for _, server := range g.Servers {
+	for _, server := range groupServerViews(g) {
 		servers = append(servers, server.ServerInfo)
 	}
 	return map[string]any{"id": g.ID, "name": g.Name, "identity": g.Identity, "devices": devices, "self": d.Device.ID, "owner": d.Device.Owner, "subscriptionHost": host, "lastRefresh": g.LastRefresh, "servers": servers, "subscriptions": publicSubscriptions(g)}
@@ -353,14 +364,18 @@ func (a *App) dispatch(w http.ResponseWriter, r *http.Request) error {
 	}
 	if strings.HasPrefix(r.URL.Path, "/api/servers/") && strings.HasSuffix(r.URL.Path, "/export") && r.Method == "GET" {
 		id := strings.TrimSuffix(strings.TrimPrefix(r.URL.Path, "/api/servers/"), "/export")
-		for _, server := range g.Servers {
+		for _, server := range groupServerViews(g) {
 			if server.ID == id {
-				config, err := buildXrayConfig(server, 10808, 10809, "local")
+				core := server.SourceProfileCore
+				if core == "" {
+					core = "xray"
+				}
+				config, err := buildCoreConfig(core, server, 10808, 10809, "local")
 				if err != nil {
 					return err
 				}
 				w.Header().Set("Content-Type", "application/json")
-				w.Header().Set("Content-Disposition", `attachment; filename="svoi-xray.json"`)
+				w.Header().Set("Content-Disposition", `attachment; filename="svoi-`+core+`.json"`)
 				_, err = w.Write(config)
 				return err
 			}
@@ -403,7 +418,7 @@ func (a *App) dispatch(w http.ResponseWriter, r *http.Request) error {
 		if len(in.Content) > 4<<20 {
 			return fail(413, "Конфигурация превышает 4 МБ")
 		}
-		parsed, err := parseSubscription([]byte(in.Content))
+		parsed, err := parseSubscriptionWithFormat([]byte(in.Content), "auto")
 		if err != nil {
 			return err
 		}
@@ -567,6 +582,7 @@ func inspectSubscription(b []byte) (Report, error) {
 	return Report{Count: len(parsed.Servers), Format: parsed.Format, FetchedAt: time.Now().UTC(), Warnings: parsed.Warnings}, err
 }
 func (a *App) fetch(w http.ResponseWriter, r *http.Request) error {
+	export := strings.HasSuffix(r.URL.Path, "/export")
 	a.mu.Lock()
 	g, d, err := a.auth(r)
 	if err != nil {
@@ -579,6 +595,7 @@ func (a *App) fetch(w http.ResponseWriter, r *http.Request) error {
 		return fail(404, "Подписка не найдена")
 	}
 	raw := sub.URL
+	responseFormat := subscriptionResponseFormat(sub.ResponseFormat)
 	sid := sub.ID
 	identity := g.Identity
 	gid := g.ID
@@ -586,6 +603,15 @@ func (a *App) fetch(w http.ResponseWriter, r *http.Request) error {
 	if a.limitedBucket(r, "subscriptions", 64) {
 		a.mu.Unlock()
 		return fail(429, "Слишком много запросов. Подождите минуту.")
+	}
+	refreshKey := gid + "\x00" + sid
+	var generation uint64
+	if !export {
+		if a.subscriptionRefreshes == nil {
+			a.subscriptionRefreshes = make(map[string]uint64)
+		}
+		a.subscriptionRefreshes[refreshKey]++
+		generation = a.subscriptionRefreshes[refreshKey]
 	}
 	a.mu.Unlock()
 	if raw == "" {
@@ -595,38 +621,30 @@ func (a *App) fetch(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	req, err := http.NewRequestWithContext(r.Context(), "GET", u.String(), nil)
-	if err != nil {
-		return err
-	}
-	for k, v := range headers(identity) {
-		req.Header.Set(k, v)
-	}
-	req.Header.Set("Accept", "application/json, text/plain, */*")
-	resp, err := a.client.Do(req)
-	if err != nil {
-		return fail(502, "Не удалось загрузить подписку. Проверьте адрес и доступность сервера.")
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != 200 {
-		return fail(502, fmt.Sprintf("Сервер подписки вернул HTTP %d. Перенаправления отключены.", resp.StatusCode))
-	}
-	const max = 4 << 20
-	b, err := io.ReadAll(io.LimitReader(resp.Body, max+1))
-	if err != nil {
-		return fail(502, "Не удалось прочитать подписку")
-	}
-	if len(b) > max {
-		return fail(413, "Подписка превышает 4 МБ")
-	}
-	parsed, err := parseSubscription(b)
-	if err != nil {
-		return err
+	var body []byte
+	var results map[string]subscriptionVariantResult
+	if export {
+		// Export the requested provider response without refreshing/replacing any
+		// other cached variant as a side effect of downloading a file.
+		ctx, cancel := context.WithTimeout(r.Context(), 22*time.Second)
+		defer cancel()
+		result := fetchSubscriptionResponse(ctx, a.client, u.String(), identity, responseFormat)
+		if result.Err != nil {
+			return result.Err
+		}
+		body = result.Body
+	} else {
+		results, err = fetchSubscriptionVariants(r.Context(), a.client, u.String(), identity)
+		if err != nil {
+			if r.Context().Err() != nil {
+				return r.Context().Err()
+			}
+			return fail(504, "Не удалось завершить проверку форматов подписки; рабочий кеш сохранён")
+		}
 	}
 	if err := r.Context().Err(); err != nil {
 		return err
 	}
-	report := Report{Count: len(parsed.Servers), Format: parsed.Format, FetchedAt: time.Now().UTC(), Warnings: parsed.Warnings}
 	a.mu.Lock()
 	defer a.mu.Unlock()
 
@@ -635,22 +653,31 @@ func (a *App) fetch(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	sub = subscriptionByID(g, sid)
-	if g.ID != gid || d.Device.ID != did || sub == nil || sub.URL != raw || g.Identity != identity {
+	if g.ID != gid || d.Device.ID != did || sub == nil || sub.URL != raw || subscriptionResponseFormat(sub.ResponseFormat) != responseFormat || g.Identity != identity {
 		return fail(409, "Настройки группы изменились. Повторите запрос.")
 	}
-	metadata := mergeSubscriptionMetadata(parsed.MetadataHeaders, resp.Header)
+	if !export && a.subscriptionRefreshes[refreshKey] != generation {
+		return fail(409, "Уже начато более новое обновление этой подписки; устаревший ответ не применён")
+	}
+	if r.Context().Err() != nil {
+		return r.Context().Err()
+	}
+	if export {
+		w.Header().Set("Content-Type", "application/octet-stream")
+		w.Header().Set("Content-Disposition", `attachment; filename="svoi-subscription.txt"`)
+		_, err = w.Write(body)
+		return err
+	}
+	var report *Report
+	var refreshErr error
 	if err = a.transaction(func() error {
-		sub.Metadata = metadata
-		replaceSubscriptionServers(g, sub, parsed.Servers, &report)
+		report, refreshErr = applySubscriptionVariants(g, sub, results, responseFormat)
 		return nil
 	}); err != nil {
 		return err
 	}
-	if strings.HasSuffix(r.URL.Path, "/export") {
-		w.Header().Set("Content-Type", "application/octet-stream")
-		w.Header().Set("Content-Disposition", `attachment; filename="svoi-subscription.txt"`)
-		_, err = w.Write(b)
-		return err
+	if refreshErr != nil {
+		return refreshErr
 	}
 	writeJSON(w, 200, report)
 	return nil

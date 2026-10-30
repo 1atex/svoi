@@ -21,21 +21,23 @@ type portableProfile struct {
 	Sources  []portableSource `json:"sources"`
 }
 type portableSource struct {
-	Name      string           `json:"name"`
-	URL       string           `json:"url,omitempty"`
-	FetchedAt time.Time        `json:"fetchedAt,omitempty"`
-	Configs   []portableConfig `json:"configs"`
+	ResponseFormat string           `json:"responseFormat,omitempty"`
+	Name           string           `json:"name"`
+	URL            string           `json:"url,omitempty"`
+	FetchedAt      time.Time        `json:"fetchedAt,omitempty"`
+	Configs        []portableConfig `json:"configs"`
 }
 type portableConfig struct {
-	Name string          `json:"name"`
-	Data json.RawMessage `json:"data"`
+	SourceProfileCore string          `json:"sourceProfileCore,omitempty"`
+	Name              string          `json:"name"`
+	Data              json.RawMessage `json:"data"`
 }
 
 func encodeTransfer(g *Group) (string, error) {
 	migrateSubscriptions(g)
 	p := portableProfile{Version: 1, Name: g.Name, Identity: g.Identity, Sources: []portableSource{}}
 	for _, s := range g.Subscriptions {
-		source := portableSource{Name: s.Name, URL: s.URL, Configs: []portableConfig{}}
+		source := portableSource{Name: s.Name, URL: s.URL, ResponseFormat: s.ResponseFormat, Configs: []portableConfig{}}
 		if s.URL != "" {
 
 			p.Sources = append(p.Sources, source)
@@ -50,7 +52,7 @@ func encodeTransfer(g *Group) (string, error) {
 				if len(server.Profile) > 0 {
 					data = server.Profile
 				}
-				source.Configs = append(source.Configs, portableConfig{Name: server.Name, Data: data})
+				source.Configs = append(source.Configs, portableConfig{Name: server.Name, Data: data, SourceProfileCore: server.SourceProfileCore})
 			}
 		}
 		p.Sources = append(p.Sources, source)
@@ -114,6 +116,9 @@ func decodeTransfer(code string) (Group, error) {
 	}
 	g := Group{ID: secret(), Name: p.Name, Identity: p.Identity}
 	for _, source := range p.Sources {
+		if err := validateResponseFormat(source.ResponseFormat); err != nil {
+			return Group{}, err
+		}
 		if !validText(source.Name, 60) || len(source.Configs) > 2000 {
 			return Group{}, fail(400, "Некорректный источник в профиле")
 		}
@@ -122,7 +127,7 @@ func decodeTransfer(code string) (Group, error) {
 				return Group{}, err
 			}
 		}
-		g.Subscriptions = append(g.Subscriptions, Subscription{ID: secret(), Name: source.Name, URL: source.URL})
+		g.Subscriptions = append(g.Subscriptions, Subscription{ID: secret(), Name: source.Name, URL: source.URL, ResponseFormat: source.ResponseFormat})
 		if source.URL != "" {
 
 			syncLegacySubscription(&g)
@@ -135,7 +140,18 @@ func decodeTransfer(code string) (Group, error) {
 				return Group{}, invalid
 			}
 			var server ServerConfig
-			if _, full := data["outbounds"]; full {
+			if raw.SourceProfileCore != "" {
+				if raw.SourceProfileCore != "sing-box" && raw.SourceProfileCore != "mihomo" {
+					return Group{}, invalid
+				}
+				var parsed ParsedSubscription
+				parsed, err = parseSubscriptionWithFormat(raw.Data, raw.SourceProfileCore)
+				if err == nil && len(parsed.Servers) == 1 && parsed.Servers[0].SourceProfileCore == raw.SourceProfileCore {
+					server = parsed.Servers[0]
+				} else {
+					return Group{}, invalid
+				}
+			} else if _, full := data["outbounds"]; full {
 				server, err = serverFromProfile(data, len(servers)+1)
 			} else {
 				server, err = serverFromOutbound(raw.Name, data)

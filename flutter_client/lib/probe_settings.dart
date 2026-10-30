@@ -12,6 +12,7 @@ class _ProbeSettingsPanelState extends State<ProbeSettingsPanel> {
   final form = GlobalKey<FormState>();
   late final TextEditingController url;
   late int timeout, parallel;
+  late bool useProviderUrl;
   bool saved = false;
 
   @override
@@ -21,6 +22,9 @@ class _ProbeSettingsPanelState extends State<ProbeSettingsPanel> {
     url = TextEditingController(
       text: prefs['url'] as String? ?? defaultProbeUrl,
     );
+    useProviderUrl =
+        prefs['urlSource'] == 'subscription' ||
+        (prefs['urlSource'] != 'custom' && url.text == defaultProbeUrl);
     timeout = ((prefs['timeoutSeconds'] as num?)?.toInt() ?? 4).clamp(1, 15);
     parallel = ((prefs['parallel'] as num?)?.toInt() ?? 4).clamp(1, 10);
   }
@@ -35,6 +39,7 @@ class _ProbeSettingsPanelState extends State<ProbeSettingsPanel> {
     if (!form.currentState!.validate()) return;
     final draft = {
       'url': url.text.trim(),
+      'urlSource': useProviderUrl ? 'subscription' : 'custom',
       'timeoutSeconds': timeout,
       'parallel': parallel,
     };
@@ -58,6 +63,20 @@ class _ProbeSettingsPanelState extends State<ProbeSettingsPanel> {
         'Проверка задержки',
         subtitle: 'GET-запрос через выбранный профиль. Результат показывает доступность тестового адреса, а не всего интернета или DNS в TUN.',
         children: [
+          SwitchListTile.adaptive(
+            contentPadding: EdgeInsets.zero,
+            title: const Text('Адрес проверки из подписки'),
+            subtitle: const Text(
+              'Для задержки и проверки соединения. Если провайдер не указал адрес, используется URL ниже.',
+            ),
+            value: useProviderUrl,
+            onChanged: locked
+                ? null
+                : (value) => setState(() {
+                    useProviderUrl = value;
+                    saved = false;
+                  }),
+          ),
           Form(
             key: form,
             child: TextFormField(
@@ -67,8 +86,8 @@ class _ProbeSettingsPanelState extends State<ProbeSettingsPanel> {
               autocorrect: false,
               keyboardType: TextInputType.url,
               autovalidateMode: AutovalidateMode.onUserInteraction,
-              decoration: const InputDecoration(
-                labelText: 'Тестовый URL',
+              decoration: InputDecoration(
+                labelText: useProviderUrl ? 'Запасной URL' : 'Тестовый URL',
                 hintText: 'https://example.org/generate_204',
               ),
               onChanged: (_) => setState(() => saved = false),

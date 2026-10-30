@@ -32,6 +32,7 @@ const defaultProbeURL = "https://www.gstatic.com/generate_204"
 
 type ProbeSettings struct {
 	URL            string `json:"url"`
+	URLSource      string `json:"urlSource,omitempty"`
 	TimeoutSeconds int    `json:"timeoutSeconds"`
 	Parallel       int    `json:"parallel"`
 }
@@ -50,6 +51,9 @@ func (s *ProbeSettings) defaults() {
 
 func validateProbeSettings(s *ProbeSettings) error {
 	s.defaults()
+	if s.URLSource != "" && s.URLSource != "subscription" && s.URLSource != "custom" {
+		return fail(400, "Неизвестный источник адреса проверки")
+	}
 	u, err := url.Parse(s.URL)
 	if err != nil || len(s.URL) > 2048 || strings.ContainsAny(s.URL, "\r\n\t \\") || u == nil || (u.Scheme != "http" && u.Scheme != "https") || u.Hostname() == "" || u.User != nil || u.Fragment != "" {
 		return fail(400, "Укажите HTTP(S)-адрес проверки без логина, пароля и фрагмента")

@@ -6,6 +6,9 @@ import (
 )
 
 func speedServerConfig(server ServerConfig) (ServerConfig, error) {
+	if server.SourceProfileCore != "" {
+		return server, fail(422, "Для интернетометра выберите отдельный сервер из обычной подписки. Нативный профиль может направить замер напрямую; его сравнение пока недоступно.")
+	}
 	server.RuntimeApps = nil
 	server.RuntimeDirectDomains = nil
 	if len(server.Profile) == 0 {

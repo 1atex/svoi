@@ -7,11 +7,13 @@ import (
 )
 
 type Subscription struct {
-	Metadata *SubscriptionMetadata `json:"metadata,omitempty"`
-	ID       string                `json:"id"`
-	Name     string                `json:"name"`
-	URL      string                `json:"url,omitempty"`
-	Report   *Report               `json:"report,omitempty"`
+	Variants       map[string]SubscriptionVariantStatus `json:"variants,omitempty"`
+	ResponseFormat string                               `json:"responseFormat,omitempty"`
+	Metadata       *SubscriptionMetadata                `json:"metadata,omitempty"`
+	ID             string                               `json:"id"`
+	Name           string                               `json:"name"`
+	URL            string                               `json:"url,omitempty"`
+	Report         *Report                              `json:"report,omitempty"`
 }
 
 func migrateSubscriptions(g *Group) {
@@ -46,6 +48,10 @@ func syncLegacySubscription(g *Group) {
 	}
 }
 func replaceSubscriptionServers(g *Group, s *Subscription, servers []ServerConfig, report *Report) {
+	s.Variants = nil
+	if report == nil {
+		s.Metadata = nil
+	}
 	kept := make([]ServerConfig, 0, len(g.Servers)+len(servers))
 	for _, v := range g.Servers {
 		if v.SubscriptionID != s.ID {
@@ -76,7 +82,7 @@ func publicSubscriptions(g *Group) []map[string]any {
 				count++
 			}
 		}
-		result = append(result, map[string]any{"id": s.ID, "name": s.Name, "host": host, "remote": s.URL != "", "report": s.Report, "count": count, "metadata": s.Metadata})
+		result = append(result, map[string]any{"id": s.ID, "name": s.Name, "host": host, "remote": s.URL != "", "report": s.Report, "count": count, "metadata": s.Metadata, "responseFormat": subscriptionResponseFormat(s.ResponseFormat), "variants": s.Variants})
 	}
 	return result
 }
@@ -108,7 +114,14 @@ func (a *App) subscriptionsAPI(w http.ResponseWriter, r *http.Request, g *Group,
 				return fail(409, "Эта подписка уже добавлена")
 			}
 		}
-		s := Subscription{ID: secret(), Name: name, URL: in.URL}
+		format := "auto"
+		if in.ResponseFormat != nil {
+			format = *in.ResponseFormat
+		}
+		if err := validateResponseFormat(format); err != nil {
+			return err
+		}
+		s := Subscription{ID: secret(), Name: name, URL: in.URL, ResponseFormat: format}
 		if err = a.transaction(func() error { g.Subscriptions = append(g.Subscriptions, s); syncLegacySubscription(g); return nil }); err != nil {
 			return err
 		}
@@ -145,6 +158,11 @@ func (a *App) subscriptionsAPI(w http.ResponseWriter, r *http.Request, g *Group,
 		if !validText(in.Name, 60) {
 			return fail(400, "Название: от 1 до 60 символов")
 		}
+		if in.ResponseFormat != nil {
+			if err := validateResponseFormat(*in.ResponseFormat); err != nil {
+				return err
+			}
+		}
 		if in.URL != "" {
 			if _, err = subscriptionURL(in.URL); err != nil {
 				return err
@@ -157,6 +175,9 @@ func (a *App) subscriptionsAPI(w http.ResponseWriter, r *http.Request, g *Group,
 		}
 		err = a.transaction(func() error {
 			s.Name = strings.TrimSpace(in.Name)
+			if in.ResponseFormat != nil {
+				s.ResponseFormat = *in.ResponseFormat
+			}
 			if in.URL != "" && in.URL != s.URL {
 				s.URL = in.URL
 				s.Metadata = nil

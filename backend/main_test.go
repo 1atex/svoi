@@ -134,8 +134,11 @@ func TestSubscriptionUsesIdenticalHeaders(t *testing.T) {
 	expect(t, call(a, "PUT", "/api/identity", owner, input{Identity: identity}), 200)
 	expect(t, call(a, "PUT", "/api/subscription", owner, input{URL: "https://vpn.example/sub/private-key"}), 200)
 	var requests []http.Header
+	var requestsMu sync.Mutex
 	a.client = &http.Client{Transport: transportFunc(func(r *http.Request) (*http.Response, error) {
+		requestsMu.Lock()
 		requests = append(requests, r.Header.Clone())
+		requestsMu.Unlock()
 		if r.Header.Get("Authorization") != "" {
 			t.Error("member token sent upstream")
 		}
@@ -147,12 +150,26 @@ func TestSubscriptionUsesIdenticalHeaders(t *testing.T) {
 			t.Fatal(v)
 		}
 	}
-	if !reflect.DeepEqual(requests[0], requests[1]) {
-		t.Fatal("headers differ")
+	if len(requests) != 6 {
+		t.Fatalf("expected three variants for each device, got %d", len(requests))
 	}
-	for k, v := range headers(identity) {
-		if requests[0].Get(k) != v {
-			t.Errorf("header %s mismatch", k)
+	for _, format := range []string{"auto", "sing-box", "mihomo"} {
+		expected := make(http.Header)
+		for key, value := range headers(identity) {
+			expected.Set(key, value)
+		}
+		applySubscriptionFormatHeaders(expected, format)
+		count := 0
+		for _, request := range requests {
+			if request.Get("User-Agent") == expected.Get("User-Agent") {
+				count++
+				if !reflect.DeepEqual(request, expected) {
+					t.Fatalf("shared identity or exact format headers differ for %s", format)
+				}
+			}
+		}
+		if count != 2 {
+			t.Fatalf("format %s was not requested by both devices", format)
 		}
 	}
 	w := call(a, "GET", "/api/subscription/export", member, nil)

@@ -55,7 +55,7 @@ class _ServerPageState extends State<ServerPage> {
                     child: TextField(
                       controller: search,
                       decoration: InputDecoration(
-                        hintText: 'Поиск сервера или страны',
+                        hintText: 'Поиск сервера, страны или протокола',
                         prefixIcon: const SvoiIcon(
                           LucideIcons.search,
                           size: 18,
@@ -317,7 +317,10 @@ class ServerRow extends StatelessWidget {
               },
               child: Tooltip(
                 message: 'Выбрать сервер',
-                child: Radio<String>(value: server.id),
+                child: Radio<String>(
+                  value: server.id,
+                  enabled: server.availableForCore,
+                ),
               ),
             ),
             CountryMark(country: server.country),
@@ -325,7 +328,9 @@ class ServerRow extends StatelessWidget {
             Expanded(
               child: InkWell(
                 borderRadius: BorderRadius.circular(8),
-                onTap: onSelected == null
+                onTap: !server.availableForCore
+                    ? null
+                    : onSelected == null
                     ? () => showConfig(context, c, server)
                     : () async {
                         await c.select(server.id);
@@ -366,7 +371,7 @@ class ServerRow extends StatelessWidget {
                       ),
                       const SizedBox(height: 5),
                       Text(
-                        '${active
+                        '${server.protocol} · ${active
                             ? 'Активен · '
                             : server.id == c.lastUsed.value
                             ? 'Последний · '
@@ -401,7 +406,9 @@ class ServerRow extends StatelessWidget {
             ),
             IconButton(
               tooltip: 'Конфигурация сервера',
-              onPressed: () => showConfig(context, c, server),
+              onPressed: server.availableForCore
+                  ? () => showConfig(context, c, server)
+                  : null,
               icon: const SvoiIcon(LucideIcons.fileCode, size: 16),
             ),
             ServerPingButton(c: c, server: server),
@@ -420,6 +427,24 @@ class ServerPingButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (!server.availableForCore) {
+      return Tooltip(
+        message:
+            server.json['coreAvailabilityNote']?.toString() ??
+            'Выберите другое ядро для этой подписки',
+        child: SizedBox(
+          width: 44,
+          height: 36,
+          child: Center(
+            child: SvoiIcon(
+              LucideIcons.circleMinus,
+              size: 16,
+              color: appColors(context).muted,
+            ),
+          ),
+        ),
+      );
+    }
     final probe = c.probes.putIfAbsent(
       server.id,
       () => ValueNotifier(const ProbeState()),
@@ -434,25 +459,55 @@ class ServerPingButton extends StatelessWidget {
             : !available
             ? 'Ядро недоступно'
             : result.error != null
-            ? result.failureLabel
+            ? 'n/a'
             : result.latency != null
             ? '${result.latency} мс'
             : 'Проверить пинг';
         final color = result.error != null
-            ? appColors(context).error
+            ? appColors(context).muted
             : result.latency != null
             ? appColors(context).success
             : appColors(context).accent;
+        final routeDescription = server.json['profileNode'] == true
+            ? 'HTTP GET через выбранный узел · не ICMP'
+            : server.json['fullProfile'] == true
+            ? 'Проверка по маршрутам профиля · возможен прямой маршрут'
+            : 'HTTP GET через сервер · не ICMP';
         return Tooltip(
           message:
-              'Проверить пинг\nHTTP GET через профиль · не ICMP\n'
-              '${result.error ?? result.url ?? defaultProbeUrl}\n'
+              'Проверить пинг\n$routeDescription\n'
+              '${result.error == null ? result.url ?? defaultProbeUrl : '${result.failureLabel}: ${result.error}'}\n'
               '${clockLabel(result.checkedAt)}. Ошибка не запрещает подключение.',
           child: TextButton.icon(
             key: ValueKey('ping-${server.id}'),
             onPressed: !available || result.busy || c.probing.value
                 ? null
-                : () => c.probe([server]),
+                : () {
+                    if (result.error == null) {
+                      c.probe([server]);
+                      return;
+                    }
+                    showDialog<void>(
+                      context: context,
+                      builder: (dialog) => AlertDialog(
+                        title: Text(result.failureLabel),
+                        content: Text(result.error!),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(dialog),
+                            child: const Text('Закрыть'),
+                          ),
+                          TextButton(
+                            onPressed: () {
+                              Navigator.pop(dialog);
+                              c.probe([server]);
+                            },
+                            child: const Text('Проверить ещё раз'),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
             icon: result.busy
                 ? const SizedBox(
                     width: 16,

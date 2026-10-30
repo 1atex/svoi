@@ -9,6 +9,7 @@ import (
 	"os"
 	"reflect"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 )
@@ -101,8 +102,9 @@ func TestRefreshCannotResurrectDeletedSource(t *testing.T) {
 	owner := create(t, a)
 	id := expect(t, call(a, "POST", "/api/subscriptions", owner, input{URL: "https://first.example/sub"}), 201)["id"].(string)
 	started, release := make(chan struct{}), make(chan struct{})
+	var startedOnce sync.Once
 	a.client = &http.Client{Transport: transportFunc(func(*http.Request) (*http.Response, error) {
-		close(started)
+		startedOnce.Do(func() { close(started) })
 		<-release
 		return fakeResponse(200, "vless://test@example.com:443"), nil
 	})}

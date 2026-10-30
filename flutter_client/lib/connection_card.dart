@@ -130,9 +130,9 @@ class ConnectionCard extends StatelessWidget {
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
-                                  pending
-                                      ? 'Выбран для следующего подключения'
-                                      : 'Нажмите, чтобы сменить сервер',
+                                  selected == null
+                                      ? 'Нажмите, чтобы выбрать сервер'
+                                      : '${selected.protocol} · ${pending ? 'Выбран для следующего подключения' : 'Нажмите, чтобы сменить сервер'}',
                                   style: TextStyle(
                                     fontSize: 11,
                                     color: appColors(context).muted,
@@ -343,7 +343,7 @@ class QuickServers extends StatelessWidget {
                   style: const TextStyle(fontSize: 13),
                 ),
                 subtitle: Text(
-                  s.id == c.lastUsed.value ? 'Последний запуск' : 'Избранный',
+                  '${s.protocol} · ${s.id == c.lastUsed.value ? 'Последний запуск' : 'Избранный'}',
                   style: TextStyle(
                     fontSize: 11,
                     color: appColors(context).muted,

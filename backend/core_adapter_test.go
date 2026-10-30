@@ -25,6 +25,64 @@ import (
 
 const nativeTestUUID = "90e3da82-374e-46ef-9099-761d39b86b82"
 
+func TestSubscriptionCoreBinding(t *testing.T) {
+	for _, source := range []string{"xray", "sing-box", "mihomo"} {
+		server := nativeTestServer(t)
+		server.SubscriptionCore, server.FullProfile = source, true
+		for _, core := range []string{"xray", "sing-box", "mihomo"} {
+			if core == source {
+				continue
+			}
+			_, err := buildCoreConfig(core, server, 10808, 10809, "local")
+			if err == nil || !strings.Contains(err.Error(), "Ядро изменилось") {
+				t.Fatalf("scope %s executed on %s: %v", source, core, err)
+			}
+		}
+	}
+	server := nativeTestServer(t)
+	server.SubscriptionCore = "xray"
+	for _, core := range []string{"sing-box", "mihomo"} {
+		server.RuntimeFallbackCore = ""
+		if _, err := buildCoreConfig(core, server, 10808, 10809, "local"); err == nil {
+			t.Fatal("unbound fallback accepted")
+		}
+		server.RuntimeFallbackCore = core
+		if _, err := buildCoreConfig(core, server, 10808, 10809, "local"); err != nil {
+			t.Fatalf("standalone legacy fallback %s: %v", core, err)
+		}
+	}
+}
+
+func TestSubscriptionFallbackBindingRequiresUnavailableVariant(t *testing.T) {
+	server := nativeTestServer(t)
+	server.SubscriptionCore, server.SubscriptionID = "xray", "source"
+	for _, status := range []SubscriptionVariantStatus{{State: "ready"}, {State: "error"}, {State: "unavailable", Count: 1}, {State: "unavailable"}} {
+		g := &Group{Subscriptions: []Subscription{{ID: "source", Variants: map[string]SubscriptionVariantStatus{"mihomo": status}}}}
+		bound := bindSubscriptionFallback(g, "mihomo", server)
+		want := status.State == "unavailable" && status.Count == 0
+		if (bound.RuntimeFallbackCore == "mihomo") != want {
+			t.Fatalf("wrong binding for %#v", status)
+		}
+		if _, err := buildCoreConfig("sing-box", bound, 10808, 10809, "local"); err == nil {
+			t.Fatal("fallback binding crossed core switch")
+		}
+	}
+}
+
+func TestNativeProviderCoreBinding(t *testing.T) {
+	for _, source := range []string{"sing-box", "mihomo", "unrecognized"} {
+		server := ServerConfig{ServerInfo: ServerInfo{SourceProfileCore: source, FullProfile: true}, Profile: json.RawMessage(`{}`)}
+		for _, selected := range []string{"", "xray", "sing-box", "mihomo"} {
+			if source == selected {
+				continue
+			}
+			if _, err := buildCoreConfig(selected, server, 10808, 10809, "local"); err == nil {
+				t.Fatalf("native %s profile accepted by %s", source, selected)
+			}
+		}
+	}
+}
+
 func testNativeCore(t *testing.T, id string) string {
 	t.Helper()
 	env := "SVOI_TEST_" + strings.ToUpper(strings.ReplaceAll(id, "-", "_"))
@@ -79,7 +137,6 @@ func TestNativeCoreRejectsLossyConversions(t *testing.T) {
 	edits := map[string]func(*ServerConfig, object){
 		"full-profile":      func(s *ServerConfig, _ object) { s.Profile = json.RawMessage(`{"outbounds":[]}`) },
 		"full-profile-flag": func(s *ServerConfig, _ object) { s.FullProfile = true },
-		"routing":           func(s *ServerConfig, _ object) { s.RuntimeDirectDomains = []string{"example.com"} },
 		"app-routing": func(s *ServerConfig, _ object) {
 			s.RuntimeApps = &AppRouting{Mode: "exclude", Processes: []string{"app.exe"}}
 		},
@@ -121,8 +178,8 @@ func TestNativeCoreRejectsLossyConversions(t *testing.T) {
 				}
 			})
 		}
-		if _, err := buildCoreConfig(id, nativeTestServer(t), 10808, 10809, "tun"); err == nil {
-			t.Fatal("TUN accepted")
+		if _, err := buildCoreConfig(id, nativeTestServer(t), 10808, 10809, "tun"); (err == nil) != (runtime.GOOS == "windows") {
+			t.Fatalf("unexpected TUN support: %v", err)
 		}
 	}
 }
@@ -350,7 +407,7 @@ func TestNativeCoreEngineRoundTripAndSelection(t *testing.T) {
 			recorder = httptest.NewRecorder()
 			a.handler().ServeHTTP(recorder, req)
 			result := expect(t, recorder, 200)
-			if result["core"] != id || obj(result["capabilities"])["fullProfiles"] != false {
+			if result["core"] != id || obj(result["capabilities"])["fullProfiles"] != false || obj(result["capabilities"])["profileSupport"] != "limited" {
 				t.Fatal("incorrect native core API response")
 			}
 		})
@@ -374,12 +431,18 @@ func TestNativeCoreCapabilitiesMissingAndCorruptSelection(t *testing.T) {
 	if status.Core != "xray" || len(status.Capabilities.Cores) != 3 {
 		t.Fatal("invalid default capabilities")
 	}
+	if status.Capabilities.ProfileSupport != "native" {
+		t.Fatal("default core profile support missing")
+	}
 	for _, c := range status.Capabilities.Cores {
 		if c.Installed || c.Available {
 			t.Fatal("missing core advertised available")
 		}
 		if c.ID != "xray" && c.FullProfiles {
 			t.Fatal("native full profiles advertised")
+		}
+		if c.ProfileSupport != coreProfileSupport(c.ID) {
+			t.Fatal("incorrect per-core profile support")
 		}
 	}
 	if err = e.SelectCore("sing-box"); err == nil {

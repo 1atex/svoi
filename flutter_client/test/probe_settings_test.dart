@@ -33,6 +33,59 @@ class UnavailableCoreBackend extends ProbeBackend {
 
 void main() {
   test(
+    'provider probe address follows subscription and manual override',
+    () async {
+      final c = SvoiController(ProbeBackend());
+      await c.initialize();
+      final server = ServerEntry({
+        'id': 'provider',
+        'name': 'Test',
+        'subscriptionId': 'source',
+      });
+      c.subscriptions.value = [
+        {
+          'id': 'other',
+          'metadata': {
+            'hints': {'check-url-via-proxy': 'https://wrong.example/'},
+          },
+        },
+        {
+          'id': 'source',
+          'metadata': {
+            'hints': {'check-url-via-proxy': 'http://ya.ru/'},
+          },
+        },
+      ];
+      c.preferences.value = {};
+      expect(c.probeUrlFor(server), 'http://ya.ru/');
+      c.preferences.value = {
+        'probe': {'urlSource': 'custom', 'url': defaultProbeUrl},
+      };
+      expect(c.probeUrlFor(server), defaultProbeUrl);
+      c.preferences.value = {
+        'probe': {'url': 'https://custom.example/'},
+      };
+      expect(c.probeUrlFor(server), 'https://custom.example/');
+      c.preferences.value = {
+        'probe': {
+          'urlSource': 'subscription',
+          'url': 'https://fallback.example/',
+        },
+      };
+      expect(c.probeUrlFor(server), 'http://ya.ru/');
+      c.subscriptions.value = [
+        {
+          'id': 'source',
+          'metadata': {
+            'hints': {'check-url-via-proxy': 'file:///private'},
+          },
+        },
+      ];
+      expect(c.probeUrlFor(server), 'https://fallback.example/');
+      await c.close();
+    },
+  );
+  test(
     'core change clears persisted probe history as well as visible values',
     () async {
       final dir = await Directory.systemTemp.createTemp('svoi-core-history-');
@@ -54,43 +107,45 @@ void main() {
       await dir.delete(recursive: true);
     },
   );
-  testWidgets(
-    'unsupported profile, setup failure and timeout have distinct labels',
-    (tester) async {
-      for (final item in {
-        422: 'Нужен Xray',
-        503: 'Ошибка ядра',
-        504: 'Нет ответа',
-        502: 'Ошибка проверки',
-        429: 'Проверка занята',
-      }.entries) {
-        final c = SvoiController(UnavailableCoreBackend(item.key));
-        await c.initialize();
-        c.connection.value = {...c.connection.value, 'available': true};
-        final server = c.servers.value.first;
-        await c.probe([server]);
-        final state = c.probes[server.id]!.value;
-        expect(
-          ProbeState.fromJson(state.toJson()).withBusy(false).failureLabel,
-          item.value,
-        );
-        await tester.pumpWidget(
-          MaterialApp(
-            theme: svoiTheme(),
-            home: Scaffold(
-              body: ServerPingButton(c: c, server: server),
-            ),
+  testWidgets('quiet unavailable result retains distinct diagnostic reasons', (
+    tester,
+  ) async {
+    for (final item in {
+      422: 'Несовместимо',
+      503: 'Ошибка ядра',
+      504: 'Нет ответа',
+      502: 'Ошибка проверки',
+      429: 'Проверка занята',
+    }.entries) {
+      final c = SvoiController(UnavailableCoreBackend(item.key));
+      await c.initialize();
+      c.connection.value = {...c.connection.value, 'available': true};
+      final server = c.servers.value.first;
+      await c.probe([server]);
+      final state = c.probes[server.id]!.value;
+      expect(
+        ProbeState.fromJson(state.toJson()).withBusy(false).failureLabel,
+        item.value,
+      );
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: svoiTheme(),
+          home: Scaffold(
+            body: ServerPingButton(c: c, server: server),
           ),
-        );
-        await tester.pump();
-        expect(find.text(item.value), findsOneWidget);
-        if (item.key != 504) expect(find.text('Нет ответа'), findsNothing);
-        expect(state.latency, isNull);
-        await tester.pumpWidget(const SizedBox.shrink());
-        await c.close();
-      }
-    },
-  );
+        ),
+      );
+      await tester.pump();
+      expect(find.text('n/a'), findsOneWidget);
+      expect(find.text('Нет ответа'), findsNothing);
+      await tester.tap(find.text('n/a'));
+      await tester.pumpAndSettle();
+      expect(find.text(item.value), findsOneWidget);
+      expect(state.latency, isNull);
+      await tester.pumpWidget(const SizedBox.shrink());
+      await c.close();
+    }
+  });
   test(
     'preparation failure is distinct from server timeout and persists',
     () async {
@@ -134,15 +189,19 @@ void main() {
         find.text('Введите HTTP(S)-адрес без логина, пароля и фрагмента'),
         findsOneWidget,
       );
+      await tester.ensureVisible(find.text('Сохранить настройки'));
       await tester.tap(find.text('Сохранить настройки'));
       await tester.pumpAndSettle();
       expect(backend.calls.where((c) => c == 'PUT settings'), isEmpty);
+      await tester.ensureVisible(find.text('HiCloud'));
       await tester.tap(find.text('HiCloud'));
       await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Сохранить настройки'));
       await tester.tap(find.text('Сохранить настройки'));
       await tester.pumpAndSettle();
       expect(backend.prefs['probe'], {
         'url': 'http://connectivitycheck.platform.hicloud.com/generate_204',
+        'urlSource': 'subscription',
         'timeoutSeconds': 4,
         'parallel': 4,
       });

@@ -177,6 +177,17 @@ void main() {
       final update = c.refreshSubscriptions();
       expect(api.refreshes.keys.toSet(), {'demo', 'second'});
       api.group['subscriptions'][1]['count'] = 12;
+      (api.group['servers'] as List).addAll(
+        List<Map<String, Object>>.generate(
+          12,
+          (index) => {
+            'id': 'second-$index',
+            'name': 'Second $index',
+            'subscriptionId': 'second',
+            'protocol': 'vless',
+          },
+        ),
+      );
       api.refreshes['second']!.complete({});
       await Future<void>.delayed(Duration.zero);
       expect(c.subscriptions.value.last['count'], 12);

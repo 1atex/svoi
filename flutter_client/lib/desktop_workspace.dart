@@ -49,7 +49,7 @@ class DesktopWorkspace extends StatelessWidget {
   Widget build(BuildContext context) => ValueListenableBuilder(
     valueListenable: c.servers,
     builder: (context, servers, _) {
-      if (servers.isEmpty) {
+      if (servers.isEmpty && c.subscriptions.value.isEmpty) {
         return ListenableBuilder(
           listenable: Listenable.merge([
             c.subscriptions,
@@ -64,7 +64,16 @@ class DesktopWorkspace extends StatelessWidget {
                 constraints: const BoxConstraints(maxWidth: 680),
                 child: Column(
                   children: [
-                    ImportWelcome(c: c),
+                    if (c.subscriptions.value.isEmpty)
+                      ImportWelcome(c: c)
+                    else ...[
+                      CorePicker(c: c),
+                      const SizedBox(height: 20),
+                      const Text(
+                        'Нет конфигураций для выбранного ядра. Обновите подписку или выберите другое ядро.',
+                      ),
+                      const SizedBox(height: 20),
+                    ],
                     for (final source in c.subscriptions.value)
                       SubscriptionHeader(
                         name: subscriptionDisplayName(source),
@@ -76,7 +85,7 @@ class DesktopWorkspace extends StatelessWidget {
                         refreshing: c.refreshingSources.value.contains(
                           source['id'],
                         ),
-                        refreshError: c.refreshErrors.value[source['id']],
+                        refreshError: c.sourceIssue(source),
                         onCancelRefresh: () =>
                             c.cancelRefresh(source['id'].toString()),
                         onRefresh: source['remote'] == true && !c.busy.value
@@ -240,7 +249,7 @@ class _DesktopLibraryState extends State<DesktopLibrary> {
                   onChanged: (value) =>
                       setState(() => query = value.trim().toLowerCase()),
                   decoration: InputDecoration(
-                    hintText: 'Поиск по имени, стране или адресу',
+                    hintText: 'Поиск по имени, стране или протоколу',
                     isDense: true,
                     prefixIcon: const SvoiIcon(LucideIcons.search, size: 18),
                     suffixIcon: query.isEmpty
@@ -265,7 +274,7 @@ class _DesktopLibraryState extends State<DesktopLibrary> {
                         onChanged: (value) =>
                             setState(() => query = value.trim().toLowerCase()),
                         decoration: InputDecoration(
-                          hintText: 'Поиск по имени, стране или адресу',
+                          hintText: 'Поиск по имени, стране или протоколу',
                           isDense: true,
                           prefixIcon: const SvoiIcon(
                             LucideIcons.search,
@@ -361,39 +370,52 @@ class _DesktopLibraryState extends State<DesktopLibrary> {
                               c.refreshingSources,
                               c.refreshErrors,
                             ]),
-                            builder: (context, _) => SubscriptionHeader(
-                              refreshing: c.refreshingSources.value.contains(
-                                group.$4?['id'],
+                            builder: (context, _) => SubscriptionDropRegion(
+                              c: c,
+                              sourceId: group.$4?['id']?.toString(),
+                              child: SubscriptionHeader(
+                                reorderHandle: group.$4 == null
+                                    ? null
+                                    : SubscriptionDragHandle(
+                                        c: c,
+                                        source: group.$4!,
+                                      ),
+                                availabilityNote: c.sourceAvailabilityNote(
+                                  group.$4,
+                                ),
+                                refreshing: c.refreshingSources.value.contains(
+                                  group.$4?['id'],
+                                ),
+                                refreshError: c.sourceIssue(group.$4),
+                                onCancelRefresh: () =>
+                                    c.cancelRefresh(group.$4!['id'].toString()),
+                                name: group.$2,
+                                source: group.$4,
+                                count: group.$3.length,
+                                collapsed:
+                                    collapsed.contains(group.$1) &&
+                                    query.isEmpty,
+                                onToggle: () => setState(() {
+                                  if (!collapsed.add(group.$1)) {
+                                    collapsed.remove(group.$1);
+                                  }
+                                }),
+                                onRefresh:
+                                    group.$4?['remote'] == true && !c.busy.value
+                                    ? () => c.refreshSource(
+                                        group.$4!['id'].toString(),
+                                      )
+                                    : null,
+                                onProbe:
+                                    group.$3.any((s) => s.availableForCore) &&
+                                        !c.probing.value &&
+                                        c.connection.value['available'] == true
+                                    ? () => c.probe(group.$3)
+                                    : null,
+                                onDetails: group.$4 == null
+                                    ? null
+                                    : () => editSource(context, c, group.$4!),
                               ),
-                              refreshError:
-                                  c.refreshErrors.value[group.$4?['id']],
-                              onCancelRefresh: () =>
-                                  c.cancelRefresh(group.$4!['id'].toString()),
-                              name: group.$2,
-                              source: group.$4,
-                              count: group.$3.length,
-                              collapsed:
-                                  collapsed.contains(group.$1) && query.isEmpty,
-                              onToggle: () => setState(() {
-                                if (!collapsed.add(group.$1)) {
-                                  collapsed.remove(group.$1);
-                                }
-                              }),
-                              onRefresh:
-                                  group.$4?['remote'] == true && !c.busy.value
-                                  ? () => c.refreshSource(
-                                      group.$4!['id'].toString(),
-                                    )
-                                  : null,
-                              onProbe:
-                                  group.$3.isNotEmpty &&
-                                      !c.probing.value &&
-                                      c.connection.value['available'] == true
-                                  ? () => c.probe(group.$3)
-                                  : null,
-                              onDetails: group.$4 == null
-                                  ? null
-                                  : () => editSource(context, c, group.$4!),
                             ),
                           );
                         },
@@ -417,7 +439,7 @@ class _DesktopLibraryState extends State<DesktopLibrary> {
                     onPressed: c.probing.value
                         ? c.cancelProbes
                         : c.connection.value['available'] == true &&
-                              filtered.isNotEmpty
+                              filtered.any((s) => s.availableForCore)
                         ? () => c.probe(filtered)
                         : null,
                     icon: SvoiIcon(
@@ -505,9 +527,12 @@ class DesktopServerRow extends StatelessWidget {
           child: InkWell(
             key: ValueKey('select-server-${server.id}'),
             borderRadius: BorderRadius.circular(12),
-            onTap: c.busy.value ? null : () => c.select(server.id),
+            onTap: c.busy.value || !server.availableForCore
+                ? null
+                : () => c.select(server.id),
             child: Semantics(
               selected: selected,
+              enabled: server.availableForCore,
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(12, 8, 4, 8),
                 child: Row(
@@ -522,14 +547,17 @@ class DesktopServerRow extends StatelessWidget {
                             server.country.title,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontWeight: FontWeight.w600,
                               fontSize: 14,
+                              color: server.availableForCore
+                                  ? appColors(context).ink
+                                  : appColors(context).muted,
                             ),
                           ),
                           const SizedBox(height: 3),
                           Text(
-                            active
+                            '${server.protocol} · ${active
                                 ? 'Подключён'
                                 : selected
                                 ? 'Выбран'
@@ -537,7 +565,9 @@ class DesktopServerRow extends StatelessWidget {
                                 ? 'Избранный'
                                 : server.id == c.lastUsed.value
                                 ? 'Последний запуск'
-                                : server.country.label,
+                                : server.country.label}',
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
                             style: TextStyle(
                               fontSize: 11,
                               color: active
@@ -548,8 +578,12 @@ class DesktopServerRow extends StatelessWidget {
                         ],
                       ),
                     ),
-                    ServerPingButton(c: c, server: server),
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 144),
+                      child: ServerPingButton(c: c, server: server),
+                    ),
                     PopupMenuButton<String>(
+                      enabled: server.availableForCore,
                       tooltip: 'Действия сервера',
                       icon: SvoiIcon(
                         LucideIcons.ellipsis,
@@ -568,7 +602,8 @@ class DesktopServerRow extends StatelessWidget {
                         }
                       },
                       itemBuilder: (context) => [
-                        if (server.json['fullProfile'] == true)
+                        if (server.json['fullProfile'] == true &&
+                            server.json['sourceProfileCore'] == null)
                           const PopupMenuItem(
                             value: 'nodes',
                             child: Text('Создать отдельные узлы'),
@@ -629,7 +664,9 @@ class DesktopConnection extends StatelessWidget {
           .firstOrNull;
       final pending = c.pendingConnectionChoice;
       final locked = c.busy.value || view.switching;
-      final ready = c.connection.value['available'] == true && server != null;
+      final ready =
+          c.connection.value['available'] == true &&
+          server?.availableForCore == true;
       final action = view.running ? 'Отключить VPN' : 'Подключить';
       final VoidCallback? toggle = locked || (!view.running && !ready)
           ? null
@@ -668,8 +705,10 @@ class DesktopConnection extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  pending ? 'Выбран для переключения' : 'Выбранный сервер',
-                  maxLines: 1,
+                  server == null
+                      ? 'Выбранный сервер'
+                      : '${server.protocol} · ${pending ? 'Выбран для переключения' : 'Выбранный сервер'}',
+                  maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     color: appColors(context).muted,

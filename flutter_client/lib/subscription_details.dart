@@ -112,6 +112,8 @@ class SubscriptionHeader extends StatelessWidget {
     this.refreshing = false,
     this.refreshError,
     this.onCancelRefresh,
+    this.availabilityNote,
+    this.reorderHandle,
   });
   final String name;
   final Map<String, dynamic>? source;
@@ -122,6 +124,8 @@ class SubscriptionHeader extends StatelessWidget {
   final bool refreshing;
   final String? refreshError;
   final VoidCallback? onCancelRefresh;
+  final String? availabilityNote;
+  final Widget? reorderHandle;
 
   @override
   Widget build(BuildContext context) {
@@ -142,6 +146,7 @@ class SubscriptionHeader extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 4),
         child: Row(
           children: [
+            ?reorderHandle,
             SvoiIcon(
               collapsed ? LucideIcons.chevronRight : LucideIcons.chevronDown,
               size: 15,
@@ -281,6 +286,17 @@ class SubscriptionHeader extends StatelessWidget {
                 ),
                 if (source != null)
                   SubscriptionSummary(source: source!, onDetails: onDetails),
+                if (availabilityNote != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 6, left: 4),
+                    child: Text(
+                      availabilityNote!,
+                      style: TextStyle(
+                        color: appColors(context).muted,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
                 if (refreshing)
                   const Padding(
                     padding: EdgeInsets.only(top: 6),
@@ -642,7 +658,7 @@ class SubscriptionDetails extends StatelessWidget {
             ),
             children: [
               Text(
-                'Сохранены для просмотра. Они не меняют ваши настройки HWID, проверки связи или интерфейса.',
+                'Адрес проверки используется, если это включено в настройках задержки. Остальные подсказки не меняют настройки HWID или интерфейса.',
                 style: TextStyle(fontSize: 12, color: appColors(context).muted),
               ),
               const SizedBox(height: 8),

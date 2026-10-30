@@ -20,24 +20,53 @@ class ServerEntry {
       countryCode: json['countryCode'] as String?,
     );
     search =
-        '$name ${country.code ?? ''} ${country.label} ${json['address'] ?? ''} ${json['protocol'] ?? ''}'
+        '$name ${country.code ?? ''} ${country.label} ${json['address'] ?? ''} ${json['protocol'] ?? ''} $protocol'
             .toLowerCase();
   }
   final Map<String, dynamic> json;
   final String id, name;
   late final String search;
   late final ServerCountry country;
+  bool get availableForCore => json['coreUnavailable'] != true;
   bool get isHysteria =>
       json['protocol'] == 'hysteria' || json['protocol'] == 'hysteria2';
   bool get usesQuic => isHysteria || json['network'] == 'hysteria';
-  String get details => json['fullProfile'] == true
-      ? '${json['nodeCount']} узлов · маршрутизация из подписки'
+  String get details =>
+      json['fullProfile'] == true && json['profileNode'] != true
+      ? '${json['nodeCount']} узлов · маршрутизация из подписки${json['sourceProfileCore'] != null ? ' · ${json['sourceProfileCore']}' : ''}'
       : '${json['address']}:${json['port']} · ${usesQuic ? 'QUIC / UDP' : json['network'] ?? 'tcp'} · ${json['security'] ?? ''}';
-  String get protocol => json['fullProfile'] == true
-      ? 'Профиль'
-      : isHysteria
-      ? 'HYSTERIA2'
-      : (json['protocol'] as String).toUpperCase();
+  static String protocolName(String value) =>
+      switch (value.trim().toLowerCase()) {
+        'hysteria2' || 'hy2' => 'Hysteria2',
+        'hysteria' => 'Hysteria',
+        'shadowsocks' || 'ss' => 'Shadowsocks',
+        'trojan' => 'Trojan',
+        'wireguard' => 'WireGuard',
+        '' => 'Протокол не указан',
+        final name => name.toUpperCase(),
+      };
+
+  String get protocol {
+    if (json['fullProfile'] != true || json['profileNode'] == true) {
+      return protocolName(json['protocol']?.toString() ?? '');
+    }
+    final values = json['protocols'];
+    final sourceCore = json['sourceProfileCore']?.toString();
+    final profileLabel = sourceCore == 'mihomo'
+        ? 'профиль Mihomo'
+        : sourceCore == 'sing-box'
+        ? 'профиль sing-box'
+        : 'профиль';
+    if (values is! List || values.isEmpty) {
+      return sourceCore == null ? 'Профиль Xray' : profileLabel;
+    }
+    final names = values
+        .whereType<String>()
+        .map(protocolName)
+        .toSet()
+        .join(' / ');
+    return names.isEmpty ? profileLabel : '$names · $profileLabel';
+  }
 }
 
 class ProbeState {
@@ -54,7 +83,7 @@ class ProbeState {
   final bool setupError;
   final String? failureKind;
   String get failureLabel => switch (failureKind) {
-    'unsupported' => 'Нужен Xray',
+    'unsupported' => 'Несовместимо',
     'timeout' => 'Нет ответа',
     'busy' => 'Проверка занята',
     _ => setupError ? 'Ошибка ядра' : 'Ошибка проверки',
@@ -94,6 +123,7 @@ class ProbeState {
 class SvoiController {
   SvoiController(this.api, {this.sessionFile}) {
     connection.addListener(_syncPublicIP);
+    connection.addListener(_syncCoreLibrary);
     connectionPhase.addListener(_syncPublicIP);
   }
   final Backend api;
@@ -202,6 +232,7 @@ class SvoiController {
   final refreshErrors = ValueNotifier<Map<String, String>>({});
   final refreshProgress = ValueNotifier<String>('');
   final _refreshRequests = <String, RequestCancellation>{};
+  final _refreshedErrorVariants = <String>{};
   int _refreshGeneration = 0, _checkGeneration = 0, _reloadRevision = 0;
   RequestCancellation? _checkRequest;
   bool _refreshingAll = false;
@@ -209,6 +240,149 @@ class SvoiController {
   final lastUsed = ValueNotifier<String>('');
   final probeRevision = ValueNotifier<int>(0);
   Map<String, dynamic> _libraries = {};
+  final _coreSelections = <String, String>{};
+  List<String> _subscriptionOrder = [];
+  String _libraryCore = 'xray';
+  String get activeCore => connection.value['core']?.toString() ?? 'xray';
+
+  void _syncCoreLibrary() {
+    if (_closed || activeCore == _libraryCore) return;
+    if (selected.value.isNotEmpty) {
+      _coreSelections['${group.value['id']}/$_libraryCore'] = selected.value;
+    }
+    _libraryCore = activeCore;
+    cancelProbes();
+    for (final probe in probes.values) {
+      probe.value = const ProbeState();
+    }
+    _projectLibrary(restoreSelection: true);
+  }
+
+  void _projectLibrary({bool restoreSelection = false}) {
+    final sources = (group.value['subscriptions'] as List? ?? [])
+        .map((s) => Map<String, dynamic>.from(s))
+        .toList();
+    final sourceIDs = sources.map((s) => s['id'].toString()).toSet();
+    _subscriptionOrder = [
+      ..._subscriptionOrder.where(sourceIDs.contains),
+      ...sourceIDs.where((id) => !_subscriptionOrder.contains(id)),
+    ];
+    final sourcePositions = {
+      for (var i = 0; i < _subscriptionOrder.length; i++)
+        _subscriptionOrder[i]: i,
+    };
+    sources.sort(
+      (a, b) => sourcePositions[a['id']]!.compareTo(sourcePositions[b['id']]!),
+    );
+    final remoteIDs = sources
+        .where((s) => s['remote'] == true)
+        .map((s) => s['id'])
+        .toSet();
+    final all = (group.value['servers'] as List? ?? [])
+        .map((s) => ServerEntry(Map<String, dynamic>.from(s)))
+        .toList();
+    final visible = all.where((s) {
+      final scope = s.json['subscriptionCore']?.toString() ?? '';
+      if (scope.isNotEmpty) {
+        return scope == activeCore;
+      }
+      final native = s.json['sourceProfileCore']?.toString() ?? '';
+      if (native.isNotEmpty) return native == activeCore;
+      return activeCore == 'xray' ||
+          !remoteIDs.contains(s.json['subscriptionId']);
+    }).toList();
+    final unavailableSources = <String>{};
+    for (final source in sources) {
+      final id = source['id'].toString();
+      if (visible.any((s) => s.json['subscriptionId'] == id)) continue;
+      unavailableSources.add(id);
+      final candidates = all
+          .where((s) => s.json['subscriptionId'] == id)
+          .toList();
+      // Keep one complete, stable source representation, never merge nodes
+      // across native graphs or pass these display-only rows to the backend.
+      final canonicalScope =
+          candidates.any((s) => s.json['subscriptionCore'] == 'xray')
+          ? 'xray'
+          : candidates.any((s) => (s.json['subscriptionCore'] ?? '') == '')
+          ? ''
+          : candidates.firstOrNull?.json['subscriptionCore'];
+      final scoped = candidates
+          .where((s) => (s.json['subscriptionCore'] ?? '') == canonicalScope)
+          .toList();
+      final canonicalNative =
+          scoped.any((s) => (s.json['sourceProfileCore'] ?? '') == '')
+          ? ''
+          : scoped.firstOrNull?.json['sourceProfileCore'];
+      for (final row in scoped.where(
+        (s) => (s.json['sourceProfileCore'] ?? '') == canonicalNative,
+      )) {
+        visible.add(
+          ServerEntry({
+            ...row.json,
+            'coreUnavailable': true,
+            'coreAvailabilityNote':
+                'Для $activeCore нет подходящего варианта подписки.',
+          }),
+        );
+      }
+    }
+    subscriptions.value = sources
+        .map((s) {
+          final projected = <String, dynamic>{
+            ...s,
+            'count': visible
+                .where((v) => v.json['subscriptionId'] == s['id'])
+                .length,
+            'coreUnavailable': unavailableSources.contains(s['id']),
+          };
+          final note = sourceAvailabilityNote(projected);
+          if (note != null) projected['coreAvailabilityNote'] = note;
+          return projected;
+        })
+        .toList(growable: false);
+    final available = visible.where((s) => s.availableForCore).toList();
+    final ids = available.map((s) => s.id).toSet();
+    final remembered = _coreSelections['${group.value['id']}/$activeCore'];
+    if (restoreSelection && remembered != null && ids.contains(remembered)) {
+      selected.value = remembered;
+    } else if (!ids.contains(selected.value)) {
+      selected.value = available.firstOrNull?.id ?? '';
+    }
+    servers.value = visible;
+  }
+
+  String? sourceIssue(Map<String, dynamic>? source) {
+    if (source == null) return null;
+    final requestError = refreshErrors.value[source['id']];
+    if (requestError != null &&
+        !_refreshedErrorVariants.contains(source['id'])) {
+      return requestError;
+    }
+    final variant = (source['variants'] as Map?)?[activeCore] as Map?;
+    if (variant == null || variant['state'] != 'error') return requestError;
+    final reason =
+        variant['error']?.toString() ?? 'Вариант для $activeCore недоступен.';
+    return variant['stale'] == true
+        ? '$reason Используется сохранённая копия.'
+        : reason;
+  }
+
+  String? sourceAvailabilityNote(Map<String, dynamic>? source) {
+    if (source == null) return null;
+    final variant = (source['variants'] as Map?)?[activeCore] as Map?;
+    if (source['coreUnavailable'] == true) {
+      if (variant == null && source['remote'] == true) {
+        return 'Обновите подписку, чтобы получить вариант для $activeCore.';
+      }
+      return 'Для $activeCore нет подходящего варианта подписки.';
+    }
+    if (variant?['state'] == 'unavailable') {
+      return 'Провайдер не выдал формат $activeCore.';
+    }
+    return null;
+  }
+
   final message = ValueNotifier<String>('');
   final probeProgress = ValueNotifier<String>('');
   final probing = ValueNotifier<bool>(false);
@@ -229,6 +403,9 @@ class SvoiController {
           .toList();
       selected.value = saved['selected']?.toString() ?? '';
       _libraries = Map<String, dynamic>.from(saved['libraries'] ?? {});
+      _coreSelections.addAll(
+        Map<String, String>.from(saved['coreSelections'] ?? {}),
+      );
       scenarios.value = (saved['scenarios'] as List? ?? [])
           .whereType<Map>()
           .map((s) => Map<String, dynamic>.from(s))
@@ -270,12 +447,18 @@ class SvoiController {
   }
 
   void _acceptGroup(Map<String, dynamic> group) {
-    if (this.group.value['id'] != group['id']) {
+    final groupChanged = this.group.value['id'] != group['id'];
+    if (groupChanged) {
+      if (this.group.value['id'] != null && selected.value.isNotEmpty) {
+        _coreSelections['${this.group.value['id']}/$activeCore'] =
+            selected.value;
+      }
       lastScenario.value = '';
       _cancelRefreshes();
       cancelProbes();
       probes.clear();
       final saved = _libraries[group['id']?.toString()] as Map? ?? {};
+      _subscriptionOrder = List<String>.from(saved['subscriptionOrder'] ?? []);
       favorites.value = Set<String>.from(saved['favorites'] ?? []);
       lastUsed.value = saved['lastUsed']?.toString() ?? '';
       final history = saved['probes'] as Map? ?? {};
@@ -296,16 +479,10 @@ class SvoiController {
         {'token': api.token, 'name': group['name'] ?? 'Профиль'},
       ];
     }
-    servers.value = (group['servers'] as List? ?? [])
-        .map((s) => ServerEntry(Map<String, dynamic>.from(s)))
-        .toList(growable: false);
-    subscriptions.value = (group['subscriptions'] as List? ?? [])
-        .map((s) => Map<String, dynamic>.from(s))
-        .toList(growable: false);
-    final ids = servers.value.map((s) => s.id).toSet();
-    if (!ids.contains(selected.value)) {
-      selected.value = servers.value.firstOrNull?.id ?? '';
-    }
+    _projectLibrary(restoreSelection: groupChanged);
+    final ids = (group['servers'] as List? ?? [])
+        .map((s) => s['id'].toString())
+        .toSet();
 
     if (probes.keys.any((id) => !ids.contains(id))) cancelProbes();
     probes.removeWhere((id, _) => !ids.contains(id));
@@ -331,6 +508,7 @@ class SvoiController {
       'mode': mode.value,
       'sessions': sessions.value,
       'libraries': _libraries,
+      'coreSelections': _coreSelections,
       'scenarios': scenarios.value,
     });
     _saveQueue = _saveQueue.catchError((_) {}).then((_) async {
@@ -342,8 +520,27 @@ class SvoiController {
   }
 
   Future<void> select(String id) async {
+    if (!servers.value.any((s) => s.id == id && s.availableForCore)) return;
     selected.value = id;
+    _coreSelections['${group.value['id']}/$activeCore'] = id;
     await saveSession();
+  }
+
+  Future<void> moveSubscription(
+    String sourceId,
+    String targetId, {
+    bool after = false,
+  }) async {
+    if (sourceId == targetId ||
+        !_subscriptionOrder.contains(sourceId) ||
+        !_subscriptionOrder.contains(targetId)) {
+      return;
+    }
+    final order = [..._subscriptionOrder]..remove(sourceId);
+    order.insert(order.indexOf(targetId) + (after ? 1 : 0), sourceId);
+    _subscriptionOrder = order;
+    _projectLibrary();
+    await _saveLibrary();
   }
 
   Future<void> toggleFavorite(String id) async {
@@ -357,6 +554,7 @@ class SvoiController {
     _libraries[group.value['id']?.toString() ?? 'default'] = {
       'favorites': favorites.value.toList(),
       'lastUsed': lastUsed.value,
+      'subscriptionOrder': _subscriptionOrder,
       'probes': {
         for (final entry in probes.entries)
           if (entry.value.value.checkedAt != null)
@@ -537,6 +735,11 @@ class SvoiController {
   }
 
   Future<bool> _startSelected() async {
+    if (!servers.value.any(
+      (s) => s.id == selected.value && s.availableForCore,
+    )) {
+      return false;
+    }
     if (selected.value.isEmpty) throw ApiException('Выберите сервер.');
     cancelProbes();
     var pauseZapret = false;
@@ -630,44 +833,45 @@ class SvoiController {
     }
   }
 
-  Future<void> importText(String raw) => action(() async {
-    final text = raw.trim();
-    if (text.startsWith('SVOI1.')) {
-      final result = await api.request(
-        'transfer/import',
-        method: 'POST',
-        body: {
-          'code': text,
-          'deviceName': Platform.isLinux ? 'Linux' : 'Windows',
-          'platform': Platform.isLinux ? 'Linux' : 'Windows',
-          'replace': true,
-        },
-      );
-      _acceptGroup(result['group']);
-      await _refreshAll();
-    } else if (text.startsWith('https://')) {
-      final result = await api.request(
-        'subscriptions',
-        method: 'POST',
-        body: {'url': text, 'name': ''},
-      );
-      _acceptGroup(result['group']);
-      await api.request(
-        'subscription/refresh?id=${Uri.encodeComponent(result['id'])}',
-        method: 'POST',
-      );
-    } else {
-      _acceptGroup(
-        await api.request(
-          'subscription/import',
-          method: 'POST',
-          body: {'content': text},
-        ),
-      );
-    }
-    await reload();
-    await saveSession();
-  });
+  Future<void> importText(String raw, {String responseFormat = 'auto'}) =>
+      action(() async {
+        final text = raw.trim();
+        if (text.startsWith('SVOI1.')) {
+          final result = await api.request(
+            'transfer/import',
+            method: 'POST',
+            body: {
+              'code': text,
+              'deviceName': Platform.isLinux ? 'Linux' : 'Windows',
+              'platform': Platform.isLinux ? 'Linux' : 'Windows',
+              'replace': true,
+            },
+          );
+          _acceptGroup(result['group']);
+          await _refreshAll();
+        } else if (text.startsWith('https://')) {
+          final result = await api.request(
+            'subscriptions',
+            method: 'POST',
+            body: {'url': text, 'name': '', 'responseFormat': responseFormat},
+          );
+          _acceptGroup(result['group']);
+          await api.request(
+            'subscription/refresh?id=${Uri.encodeComponent(result['id'])}',
+            method: 'POST',
+          );
+        } else {
+          _acceptGroup(
+            await api.request(
+              'subscription/import',
+              method: 'POST',
+              body: {'content': text},
+            ),
+          );
+        }
+        await reload();
+        await saveSession();
+      });
 
   Future<void> extractProfileNodes(ServerEntry server) => action(() async {
     final previous = servers.value.map((s) => s.id).toSet();
@@ -760,6 +964,7 @@ class SvoiController {
       request.cancel();
     }
     _refreshRequests.clear();
+    _refreshedErrorVariants.clear();
     refreshingSources.value = {};
     refreshErrors.value = {};
     refreshProgress.value = '';
@@ -814,6 +1019,10 @@ class SvoiController {
     final generation = _refreshGeneration;
     final request = RequestCancellation();
     var timedOut = false;
+    final beforeVariants = jsonEncode(
+      subscriptions.value.where((s) => s['id'] == id).firstOrNull?['variants'],
+    );
+    _refreshedErrorVariants.remove(id);
     _refreshRequests[id] = request;
     refreshingSources.value = {...refreshingSources.value, id};
     refreshErrors.value = {...refreshErrors.value}..remove(id);
@@ -836,6 +1045,21 @@ class SvoiController {
         await reload();
       }
     } catch (e) {
+      if (!_closed &&
+          generation == _refreshGeneration &&
+          !request.cancelled &&
+          e is ApiException &&
+          e.status >= 400) {
+        try {
+          await reload();
+          final afterVariants = jsonEncode(
+            subscriptions.value
+                .where((s) => s['id'] == id)
+                .firstOrNull?['variants'],
+          );
+          if (afterVariants != beforeVariants) _refreshedErrorVariants.add(id);
+        } catch (_) {}
+      }
       if (!_closed &&
           generation == _refreshGeneration &&
           (!request.cancelled || timedOut)) {
@@ -865,9 +1089,16 @@ class SvoiController {
     );
     if (patch.containsKey('probe')) cancelProbes();
   });
-  Future<Map<String, dynamic>> config(ServerEntry server) => api.request(
-    'servers/${Uri.encodeComponent(server.id)}/config?mode=${mode.value}',
-  );
+  bool _serverAvailable(ServerEntry server) =>
+      server.availableForCore &&
+      servers.value.any((s) => s.id == server.id && s.availableForCore);
+
+  Future<Map<String, dynamic>> config(ServerEntry server) =>
+      _serverAvailable(server)
+      ? api.request(
+          'servers/${Uri.encodeComponent(server.id)}/config?mode=${mode.value}',
+        )
+      : Future.value(<String, dynamic>{});
   Future<Map<String, dynamic>> logs() => api.request('connection?logs=1');
 
   void cancelProbes() {
@@ -884,7 +1115,41 @@ class SvoiController {
     if (wasProbing) probeProgress.value = 'Проверка остановлена';
   }
 
+  String probeUrlFor(ServerEntry server) {
+    final settings = preferences.value['probe'] as Map? ?? {};
+    final fallback = settings['url'] as String? ?? defaultProbeUrl;
+    if (settings['urlSource'] == 'custom' ||
+        (settings['urlSource'] != 'subscription' &&
+            fallback != defaultProbeUrl)) {
+      return fallback;
+    }
+    for (final source in subscriptions.value) {
+      if (source['id'] != server.json['subscriptionId']) continue;
+      final variant =
+          (source['variants'] as Map?)?[server.json['subscriptionCore']]
+              as Map?;
+      final metadata =
+          (variant != null ? variant['metadata'] : source['metadata'])
+              as Map? ??
+          {};
+      final hints = metadata['hints'] as Map? ?? {};
+      final value = hints['check-url-via-proxy']?.toString().trim() ?? '';
+      final uri = Uri.tryParse(value);
+      if (value.length <= 2048 &&
+          !RegExp(r'[\s\\]').hasMatch(value) &&
+          uri != null &&
+          ['http', 'https'].contains(uri.scheme) &&
+          uri.host.isNotEmpty &&
+          uri.userInfo.isEmpty &&
+          !uri.hasFragment) {
+        return value;
+      }
+    }
+    return fallback;
+  }
+
   Future<void> probe(List<ServerEntry> list) async {
+    list = list.where(_serverAvailable).toList(growable: false);
     if (probing.value ||
         list.isEmpty ||
         connection.value['available'] != true) {
@@ -900,7 +1165,6 @@ class SvoiController {
       1,
       15,
     );
-    final url = settings['url'] as String? ?? defaultProbeUrl;
     probing.value = true;
     probeProgress.value =
         '0 из ${list.length} · до $parallel одновременно · лимит $timeout с';
@@ -908,6 +1172,7 @@ class SvoiController {
     Future<void> worker() async {
       while (next < list.length && generation == _probeGeneration && !_closed) {
         final server = list[next++], cancellation = RequestCancellation();
+        final url = probeUrlFor(server);
         final result = probes.putIfAbsent(
           server.id,
           () => ValueNotifier(const ProbeState()),
@@ -985,6 +1250,7 @@ class SvoiController {
     _cancelCheck();
     _cancelRefreshes();
     connection.removeListener(_syncPublicIP);
+    connection.removeListener(_syncCoreLibrary);
     connectionPhase.removeListener(_syncPublicIP);
     _ipGeneration++;
     _ipRequest?.cancel();

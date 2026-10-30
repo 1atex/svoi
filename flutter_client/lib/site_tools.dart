@@ -49,14 +49,31 @@ class _SiteCheckPanelState extends State<SiteCheckPanel> {
     super.initState();
     c.connection.addListener(routeChanged);
     c.foreground.addListener(visibilityChanged);
+    c.servers.addListener(serversChanged);
     serverId = c.connection.value['state'] == 'running'
         ? c.connection.value['serverId'] ?? c.selected.value
         : c.selected.value;
+    if (!availableServer(serverId)) serverId = '';
     routeKey = currentRoute;
   }
 
   String get currentRoute =>
-      '${c.connection.value['state']}/${c.connection.value['serverId']}/${c.connection.value['startedAt']}';
+      '${c.connection.value['core']}/${c.connection.value['state']}/${c.connection.value['serverId']}/${c.connection.value['startedAt']}';
+
+  bool availableServer(String id) =>
+      c.servers.value.any((s) => s.id == id && s.availableForCore);
+
+  void serversChanged() {
+    if (serverId.isNotEmpty && !availableServer(serverId)) {
+      if (working) stop();
+      if (mounted) {
+        setState(() {
+          serverId = '';
+          results.clear();
+        });
+      }
+    }
+  }
 
   void routeChanged() {
     if (currentRoute != routeKey) {
@@ -87,6 +104,7 @@ class _SiteCheckPanelState extends State<SiteCheckPanel> {
     }
     c.connection.removeListener(routeChanged);
     c.foreground.removeListener(visibilityChanged);
+    c.servers.removeListener(serversChanged);
     input.dispose();
     super.dispose();
   }
@@ -104,10 +122,17 @@ class _SiteCheckPanelState extends State<SiteCheckPanel> {
       );
       return;
     }
-    if (!c.servers.value.any((s) => s.id == serverId)) {
+    if (serverId.isNotEmpty && !availableServer(serverId)) {
+      setState(
+        () => error = 'Выбранный профиль недоступен для текущего ядра. Выберите доступный профиль.',
+      );
+      return;
+    }
+    if (!availableServer(serverId)) {
       serverId = c.selected.value;
     }
-    if (!c.servers.value.any((s) => s.id == serverId)) serverId = '';
+    if (!availableServer(serverId)) serverId = '';
+    final routeServerId = serverId;
     c.cancelProbes();
     final own = ++generation;
     setState(() {
@@ -123,7 +148,11 @@ class _SiteCheckPanelState extends State<SiteCheckPanel> {
         final data = await c.api.request(
           'tools/site',
           method: 'POST',
-          body: {'url': uri.toString(), 'route': route, 'serverId': serverId},
+          body: {
+            'url': uri.toString(),
+            'route': route,
+            'serverId': routeServerId,
+          },
           cancellation: r,
         );
         if (mounted && own == generation) setState(() => results[route] = data);
@@ -138,7 +167,7 @@ class _SiteCheckPanelState extends State<SiteCheckPanel> {
 
     await Future.wait([
       check('direct'),
-      if (serverId.isNotEmpty) check('profile'),
+      if (routeServerId.isNotEmpty) check('profile'),
     ]);
     if (mounted && own == generation) setState(() => working = false);
   }
@@ -214,15 +243,15 @@ class _SiteCheckPanelState extends State<SiteCheckPanel> {
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
               key: ValueKey('site-server-$serverId'),
-              initialValue: c.servers.value.any((s) => s.id == serverId)
-                  ? serverId
-                  : null,
+              initialValue: availableServer(serverId) ? serverId : null,
               isExpanded: true,
               decoration: const InputDecoration(
                 labelText: 'Профиль для сравнения',
               ),
               items: [
-                for (final s in c.servers.value)
+                for (final s in c.servers.value.where(
+                  (s) => s.availableForCore,
+                ))
                   DropdownMenuItem(
                     value: s.id,
                     child: Text(
@@ -233,10 +262,13 @@ class _SiteCheckPanelState extends State<SiteCheckPanel> {
               ],
               onChanged: working
                   ? null
-                  : (v) => setState(() {
-                      serverId = v ?? '';
-                      results.clear();
-                    }),
+                  : (v) {
+                      if (v != null && !availableServer(v)) return;
+                      setState(() {
+                        serverId = v ?? '';
+                        results.clear();
+                      });
+                    },
             ),
             if (c.connection.value['state'] == 'running' &&
                 c.connection.value['mode'] == 'tun' &&
@@ -251,7 +283,12 @@ class _SiteCheckPanelState extends State<SiteCheckPanel> {
                       style: TextStyle(color: appColors(context).accent),
                     ),
                     TextButton(
-                      onPressed: working
+                      onPressed:
+                          working ||
+                              !availableServer(
+                                c.connection.value['serverId']?.toString() ??
+                                    '',
+                              )
                           ? null
                           : () => setState(() {
                               serverId = c.connection.value['serverId'] ?? '';

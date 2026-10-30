@@ -34,6 +34,9 @@ func (a *App) extractServerNodesAPI(w http.ResponseWriter, r *http.Request, id s
 	if source == nil {
 		return fail(404, "Профиль не найден")
 	}
+	if source.SourceProfileCore != "" {
+		return fail(422, "Этот профиль содержит группы и маршруты "+source.SourceProfileCore+". Разделение на узлы пока недоступно; используйте профиль целиком.")
+	}
 	nodes, err := extractProfileNodes(*source)
 	if err != nil {
 		return err

@@ -41,6 +41,7 @@ part 'speed_tools.dart';
 part 'portable_tools.dart';
 part 'speed_chart.dart';
 part 'subscription_details.dart';
+part 'subscription_order.dart';
 part 'probe_settings.dart';
 part 'public_ip.dart';
 part 'scenario_widgets.dart';
@@ -506,15 +507,19 @@ class Panel extends StatelessWidget {
 }
 
 Future<void> importDialog(BuildContext context, SvoiController c) async {
-  final value = await showDialog<String>(
+  final result = await showDialog<Map<String, String>>(
     context: context,
     builder: (_) => const _SubscriptionImportDialog(),
   );
-  if (value != null && context.mounted) {
+  if (result != null && context.mounted) {
+    final value = result['content']!;
     if (value.trim().startsWith('SVOI1.')) {
       await receivePreview(context, c, value.trim());
     } else {
-      await c.importText(value);
+      await c.importText(
+        value,
+        responseFormat: result['responseFormat'] ?? 'auto',
+      );
     }
   }
 }
@@ -546,7 +551,7 @@ class _SubscriptionImportDialogState extends State<_SubscriptionImportDialog> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'HTTPS-ссылка, VLESS / VMess / Trojan / SS / Hysteria2, JSON или код SVOI1. Перед переносом профиля будет показан его состав.',
+            'HTTPS-ссылка, VLESS / VMess / Trojan / SS / Hysteria2, JSON, YAML или код SVOI1. Перед переносом профиля будет показан его состав.',
             style: TextStyle(color: appColors(context).muted, fontSize: 13),
           ),
           const SizedBox(height: 18),
@@ -562,6 +567,10 @@ class _SubscriptionImportDialogState extends State<_SubscriptionImportDialog> {
             ),
             enableSuggestions: false,
             autocorrect: false,
+          ),
+          const SizedBox(height: 12),
+          const Text(
+            'Варианты для Xray, sing-box и Mihomo загружаются автоматически.',
           ),
         ],
       ),
@@ -613,7 +622,12 @@ class _SubscriptionImportDialogState extends State<_SubscriptionImportDialog> {
               return;
             }
             final content = await file.readAsString();
-            if (context.mounted) Navigator.pop(context, content);
+            if (context.mounted) {
+              Navigator.pop(context, {
+                'content': content,
+                'responseFormat': 'auto',
+              });
+            }
           } catch (e) {
             if (context.mounted) {
               setState(
@@ -632,7 +646,7 @@ class _SubscriptionImportDialogState extends State<_SubscriptionImportDialog> {
       FilledButton(
         onPressed: () {
           if (text.trim().isNotEmpty) {
-            Navigator.pop(context, text);
+            Navigator.pop(context, {'content': text, 'responseFormat': 'auto'});
           } else {
             setState(
               () =>
@@ -714,7 +728,8 @@ Future<void> showConfig(
         ),
       ),
       actions: [
-        if (server.json['fullProfile'] == true)
+        if (server.json['fullProfile'] == true &&
+            server.json['sourceProfileCore'] == null)
           TextButton(
             onPressed: () {
               Navigator.pop(context);

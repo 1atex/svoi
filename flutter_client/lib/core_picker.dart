@@ -77,7 +77,7 @@ class CorePicker extends StatelessWidget {
                 ? 'Чтобы сменить ядро, сначала отключите VPN.'
                 : current == 'xray'
                 ? 'Xray: полный профиль, TUN и прокси.'
-                : '${coreLabel(current)}: простые VLESS, VMess, Trojan и Shadowsocks; ручной или системный прокси. TUN, полные профили и собственные правила маршрутизации недоступны. Для них выберите Xray.',
+                : 'Используется профиль провайдера для ${coreLabel(current)}. ${Platform.isWindows ? 'Доступны TUN и прокси.' : 'TUN на этой платформе пока доступен с Xray.'}',
             style: TextStyle(
               fontSize: 12,
               color: appColors(context).muted,

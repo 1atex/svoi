@@ -13,20 +13,27 @@ import (
 )
 
 type ServerInfo struct {
-	SubscriptionID string `json:"subscriptionId,omitempty"`
-	ID             string `json:"id"`
-	Name           string `json:"name"`
-	Protocol       string `json:"protocol"`
-	Address        string `json:"address"`
-	Port           int    `json:"port"`
-	Network        string `json:"network"`
-	Security       string `json:"security"`
-	FullProfile    bool   `json:"fullProfile,omitempty"`
-	NodeCount      int    `json:"nodeCount,omitempty"`
+	ProfileNode       bool     `json:"profileNode,omitempty"`
+	SubscriptionCore  string   `json:"subscriptionCore,omitempty"`
+	SourceProfileCore string   `json:"sourceProfileCore,omitempty"`
+	SubscriptionID    string   `json:"subscriptionId,omitempty"`
+	ID                string   `json:"id"`
+	Name              string   `json:"name"`
+	Protocol          string   `json:"protocol"`
+	Protocols         []string `json:"protocols,omitempty"`
+	Address           string   `json:"address"`
+	Port              int      `json:"port"`
+	Network           string   `json:"network"`
+	Security          string   `json:"security"`
+	FullProfile       bool     `json:"fullProfile,omitempty"`
+	NodeCount         int      `json:"nodeCount,omitempty"`
 }
 type ServerConfig struct {
 	ServerInfo
+	NativeTarget         string          `json:"-"`
+	RuntimeFallbackCore  string          `json:"-"`
 	RuntimeApps          *AppRouting     `json:"-"`
+	RuntimeProbeURL      string          `json:"-"`
 	RuntimeDirectDomains []string        `json:"-"`
 	Outbound             json.RawMessage `json:"outbound"`
 	Profile              json.RawMessage `json:"profile,omitempty"`

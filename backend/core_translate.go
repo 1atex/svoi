@@ -92,16 +92,24 @@ func nativeDisabledMux(out object) error {
 // Translate only the deliberately bounded, lossless subset. Unknown fields are
 // rejected at every level rather than silently changing a provider's settings.
 func buildNativeCoreConfig(id string, server ServerConfig, sp, hp int, mode string) ([]byte, error) {
+	if server.FullProfile || len(server.Profile) > 0 {
+		return buildNativeProfileConfig(id, server, sp, hp, mode)
+	}
+	raw, err := buildNativeNodeConfig(id, server, sp, hp, mode)
+	if err != nil {
+		return nil, err
+	}
+	return nativeConfigWithDirectDomains(id, raw, server.RuntimeDirectDomains)
+}
+
+func buildNativeNodeConfig(id string, server ServerConfig, sp, hp int, mode string) ([]byte, error) {
 	if id != "sing-box" && id != "mihomo" {
 		return nil, nativeUnsupported("неизвестное ядро")
 	}
 	if mode != "local" && mode != "system" {
 		return nil, nativeUnsupported("режим " + mode)
 	}
-	if server.FullProfile || len(server.Profile) > 0 {
-		return nil, nativeUnsupported("полный профиль и правила провайдера")
-	}
-	if len(server.RuntimeDirectDomains) > 0 || (server.RuntimeApps != nil && server.RuntimeApps.Mode != "" && server.RuntimeApps.Mode != "all") {
+	if server.RuntimeApps != nil && server.RuntimeApps.Mode != "" && server.RuntimeApps.Mode != "all" {
 		return nil, nativeUnsupported("пользовательская маршрутизация")
 	}
 	var out object
@@ -123,6 +131,9 @@ func buildNativeCoreConfig(id string, server ServerConfig, sp, hp int, mode stri
 		}
 	}
 	protocol := str(out["protocol"])
+	if protocol == "hysteria" {
+		return nativeHysteriaConfig(id, out, sp, hp)
+	}
 	if protocol != "vless" && protocol != "vmess" && protocol != "trojan" && protocol != "shadowsocks" {
 		return nil, nativeUnsupported("протокол " + protocol)
 	}

@@ -4,6 +4,13 @@ extension ScenarioActions on SvoiController {
   List<Map<String, dynamic>> get currentScenarios =>
       scenarios.value.where((s) => s['groupId'] == group.value['id']).toList();
 
+  bool scenarioAvailableForCore(Map<String, dynamic> scene) =>
+      scene['kind'] == 'zapret' ||
+      scene['kind'] == 'vpn' &&
+          servers.value.any(
+            (s) => s.id == scene['serverId'] && s.availableForCore,
+          );
+
   Future<void> saveScenario(String name, String kind) => action(() async {
     name = name.trim();
     if (name.isEmpty || name.length > 40) {
@@ -21,7 +28,9 @@ extension ScenarioActions on SvoiController {
       'groupId': group.value['id'],
     };
     if (kind == 'vpn') {
-      if (selected.value.isEmpty) {
+      if (!servers.value.any(
+        (s) => s.id == selected.value && s.availableForCore,
+      )) {
         throw ApiException(
           'Сначала выберите сервер и настройте правила трафика.',
         );
@@ -83,6 +92,11 @@ extension ScenarioActions on SvoiController {
           if (!servers.value.any((s) => s.id == scene['serverId'])) {
             throw ApiException(
               'Сервер сценария удалён из подписки. Выберите новый сервер и сохраните сценарий заново.',
+            );
+          }
+          if (!scenarioAvailableForCore(scene)) {
+            throw ApiException(
+              'Сервер сценария недоступен для выбранного ядра. Выберите другое ядро или доступный сервер.',
             );
           }
           preferences.value = await api.request(
