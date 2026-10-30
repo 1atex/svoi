@@ -59,6 +59,11 @@ with tempfile.TemporaryDirectory(prefix='svoi-linux-ui-') as data:
             subprocess.run(['xdotool', 'key', '--clearmodifiers', 'alt+F4'], check=True)
             app.wait(timeout=15)
             assert app.returncode == 0, app.returncode
+            if debugger is not None:
+                debugger.wait(timeout=10)
+                debug_log.flush()
+                trace = (output / 'linux-close-backtrace.log').read_text()
+                assert 'received signal' not in trace, 'Native crash captured by debugger'
             for child in children:
                 assert not Path('/proc', child).exists(), 'Backend remains after GUI close'
             assert not list(Path(data).glob('*.tmp'))
