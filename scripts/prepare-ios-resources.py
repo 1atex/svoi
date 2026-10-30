@@ -1,11 +1,20 @@
 import hashlib
 import json
+import re
 from pathlib import Path
 import shutil
 import subprocess
 import zipfile
 
 root = Path(__file__).resolve().parents[1]
+icon_names = json.loads((root / 'config/ui-icons.json').read_text(encoding='utf-8'))['ios']
+for source in (root / 'apple/ios-client/App').glob('*.swift'):
+    text = source.read_text(encoding='utf-8')
+    symbols = re.findall(r'SvoiGlyph\s*\(\s*"([^"]+)"', text)
+    symbols += re.findall(r'(?:systemImage|symbol):\s*"([^"]+)"', text)
+    missing = set(symbols) - icon_names.keys()
+    if missing:
+        raise SystemExit(f'{source.name}: missing interface icons: {sorted(missing)}')
 config = json.loads((root / 'config/ios-release.json').read_text())
 build = root / '.tools/ios-assets'
 build.mkdir(parents=True, exist_ok=True)

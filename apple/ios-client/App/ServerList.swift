@@ -254,7 +254,7 @@ struct ServerList: View {
   }
 
   private func reorderHandle(_ source: SvoiSource) -> some View {
-    SvoiGlyph("line.3.horizontal", size: 18).foregroundStyle(SvoiPalette.muted)
+    SvoiGlyph("arrow.up.arrow.down", size: 18).foregroundStyle(SvoiPalette.muted)
       .frame(width: 44, height: 44).contentShape(Rectangle())
       .onDrag { draggingSource = source.id; return NSItemProvider(object: source.id as NSString) }
       .accessibilityLabel("Перетащить подписку \(source.name)")
