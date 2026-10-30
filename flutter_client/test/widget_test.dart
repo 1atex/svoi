@@ -102,12 +102,22 @@ void main() {
       250,
       scrollable: find
           .descendant(
-            of: find.byType(PreferencesPage),
+            of: find.byType(Scaffold).last,
             matching: find.byType(Scrollable),
           )
           .first,
     );
     expect(find.text('Проверка задержки'), findsOneWidget);
+    await tester.tap(
+      find.byKey(
+        ValueKey(
+          Platform.isWindows
+              ? 'settings-section-Автоматизация'
+              : 'settings-section-Подписки',
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
     await tester.scrollUntilVisible(
       find.text(
         Platform.isWindows
@@ -117,7 +127,7 @@ void main() {
       300,
       scrollable: find
           .descendant(
-            of: find.byType(PreferencesPage),
+            of: find.byType(Scaffold).last,
             matching: find.byType(Scrollable),
           )
           .first,

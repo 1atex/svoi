@@ -55,7 +55,7 @@ class _ServerPageState extends State<ServerPage> {
                     child: TextField(
                       controller: search,
                       decoration: InputDecoration(
-                        hintText: 'Поиск сервера или страны',
+                        hintText: 'Поиск сервера, страны или протокола',
                         prefixIcon: const SvoiIcon(
                           LucideIcons.search,
                           size: 18,
@@ -258,7 +258,7 @@ class _ServerPageState extends State<ServerPage> {
                 padding: const EdgeInsets.only(top: 8),
                 child: Text(
                   widget.onSelected == null
-                      ? 'Кружок — выбрать · название — конфигурация · «Нет ответа» не запрещает подключение'
+                      ? 'Кружок — выбрать · название — конфигурация · «n/a» не запрещает подключение'
                       : 'Нажмите на сервер для выбора · значок документа открывает конфигурацию',
                   style: TextStyle(
                     fontSize: 10,
@@ -366,7 +366,7 @@ class ServerRow extends StatelessWidget {
                       ),
                       const SizedBox(height: 5),
                       Text(
-                        '${active
+                        '${server.protocol} · ${active
                             ? 'Активен · '
                             : server.id == c.lastUsed.value
                             ? 'Последний · '
@@ -439,7 +439,7 @@ class ServerPingButton extends StatelessWidget {
             ? '${result.latency} мс'
             : 'Проверить пинг';
         final color = result.error != null
-            ? appColors(context).error
+            ? appColors(context).muted
             : result.latency != null
             ? appColors(context).success
             : appColors(context).accent;

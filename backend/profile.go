@@ -60,6 +60,7 @@ func serverFromProfile(profile object, index int) (ServerConfig, error) {
 	representative.FullProfile = true
 	representative.NodeCount = nodes
 	representative.Profile = data
+	representative.updateProtocolMetadata()
 
 	representative.Outbound = nil
 	if _, err = buildProfileConfig(data, 10808, 10809, "local"); err != nil {

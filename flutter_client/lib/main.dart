@@ -21,6 +21,8 @@ import 'desktop_platform.dart';
 import 'release_notice.dart';
 import 'release_notice_banner.dart';
 part 'features.dart';
+part 'subscription_order.dart';
+part 'settings_sections.dart';
 part 'design.dart';
 part 'overview.dart';
 part 'desktop_workspace.dart';

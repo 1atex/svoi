@@ -163,19 +163,11 @@ class _DesktopLibraryState extends State<DesktopLibrary> {
           ),
           latency: byLatency,
         );
-        final quick = filtered
-            .where(
-              (s) =>
-                  c.favorites.value.contains(s.id) || s.id == c.lastUsed.value,
-            )
-            .toList();
         final knownSources = c.subscriptions.value
             .map((s) => s['id'].toString())
             .toSet();
         final groups =
             <(String, String, List<ServerEntry>, Map<String, dynamic>?)>[
-              if (quick.isNotEmpty)
-                ('quick', 'Избранные и недавние', quick, null),
               for (final source in c.subscriptions.value)
                 (
                   'source:${source['id']}',
@@ -240,7 +232,7 @@ class _DesktopLibraryState extends State<DesktopLibrary> {
                   onChanged: (value) =>
                       setState(() => query = value.trim().toLowerCase()),
                   decoration: InputDecoration(
-                    hintText: 'Поиск по имени, стране или адресу',
+                    hintText: 'Поиск по имени, стране или протоколу',
                     isDense: true,
                     prefixIcon: const SvoiIcon(LucideIcons.search, size: 18),
                     suffixIcon: query.isEmpty
@@ -265,7 +257,7 @@ class _DesktopLibraryState extends State<DesktopLibrary> {
                         onChanged: (value) =>
                             setState(() => query = value.trim().toLowerCase()),
                         decoration: InputDecoration(
-                          hintText: 'Поиск по имени, стране или адресу',
+                          hintText: 'Поиск по имени, стране или протоколу',
                           isDense: true,
                           prefixIcon: const SvoiIcon(
                             LucideIcons.search,
@@ -529,7 +521,7 @@ class DesktopServerRow extends StatelessWidget {
                           ),
                           const SizedBox(height: 3),
                           Text(
-                            active
+                            '${server.protocol} · ${active
                                 ? 'Подключён'
                                 : selected
                                 ? 'Выбран'
@@ -537,7 +529,9 @@ class DesktopServerRow extends StatelessWidget {
                                 ? 'Избранный'
                                 : server.id == c.lastUsed.value
                                 ? 'Последний запуск'
-                                : server.country.label,
+                                : server.country.label}',
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
                             style: TextStyle(
                               fontSize: 11,
                               color: active
@@ -548,7 +542,10 @@ class DesktopServerRow extends StatelessWidget {
                         ],
                       ),
                     ),
-                    ServerPingButton(c: c, server: server),
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 144),
+                      child: ServerPingButton(c: c, server: server),
+                    ),
                     PopupMenuButton<String>(
                       tooltip: 'Действия сервера',
                       icon: SvoiIcon(
@@ -661,8 +658,10 @@ class DesktopConnection extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  pending ? 'Выбран для переключения' : 'Выбранный сервер',
-                  maxLines: 1,
+                  server == null
+                      ? 'Выбранный сервер'
+                      : '${server.protocol} · ${pending ? 'Выбран для переключения' : 'Выбранный сервер'}',
+                  maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     color: appColors(context).muted,
@@ -825,21 +824,26 @@ class DesktopConnection extends StatelessWidget {
                 hint: action,
               ),
             ),
-            Text(
-              view.title,
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 23, fontWeight: FontWeight.w600),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              detail,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 12,
-                color: appColors(context).muted,
-                height: 1.5,
+            if (view.needsStatus) ...[
+              Text(
+                view.title,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 23,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
-            ),
+              const SizedBox(height: 8),
+              Text(
+                detail,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: appColors(context).muted,
+                  height: 1.5,
+                ),
+              ),
+            ],
             if (pending)
               Padding(
                 padding: const EdgeInsets.only(top: 10),

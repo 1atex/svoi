@@ -5,7 +5,7 @@ class MacOSPreferences extends StatelessWidget {
   final SvoiController c;
 
   @override
-  Widget build(BuildContext context) => FeatureBody(
+  Widget build(BuildContext context) => SettingsBody(
     children: [
       const AppearancePanel(),
       ProbeSettingsPanel(c: c),

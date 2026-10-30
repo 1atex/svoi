@@ -900,7 +900,7 @@ class PreferencesPage extends StatelessWidget {
       ? LinuxPreferences(c: c)
       : Platform.isMacOS
       ? MacOSPreferences(c: c)
-      : FeatureBody(
+      : SettingsBody(
           children: [
             const AppearancePanel(),
             Section(

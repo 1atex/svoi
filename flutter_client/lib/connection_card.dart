@@ -130,9 +130,9 @@ class ConnectionCard extends StatelessWidget {
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
-                                  pending
-                                      ? 'Выбран для следующего подключения'
-                                      : 'Нажмите, чтобы сменить сервер',
+                                  selected == null
+                                      ? 'Нажмите, чтобы выбрать сервер'
+                                      : '${selected.protocol} · ${pending ? 'Выбран для следующего подключения' : 'Нажмите, чтобы сменить сервер'}',
                                   style: TextStyle(
                                     fontSize: 11,
                                     color: appColors(context).muted,
@@ -218,21 +218,26 @@ class ConnectionCard extends StatelessWidget {
                 hint: hint,
               ),
             ),
-            Text(
-              view.title,
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 23, fontWeight: FontWeight.w600),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              view.detail,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: appColors(context).muted,
-                fontSize: 12,
-                height: 1.5,
+            if (view.needsStatus) ...[
+              Text(
+                view.title,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 23,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
-            ),
+              const SizedBox(height: 8),
+              Text(
+                view.detail,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: appColors(context).muted,
+                  fontSize: 12,
+                  height: 1.5,
+                ),
+              ),
+            ],
             const SizedBox(height: 18),
             ConnectionPath(view: view),
             const SizedBox(height: 20),
@@ -339,7 +344,7 @@ class QuickServers extends StatelessWidget {
                   style: const TextStyle(fontSize: 13),
                 ),
                 subtitle: Text(
-                  s.id == c.lastUsed.value ? 'Последний запуск' : 'Избранный',
+                  '${s.protocol} · ${s.id == c.lastUsed.value ? 'Последний запуск' : 'Избранный'}',
                   style: TextStyle(
                     fontSize: 11,
                     color: appColors(context).muted,

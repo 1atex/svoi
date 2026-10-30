@@ -13,16 +13,17 @@ import (
 )
 
 type ServerInfo struct {
-	SubscriptionID string `json:"subscriptionId,omitempty"`
-	ID             string `json:"id"`
-	Name           string `json:"name"`
-	Protocol       string `json:"protocol"`
-	Address        string `json:"address"`
-	Port           int    `json:"port"`
-	Network        string `json:"network"`
-	Security       string `json:"security"`
-	FullProfile    bool   `json:"fullProfile,omitempty"`
-	NodeCount      int    `json:"nodeCount,omitempty"`
+	SubscriptionID string   `json:"subscriptionId,omitempty"`
+	ID             string   `json:"id"`
+	Name           string   `json:"name"`
+	Protocol       string   `json:"protocol"`
+	Protocols      []string `json:"protocols,omitempty"`
+	Address        string   `json:"address"`
+	Port           int      `json:"port"`
+	Network        string   `json:"network"`
+	Security       string   `json:"security"`
+	FullProfile    bool     `json:"fullProfile,omitempty"`
+	NodeCount      int      `json:"nodeCount,omitempty"`
 }
 type ServerConfig struct {
 	ServerInfo

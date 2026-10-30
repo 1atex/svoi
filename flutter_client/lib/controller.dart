@@ -21,7 +21,7 @@ class ServerEntry {
       countryCode: json['countryCode'] as String?,
     );
     search =
-        '$name ${country.code ?? ''} ${country.label} ${json['address'] ?? ''} ${json['protocol'] ?? ''}'
+        '$name ${country.code ?? ''} ${country.label} ${json['address'] ?? ''} ${json['protocol'] ?? ''} $protocol'
             .toLowerCase();
   }
   final Map<String, dynamic> json;
@@ -34,11 +34,30 @@ class ServerEntry {
   String get details => json['fullProfile'] == true
       ? '${json['nodeCount']} узлов · маршрутизация из подписки'
       : '${json['address']}:${json['port']} · ${usesQuic ? 'QUIC / UDP' : json['network'] ?? 'tcp'} · ${json['security'] ?? ''}';
-  String get protocol => json['fullProfile'] == true
-      ? 'Профиль'
-      : isHysteria
-      ? 'HYSTERIA2'
-      : (json['protocol'] as String).toUpperCase();
+  static String protocolName(String value) =>
+      switch (value.trim().toLowerCase()) {
+        'hysteria2' || 'hy2' => 'Hysteria2',
+        'hysteria' => 'Hysteria',
+        'shadowsocks' || 'ss' => 'Shadowsocks',
+        'trojan' => 'Trojan',
+        'wireguard' => 'WireGuard',
+        '' => 'Протокол не указан',
+        final name => name.toUpperCase(),
+      };
+
+  String get protocol {
+    if (json['fullProfile'] != true) {
+      return protocolName(json['protocol']?.toString() ?? '');
+    }
+    final values = json['protocols'];
+    if (values is! List || values.isEmpty) return 'Профиль Xray';
+    final names = values
+        .whereType<String>()
+        .map(protocolName)
+        .toSet()
+        .join(' / ');
+    return names.isEmpty ? 'Профиль Xray' : '$names · профиль';
+  }
 }
 
 class ProbeState {
@@ -201,6 +220,7 @@ class SvoiController {
   final lastUsed = ValueNotifier<String>('');
   final probeRevision = ValueNotifier<int>(0);
   Map<String, dynamic> _libraries = {};
+  List<String> _subscriptionOrder = [];
   final message = ValueNotifier<String>('');
   final probeProgress = ValueNotifier<String>('');
   final probing = ValueNotifier<bool>(false);
@@ -269,6 +289,7 @@ class SvoiController {
       cancelProbes();
       probes.clear();
       final saved = _libraries[group['id']?.toString()] as Map? ?? {};
+      _subscriptionOrder = List<String>.from(saved['subscriptionOrder'] ?? []);
       favorites.value = Set<String>.from(saved['favorites'] ?? []);
       lastUsed.value = saved['lastUsed']?.toString() ?? '';
       final history = saved['probes'] as Map? ?? {};
@@ -295,6 +316,7 @@ class SvoiController {
     subscriptions.value = (group['subscriptions'] as List? ?? [])
         .map((s) => Map<String, dynamic>.from(s))
         .toList(growable: false);
+    _sortSubscriptions();
     final ids = servers.value.map((s) => s.id).toSet();
     if (!ids.contains(selected.value)) {
       selected.value = servers.value.firstOrNull?.id ?? '';
@@ -339,6 +361,37 @@ class SvoiController {
     await saveSession();
   }
 
+  void _sortSubscriptions() {
+    final ids = subscriptions.value.map((s) => s['id'].toString()).toList();
+    _subscriptionOrder = [
+      ..._subscriptionOrder.where(ids.contains),
+      ...ids.where((id) => !_subscriptionOrder.contains(id)),
+    ];
+    subscriptions.value = [...subscriptions.value]
+      ..sort(
+        (a, b) => _subscriptionOrder
+            .indexOf(a['id'].toString())
+            .compareTo(_subscriptionOrder.indexOf(b['id'].toString())),
+      );
+  }
+
+  Future<void> moveSubscription(
+    String sourceId,
+    String targetId, {
+    bool after = false,
+  }) async {
+    if (sourceId == targetId ||
+        !_subscriptionOrder.contains(sourceId) ||
+        !_subscriptionOrder.contains(targetId)) {
+      return;
+    }
+    final order = [..._subscriptionOrder]..remove(sourceId);
+    order.insert(order.indexOf(targetId) + (after ? 1 : 0), sourceId);
+    _subscriptionOrder = order;
+    _sortSubscriptions();
+    await _saveLibrary();
+  }
+
   Future<void> toggleFavorite(String id) async {
     final next = {...favorites.value};
     if (!next.add(id)) next.remove(id);
@@ -348,6 +401,7 @@ class SvoiController {
 
   Future<void> _saveLibrary() async {
     _libraries[group.value['id']?.toString() ?? 'default'] = {
+      'subscriptionOrder': _subscriptionOrder,
       'favorites': favorites.value.toList(),
       'lastUsed': lastUsed.value,
       'probes': {
