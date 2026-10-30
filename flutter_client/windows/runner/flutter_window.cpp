@@ -251,6 +251,22 @@ bool FlutterWindow::OnCreate() {
       const auto opened = reinterpret_cast<INT_PTR>(ShellExecuteW(GetHandle(), L"open", wide.c_str(), nullptr, nullptr, SW_SHOWNORMAL));
       if (opened > 32) result->Success();
       else result->Error("url", "Не удалось открыть браузер");
+    } else if (call.method_name() == "openTelegramProxy") {
+      const auto* url = call.arguments() ? std::get_if<std::string>(call.arguments()) : nullptr;
+      if (!url || !IsLocalTelegramProxyUrl(*url)) {
+        result->Error("url", "Недопустимая ссылка Telegram-прокси");
+        return;
+      }
+      const auto wide = WideText(*url);
+      SHELLEXECUTEINFOW launch{};
+      launch.cbSize = sizeof(launch);
+      launch.fMask = SEE_MASK_FLAG_NO_UI;
+      launch.hwnd = GetHandle();
+      launch.lpVerb = L"open";
+      launch.lpFile = wide.c_str();
+      launch.nShow = SW_SHOWNORMAL;
+      if (ShellExecuteExW(&launch)) result->Success();
+      else result->Error("telegram_launch", "Не удалось открыть Telegram Desktop");
     } else if (call.method_name() == "openCommunity") {
       wchar_t association[1024]{};
       DWORD length = static_cast<DWORD>(std::size(association));

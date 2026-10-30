@@ -41,6 +41,15 @@ class DemoBackend extends Backend {
   }) async {
     if (path == 'groups') return {'token': 'demo', 'group': group};
     if (path == 'me') return group;
+    if (path == 'tg-proxy') {
+      return {
+        'installed': false,
+        'running': false,
+        'port': 1443,
+        'version': '1.11.2',
+        'logs': <String>[],
+      };
+    }
     if (path == 'settings') {
       if (method == 'PUT' && body is Map) {
         demoSettings.addAll(Map<String, dynamic>.from(body));

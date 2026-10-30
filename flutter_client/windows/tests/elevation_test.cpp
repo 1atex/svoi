@@ -16,6 +16,10 @@ int wmain() {
   };
   expect(!WantsAdminLaunch(executable), "portable without launch.ini must remain unelevated");
   expect(IsExternalHttpsUrl("https://t.me/Support_bot"), "public HTTPS link");
+  expect(IsLocalTelegramProxyUrl("tg://proxy?server=127.0.0.1&port=1443&secret=dd0123456789abcdef0123456789abcdef"), "local Telegram proxy");
+  for (const auto* url : {"tg://proxy?server=evil.test&port=1443&secret=dd0123456789abcdef0123456789abcdef", "tg://proxy?server=127.0.0.1&port=99999&secret=dd0123456789abcdef0123456789abcdef", "tg://proxy?server=127.0.0.1&port=1443&secret=dd0123456789abcdef0123456789abcdef&x=1", "https://t.me/proxy"}) {
+    expect(!IsLocalTelegramProxyUrl(url), "reject nonlocal or malformed Telegram proxy link");
+  }
   for (const auto* url : {"file:///C:/Windows", "https://", "https://user:pass@host", "https://host\\bad", "https://host\n", "javascript:alert(1)"}) {
     expect(!IsExternalHttpsUrl(url), "reject non-public external link");
   }

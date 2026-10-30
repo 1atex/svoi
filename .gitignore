@@ -7,6 +7,7 @@
 /core/*.dll
 /core/*.dat
 /core/*.zip
+/core/tg-ws-proxy/
 /SVOI-*.zip
 /.ui-test/
 /.ui-preview/

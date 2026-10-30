@@ -27,7 +27,7 @@ import (
 )
 
 var appVersion = "0.4.0-prebeta.3"
-var nativeVersion = "0.7.0-rc.3"
+var nativeVersion = "0.7.0-rc.4"
 
 //go:embed web/*
 var assets embed.FS
@@ -93,6 +93,7 @@ type App struct {
 	settings              LocalSettings
 	updates               *Updater
 	zapret                *Zapret
+	telegramProxy         *tgProxy
 	networkOp             sync.Mutex
 	handoff               vpnHandoff
 	dnsHost               dnsHost
@@ -276,7 +277,7 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 	_ = json.NewEncoder(w).Encode(v)
 }
 func (a *App) dispatch(w http.ResponseWriter, r *http.Request) error {
-	if r.URL.Path == "/api/settings" || r.URL.Path == "/api/startup" || strings.HasPrefix(r.URL.Path, "/api/tools/") || strings.HasPrefix(r.URL.Path, "/api/updates") || strings.HasPrefix(r.URL.Path, "/api/zapret") || strings.HasPrefix(r.URL.Path, "/api/dns") {
+	if r.URL.Path == "/api/settings" || r.URL.Path == "/api/startup" || strings.HasPrefix(r.URL.Path, "/api/tools/") || strings.HasPrefix(r.URL.Path, "/api/updates") || strings.HasPrefix(r.URL.Path, "/api/zapret") || strings.HasPrefix(r.URL.Path, "/api/tg-proxy") || strings.HasPrefix(r.URL.Path, "/api/dns") {
 		return a.desktopAPI(w, r)
 	}
 	if strings.HasPrefix(r.URL.Path, "/api/transfer/") {
@@ -807,6 +808,8 @@ func run() error {
 		}
 		defer a.engine.Stop()
 		if runtime.GOOS == "windows" {
+			a.telegramProxy = newTGProxy(filepath.Join(filepath.Dir(exe), "core", "tg-ws-proxy", "tg-ws-proxy.exe"), filepath.Join(filepath.Dir(*data), "tg-proxy", "config.json"))
+			defer a.telegramProxy.Stop()
 			a.zapret = newZapret(a)
 			defer a.zapret.Stop()
 			if *native && *startup {

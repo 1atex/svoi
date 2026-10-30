@@ -2,11 +2,11 @@ part of 'main.dart';
 
 const clientVersion = String.fromEnvironment(
   'SVOI_VERSION',
-  defaultValue: '0.7.0-rc.3',
+  defaultValue: '0.7.0-rc.4',
 );
 
-String get clientDisplayVersion => clientVersion == '0.7.0-rc.3'
-    ? '0.7.0 Beta Release Candidate 3'
+String get clientDisplayVersion => clientVersion == '0.7.0-rc.4'
+    ? '0.7.0 Beta Release Candidate 4'
     : clientVersion;
 
 class ConfigPane extends StatelessWidget {

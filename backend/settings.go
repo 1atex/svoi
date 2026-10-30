@@ -171,6 +171,12 @@ func (a *App) desktopAPI(w http.ResponseWriter, r *http.Request) error {
 		}
 		return a.zapret.API(w, r, a.localSettings().ZapretFolder)
 	}
+	if strings.HasPrefix(r.URL.Path, "/api/tg-proxy") {
+		if a.telegramProxy == nil {
+			return fail(503, "Telegram-прокси доступен в приложении Windows")
+		}
+		return a.telegramProxy.API(w, r)
+	}
 	if strings.HasPrefix(r.URL.Path, "/api/dns") {
 		return a.dnsAPI(w, r)
 	}

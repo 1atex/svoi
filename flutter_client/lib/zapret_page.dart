@@ -15,6 +15,31 @@ class _ZapretPageState extends State<ZapretPage> {
   @override
   Widget build(BuildContext context) => FeatureBody(
     children: [
+      Align(
+        alignment: Alignment.centerLeft,
+        child: OutlinedButton.icon(
+          onPressed: () => showDialog<void>(
+            context: context,
+            builder: (dialog) => AlertDialog(
+              contentPadding: const EdgeInsets.all(16),
+              content: SizedBox(
+                width: 680,
+                child: SingleChildScrollView(
+                  child: TelegramProxyPanel(c: widget.c),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialog),
+                  child: const Text('Закрыть'),
+                ),
+              ],
+            ),
+          ),
+          icon: const SvoiIcon(Icons.telegram, size: 18),
+          label: const Text('Telegram-прокси'),
+        ),
+      ),
       RemotePanel(
         c: widget.c,
         path: 'zapret',

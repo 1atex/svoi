@@ -1,5 +1,5 @@
 param(
-    [string]$Version = '0.7.0-rc.3',
+    [string]$Version = '0.7.0-rc.4',
     [string]$FlutterSdk = '',
     [string]$CrtDirectory = '',
     [switch]$SkipChecks
@@ -27,11 +27,26 @@ Push-Location $root
 try {
     python scripts/prepare-optional-cores.py --target windows-x64 --output core
     if ($LASTEXITCODE) { throw 'Optional core verification failed' }
+    python scripts/build-tg-proxy.py
+    if ($LASTEXITCODE) { throw 'Telegram proxy build or lifecycle test failed' }
+    if (!$SkipChecks) {
+        $env:SVOI_TEST_TG_PROXY = Join-Path $root 'core/tg-ws-proxy/tg-ws-proxy.exe'
+        try {
+            & $go test -tags native_core ./backend -run TestTGProxy -count=1
+            if ($LASTEXITCODE) { throw 'Telegram proxy integration tests failed' }
+        } finally { Remove-Item Env:SVOI_TEST_TG_PROXY -ErrorAction SilentlyContinue }
+    }
     New-Item -ItemType Directory -Force dist | Out-Null
     & $go build -tags native_core -trimpath -ldflags "-H windowsgui -s -w -X main.nativeVersion=$Version" -o dist/svoi-backend.exe ./backend
     if ($LASTEXITCODE) { throw 'Go backend build failed' }
 
     New-Item -ItemType Directory -Force dist/core | Out-Null
+    if (Test-Path -LiteralPath dist/core/tg-ws-proxy) {
+        $tgTarget = [IO.Path]::GetFullPath((Join-Path $root 'dist/core/tg-ws-proxy'))
+        if (!$tgTarget.StartsWith([IO.Path]::GetFullPath((Join-Path $root 'dist/core')) + [IO.Path]::DirectorySeparatorChar)) { throw 'Invalid proxy directory' }
+        Remove-Item -LiteralPath $tgTarget -Recurse -Force
+    }
+    Copy-Item -LiteralPath core/tg-ws-proxy -Destination dist/core -Recurse
     foreach ($name in @('xray.exe','wintun.dll','geoip.dat','geosite.dat','LICENSE','LICENSE-Wintun','SOURCE.txt','sing-box.exe','libcronet.dll','sing-box-LICENSE.txt','sing-box-SOURCE.txt','mihomo.exe','mihomo-LICENSE.txt','mihomo-SOURCE.txt')) {
         Copy-Item -LiteralPath "core/$name" -Destination dist/core
     }
@@ -64,6 +79,7 @@ try {
     }
     if (Test-Path -LiteralPath "$stage/svoi_flutter.exe") { Remove-Item -LiteralPath "$stage/svoi_flutter.exe" }
     Copy-Item -LiteralPath dist/svoi-backend.exe -Destination "$stage/backend"
+    Copy-Item -LiteralPath dist/core/tg-ws-proxy -Destination "$stage/backend/core" -Recurse
     foreach ($name in @('xray.exe','wintun.dll','geoip.dat','geosite.dat','LICENSE','LICENSE-Wintun','SOURCE.txt','sing-box.exe','libcronet.dll','sing-box-LICENSE.txt','sing-box-SOURCE.txt','mihomo.exe','mihomo-LICENSE.txt','mihomo-SOURCE.txt')) {
         Copy-Item -LiteralPath "dist/core/$name" -Destination "$stage/backend/core"
     }
@@ -87,7 +103,4 @@ try {
     $setupHash = (Get-FileHash -LiteralPath $setup -Algorithm SHA256).Hash.ToLower()
     "$setupHash  $([IO.Path]::GetFileName($setup))" | Set-Content -LiteralPath "$setup.sha256" -Encoding ascii
     Write-Output "SETUP=$setup"
-    $legacySetup = Join-Path $release "SVOI-Flutter-$Version-windows-x64-setup.exe"
-    Copy-Item -LiteralPath $setup -Destination $legacySetup
-    "$setupHash  $([IO.Path]::GetFileName($legacySetup))" | Set-Content -LiteralPath "$legacySetup.sha256" -Encoding ascii
 } finally { Pop-Location }

@@ -35,6 +35,7 @@ part 'connection_view.dart';
 part 'connection_card.dart';
 part 'servers.dart';
 part 'zapret_page.dart';
+part 'tg_proxy_panel.dart';
 part 'tray.dart';
 part 'startup_panel.dart';
 part 'network_tools.dart';

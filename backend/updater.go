@@ -384,6 +384,11 @@ func (u *Updater) API(w http.ResponseWriter, r *http.Request) error {
 		if u.app.zapret != nil {
 			u.app.zapret.Stop()
 		}
+		if u.app.telegramProxy != nil {
+			if err := u.app.telegramProxy.Stop(); err != nil {
+				return err
+			}
+		}
 		if err := launchUpdateInstaller(u.path, strings.TrimPrefix(u.asset.Digest, "sha256:")); err != nil {
 			return err
 		}
