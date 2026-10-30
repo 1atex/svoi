@@ -11,6 +11,7 @@ struct _MyApplication {
   FlMethodChannel* channel;
   AppIndicator* indicator;
   GtkWidget* menu;
+  GPtrArray* closing_widgets;
   gboolean closing;
 };
 G_DEFINE_TYPE(MyApplication, my_application, GTK_TYPE_APPLICATION)
@@ -72,12 +73,19 @@ static GtkWidget* make_menu(MyApplication* self, FlValue* items) {
 }
 static gboolean finish_engine_shutdown(gpointer data) {
   auto self = MY_APPLICATION(data);
+  g_clear_pointer(&self->closing_widgets, g_ptr_array_unref);
   g_application_release(G_APPLICATION(self));
   g_object_unref(self);
   return G_SOURCE_REMOVE;
 }
 static void engine_finalized(gpointer data, GObject*) {
-  g_main_context_invoke(nullptr, finish_engine_shutdown, data);
+  g_idle_add(finish_engine_shutdown, data);
+}
+static void retain_closing_widget(GtkWidget* widget, gpointer data) {
+  auto widgets = static_cast<GPtrArray*>(data);
+  g_ptr_array_add(widgets, g_object_ref(widget));
+  if (GTK_IS_CONTAINER(widget))
+    gtk_container_foreach(GTK_CONTAINER(widget), retain_closing_widget, widgets);
 }
 static gboolean close_window(gpointer data) {
   auto self = MY_APPLICATION(data);
@@ -96,6 +104,10 @@ static gboolean close_window(gpointer data) {
     g_application_hold(G_APPLICATION(self));
     g_object_weak_ref(G_OBJECT(fl_view_get_engine(view)), engine_finalized,
                       g_object_ref(self));
+    // GTK disposes children before asynchronous engine cleanup completes.
+    // Keep renderers allocated until the raster thread has stopped using them.
+    self->closing_widgets = g_ptr_array_new_with_free_func(g_object_unref);
+    retain_closing_widget(GTK_WIDGET(view), self->closing_widgets);
     gtk_widget_destroy(GTK_WIDGET(self->window));
   }
   return G_SOURCE_REMOVE;
