@@ -28,7 +28,7 @@ final class InterfaceTests: XCTestCase {
     XCTAssertGreaterThanOrEqual(power.frame.height, 44)
     capture("01-connection")
     power.tap()
-    XCTAssertTrue(app.staticTexts["VPN включён"].waitForExistence(timeout: 5))
+    XCTAssertEqual(power.label, "Отключить VPN")
     capture("02-connected")
     app.buttons["selected-server"].tap()
     let next = app.buttons["server-nl"]
@@ -41,13 +41,14 @@ final class InterfaceTests: XCTestCase {
     app.buttons["vpn-toggle"].tap()
     XCTAssertEqual(app.buttons["vpn-toggle"].label, "Отключить VPN")
     app.buttons["vpn-toggle"].tap()
-    XCTAssertTrue(app.staticTexts["VPN выключен"].waitForExistence(timeout: 5))
+    XCTAssertEqual(power.label, "Подключить VPN")
     XCTAssertEqual(app.tabBars.buttons.count, 3)
     app.tabBars.buttons["Настройки"].tap()
     app.buttons["settings-profile"].tap()
     XCTAssertTrue(app.staticTexts["Свои — рядом."].waitForExistence(timeout: 5))
     capture("04-profile")
     app.navigationBars.buttons.element(boundBy: 0).tap()
+    app.buttons["settings-appearance"].tap()
     for _ in 0..<4 where !app.buttons["Тема Лунная"].isHittable { app.swipeUp() }
     XCTAssertTrue(app.buttons["Тема Лунная"].waitForExistence(timeout: 5))
     app.buttons["Тема Лунная"].tap()
@@ -66,17 +67,35 @@ final class InterfaceTests: XCTestCase {
     capture("18-collapsed-subscription")
     toggle.tap()
     XCTAssertTrue(app.buttons["server-fi"].waitForExistence(timeout: 5))
+    app.buttons["subscription-actions-demo"].tap()
     app.buttons["subscription-delete-demo"].tap()
     XCTAssertTrue(app.alerts.buttons["Удалить подписку"].waitForExistence(timeout: 5))
     capture("20-delete-confirmation")
     app.alerts.buttons["Отмена"].tap()
     XCTAssertTrue(app.buttons["server-fi"].exists)
+    app.buttons["subscription-actions-demo"].tap()
     app.buttons["subscription-delete-demo"].tap()
     app.alerts.buttons["Удалить подписку"].tap()
     let welcome = app.buttons["welcome-import"]
     for _ in 0..<4 where !welcome.isHittable { app.swipeDown() }
     XCTAssertTrue(welcome.waitForExistence(timeout: 5))
     capture("19-removed-subscription")
+  }
+
+  func testProtocolSearchAndSelection() {
+    let app = launch(["--reset-collapse"])
+    app.buttons["selected-server"].tap()
+    let search = app.textFields["server-search"]
+    XCTAssertTrue(search.waitForExistence(timeout: 5))
+    search.tap()
+    search.typeText("Hysteria2")
+    XCTAssertTrue(app.buttons["server-de"].waitForExistence(timeout: 5))
+    XCTAssertTrue(app.buttons["server-nl"].exists)
+    XCTAssertFalse(app.buttons["server-fi"].exists)
+    app.buttons["server-de"].tap()
+    XCTAssertTrue(app.buttons["selected-server"].waitForExistence(timeout: 5))
+    XCTAssertTrue(app.buttons["selected-server"].label.contains("Hysteria2"))
+    capture("protocol-selected-hysteria2")
   }
 
   func testConnectionDetailsAreOpenedOnDemand() {
@@ -97,6 +116,7 @@ final class InterfaceTests: XCTestCase {
   func testAMOLEDAndTools() {
     let app = launch()
     app.tabBars.buttons["Настройки"].tap()
+    app.buttons["settings-appearance"].tap()
     let amoled = app.segmentedControls["theme-mode"].buttons["AMOLED"]
     XCTAssertTrue(amoled.waitForExistence(timeout: 5))
     amoled.tap()
@@ -105,6 +125,7 @@ final class InterfaceTests: XCTestCase {
     app.terminate()
     let restored = launch()
     restored.tabBars.buttons["Настройки"].tap()
+    restored.buttons["settings-appearance"].tap()
     XCTAssertTrue(restored.segmentedControls["theme-mode"].buttons["AMOLED"].isSelected)
     restored.tabBars.buttons["Инструменты"].tap()
     XCTAssertTrue(restored.buttons["tool-speed"].waitForExistence(timeout: 5))
@@ -126,6 +147,7 @@ final class InterfaceTests: XCTestCase {
   func testInterfaceIconStylesPersist() {
     let app = launch()
     app.tabBars.buttons["Настройки"].tap()
+    app.buttons["settings-appearance"].tap()
     let choice = app.segmentedControls["icon-style"].buttons["Двухцветные"]
     XCTAssertTrue(choice.waitForExistence(timeout: 5))
     choice.tap()
@@ -135,6 +157,7 @@ final class InterfaceTests: XCTestCase {
     app.terminate()
     let restored = launch()
     restored.tabBars.buttons["Настройки"].tap()
+    restored.buttons["settings-appearance"].tap()
     XCTAssertTrue(restored.segmentedControls["icon-style"].buttons["Двухцветные"].isSelected)
     restored.segmentedControls["icon-style"].buttons["Контурные"].tap()
     restored.tabBars.buttons["Подключение"].tap()
@@ -170,6 +193,7 @@ final class InterfaceTests: XCTestCase {
     XCTAssertTrue(search.isHittable)
     capture("22-accessibility-subscriptions")
     app.tabBars.buttons["Настройки"].tap()
+    app.buttons["settings-appearance"].tap()
     for _ in 0..<4 where !app.buttons["Тема SVOI"].isHittable { app.swipeUp() }
     XCTAssertTrue(app.buttons["Тема SVOI"].waitForExistence(timeout: 5))
     capture("09-accessibility-settings")

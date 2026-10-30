@@ -16,7 +16,7 @@ extension SvoiModel {
     }
     servers = [
       SvoiServer(["id": "fi", "name": "Finland", "protocol": "vless", "network": "tcp", "security": "reality", "subscriptionId": "demo"]),
-      SvoiServer(["id": "nl", "name": "NL Автоматический", "protocol": "vless", "fullProfile": true, "subscriptionId": "demo"]),
+      SvoiServer(["id": "nl", "name": "NL Автоматический", "protocol": "vless", "protocols": ["vless", "hysteria2"], "fullProfile": true, "subscriptionId": "demo"]),
       SvoiServer(["id": "de", "name": "Germany", "protocol": "hysteria2", "network": "udp", "security": "tls", "subscriptionId": "demo"]),
       SvoiServer(["id": "fr", "name": "France", "protocol": "vless", "network": "grpc", "security": "reality", "subscriptionId": "demo"])
     ]

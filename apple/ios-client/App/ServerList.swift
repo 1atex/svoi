@@ -1,4 +1,5 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct ServerList: View {
   @Environment(\.svoiColors) private var colors
@@ -11,6 +12,8 @@ struct ServerList: View {
   @Environment(\.svoiAccent) private var accent
   @Environment(\.sizeCategory) private var sizeCategory
   @State private var search = ""
+  @State private var draggingSource: String?
+  @State private var batchSourceID: String?
   @State private var byLatency = false
   @State private var config: String?
   @State private var showingConfig = false
@@ -37,7 +40,7 @@ struct ServerList: View {
             subscriptionHeading.id("subscription-list")
             HStack(spacing: 10) {
               SvoiGlyph("magnifyingglass", size: 18).foregroundStyle(SvoiPalette.muted)
-              TextField("Найти сервер", text: $search).textInputAutocapitalization(.never).autocorrectionDisabled()
+              TextField("Сервер или протокол", text: $search).textInputAutocapitalization(.never).autocorrectionDisabled()
                 .accessibilityIdentifier("server-search")
               if !search.isEmpty { SvoiIconButton(symbol: "xmark.circle.fill", label: "Очистить поиск") { search = "" } }
             }.padding(.horizontal, 12).frame(minHeight: 44)
@@ -66,6 +69,7 @@ struct ServerList: View {
                 let servers = groups[source.id] ?? []
                 if search.isEmpty || !servers.isEmpty {
                   sourceHeader(source).padding(.top, 6)
+                    .onDrop(of: [UTType.text], delegate: SubscriptionOrderDrop(model: model, target: source.id, dragging: $draggingSource))
                   if !collapsed.contains(source.id) || !search.isEmpty {
                     ForEach(servers) { row($0) }
                   }
@@ -96,7 +100,7 @@ struct ServerList: View {
       .onChange(of: collapsed) { value in
         UserDefaults.standard.set(value.sorted(), forKey: "collapsedSubscriptions:\(model.profileID)")
       }
-      .onChange(of: model.profileID) { _ in cancelBatch(); restoreCollapsed(); removing = nil }
+      .onChange(of: model.profileID) { _ in cancelBatch(); restoreCollapsed(); removing = nil; draggingSource = nil }
       .onChange(of: vpn.active) { if $0 { cancelBatch() } }
       .onChange(of: model.preparingVPN) { if $0 { cancelBatch() } }
       .alert("Удалить подписку?", isPresented: $confirmingRemoval) {
@@ -177,16 +181,22 @@ struct ServerList: View {
               .lineLimit(sizeCategory.isAccessibilityCategory ? nil : 2)
             Text(([server.kind, server.detail].filter { !$0.isEmpty }).joined(separator: " · "))
               .font(.caption).foregroundStyle(SvoiPalette.muted)
-              .multilineTextAlignment(.leading).lineLimit(sizeCategory.isAccessibilityCategory ? nil : 1)
+              .multilineTextAlignment(.leading).lineLimit(sizeCategory.isAccessibilityCategory ? nil : 2)
           }.frame(maxWidth: .infinity, alignment: .leading)
           if selected { SvoiGlyph("checkmark.circle.fill", size: 18).foregroundStyle(accent) }
-          if !sizeCategory.isAccessibilityCategory, let latency = model.latencies[server.id] {
-            Text(latency).font(.caption2).monospacedDigit().foregroundStyle(SvoiPalette.muted)
-          }
-          if model.checking.contains(server.id) { ProgressView().controlSize(.small) }
         }.padding(.leading, 12).padding(.vertical, 12).frame(minHeight: 66).contentShape(Rectangle())
       }.buttonStyle(SvoiPressStyle()).accessibilityIdentifier("server-\(server.id)")
         .accessibilityAddTraits(selected ? .isSelected : [])
+      Button { Task { await model.probe(server) } } label: {
+        Group {
+          if model.checking.contains(server.id) { ProgressView().controlSize(.small) }
+          else if let result = model.latencies[server.id] { Text(result).font(.caption).monospacedDigit() }
+          else { SvoiGlyph("waveform.path.ecg", size: 18) }
+        }.frame(minWidth: 44, minHeight: 44)
+      }.buttonStyle(SvoiPressStyle()).foregroundStyle(SvoiPalette.muted)
+        .disabled(model.checking.contains(server.id) || checkingAll || vpn.busy || vpn.active || model.preparingVPN)
+        .accessibilityLabel("Проверить задержку \(displayServerName(server.name))")
+        .accessibilityIdentifier("server-probe-\(server.id)")
       Menu {
         Button { showConfig(server) } label: { SvoiLabel("Конфигурация", systemImage: "curlybraces") }
         Button { Task { await model.probe(server) } } label: { SvoiLabel("Проверить задержку", systemImage: "waveform.path.ecg") }
@@ -202,9 +212,12 @@ struct ServerList: View {
     VStack(alignment: .leading, spacing: 8) {
       Group {
         if sizeCategory.isAccessibilityCategory {
-          VStack(alignment: .leading, spacing: 4) { sourceToggle(source); sourceActions(source) }
+          VStack(alignment: .leading, spacing: 4) { HStack { reorderHandle(source); sourceToggle(source) }; sourceActions(source) }
         } else {
-          HStack(spacing: 0) { sourceToggle(source); sourceActions(source) }
+          VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: 0) { reorderHandle(source); sourceToggle(source) }
+            HStack { Spacer(minLength: 0); sourceActions(source) }
+          }
         }
       }
       if !source.statusText.isEmpty { Text(source.statusText).font(.caption2).foregroundStyle(SvoiPalette.muted) }
@@ -240,24 +253,43 @@ struct ServerList: View {
       .accessibilityValue(collapsed.contains(source.id) ? "Свёрнута" : "Развёрнута")
   }
 
+  private func reorderHandle(_ source: SvoiSource) -> some View {
+    SvoiGlyph("line.3.horizontal", size: 18).foregroundStyle(SvoiPalette.muted)
+      .frame(width: 44, height: 44).contentShape(Rectangle())
+      .onDrag { draggingSource = source.id; return NSItemProvider(object: source.id as NSString) }
+      .accessibilityLabel("Перетащить подписку \(source.name)")
+  }
+
   private func sourceActions(_ source: SvoiSource) -> some View {
     HStack(spacing: 0) {
+      Button {
+        if checkingAll && batchSourceID == source.id { cancelBatch() }
+        else { startBatch(sourceID: source.id) }
+      } label: {
+        SvoiLabel(checkingAll && batchSourceID == source.id ? "Стоп" : "Пинг", systemImage: checkingAll && batchSourceID == source.id ? "stop.circle" : "waveform.path.ecg")
+          .font(.footnote).frame(minHeight: 44).padding(.horizontal, 8)
+      }.disabled(vpn.busy || vpn.active || model.preparingVPN || (checkingAll && batchSourceID != source.id) || !model.servers.contains(where: { $0.subscriptionID == source.id }))
+        .accessibilityLabel("Проверить задержку подписки \(source.name)")
+        .accessibilityIdentifier("subscription-probe-\(source.id)")
       if source.remote {
         SvoiIconButton(symbol: "arrow.clockwise", label: "Обновить \(source.name)") {
           Task { await model.refreshSubscription(source) }
         }.disabled(model.working)
       }
-      if let text = source.metadata["supportUrl"] as? String, let url = URL(string: text),
-         ["https", "tg"].contains(url.scheme?.lowercased() ?? "") {
-        Link(destination: url) {
-          SvoiGlyph("paperplane", size: 18).frame(width: 44, height: 44)
-        }.accessibilityLabel("Поддержка \(source.name)")
-      }
-      SvoiIconButton(symbol: "trash", label: "Удалить подписку \(source.name)") {
-        removing = source
-        confirmingRemoval = true
-      }.disabled(model.working || vpn.busy || model.preparingVPN)
-        .accessibilityIdentifier("subscription-delete-\(source.id)")
+      Menu {
+        if let i = model.sources.firstIndex(where: { $0.id == source.id }) {
+          Button("Выше") { model.moveSubscription(source.id, before: model.sources[i - 1].id) }.disabled(i == 0)
+          Button("Ниже") { model.moveSubscription(source.id, before: model.sources[i + 1].id, after: true) }.disabled(i + 1 == model.sources.count)
+        }
+        if let text = source.metadata["supportUrl"] as? String, let url = URL(string: text), ["https", "tg"].contains(url.scheme?.lowercased() ?? "") {
+          Link("Поддержка", destination: url)
+        }
+        Button("Удалить подписку", role: .destructive) { removing = source; confirmingRemoval = true }
+          .disabled(model.working || vpn.busy || model.preparingVPN)
+          .accessibilityIdentifier("subscription-delete-\(source.id)")
+      } label: { SvoiGlyph("ellipsis", size: 18).frame(width: 44, height: 44) }
+        .accessibilityLabel("Действия с подпиской \(source.name)")
+        .accessibilityIdentifier("subscription-actions-\(source.id)")
     }
   }
 
@@ -274,15 +306,18 @@ struct ServerList: View {
     }
   }
 
-  private func startBatch() {
-    let servers = filtered
+  private func startBatch(sourceID: String? = nil) {
+    cancelBatch()
+    let servers = sourceID.map { id in model.servers.filter { $0.subscriptionID == id } } ?? filtered
+    guard !servers.isEmpty, !vpn.busy, !vpn.active, !model.preparingVPN else { return }
+    batchSourceID = sourceID
     checked = 0
     batchCount = servers.count
     checkingAll = true
     let generation = UUID()
     batchGeneration = generation
     batch = Task {
-      defer { if batchGeneration == generation { checkingAll = false; batch = nil } }
+      defer { if batchGeneration == generation { checkingAll = false; batch = nil; batchSourceID = nil } }
       for index in stride(from: 0, to: servers.count, by: 2) {
         if Task.isCancelled || batchGeneration != generation { break }
         async let first: Void = model.probe(servers[index])
@@ -302,6 +337,26 @@ struct ServerList: View {
     batch?.cancel()
     batch = nil
     checkingAll = false
+    batchSourceID = nil
     model.cancelProbes()
+  }
+}
+
+private struct SubscriptionOrderDrop: DropDelegate {
+  let model: SvoiModel
+  let target: String
+  @Binding var dragging: String?
+
+  func validateDrop(info: DropInfo) -> Bool { dragging != nil && dragging != target }
+  func dropUpdated(info: DropInfo) -> DropProposal? { DropProposal(operation: .move) }
+  func performDrop(info: DropInfo) -> Bool {
+    guard let id = dragging else { return false }
+    Task { @MainActor in
+      guard let sourceIndex = model.sources.firstIndex(where: { $0.id == id }),
+            let targetIndex = model.sources.firstIndex(where: { $0.id == target }) else { return }
+      model.moveSubscription(id, before: target, after: sourceIndex < targetIndex)
+    }
+    dragging = nil
+    return true
   }
 }

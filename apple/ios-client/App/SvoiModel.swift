@@ -14,11 +14,26 @@ struct SvoiServer: Identifiable {
   let kind: String
   let detail: String
   let subscriptionID: String
+  static func protocolName(_ value: String) -> String {
+    switch value.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() {
+    case "hysteria2", "hy2": return "Hysteria2"
+    case "hysteria": return "Hysteria"
+    case "shadowsocks", "ss": return "Shadowsocks"
+    case "trojan": return "Trojan"
+    case "wireguard": return "WireGuard"
+    case "": return "Протокол не указан"
+    case let name: return name.uppercased()
+    }
+  }
   init(_ value: [String: Any]) {
     id = value["id"] as? String ?? ""
     name = value["name"] as? String ?? "Сервер"
-    kind = (value["protocol"] as? String ?? "Xray").uppercased()
-    detail = value["fullProfile"] as? Bool == true ? "Профиль Xray · маршрутизация из подписки" : [value["network"] as? String, value["security"] as? String].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " · ")
+    let fullProfile = value["fullProfile"] as? Bool == true
+    let protocols = (value["protocols"] as? [String] ?? []).map(Self.protocolName)
+    kind = fullProfile
+      ? (protocols.isEmpty ? "Профиль Xray" : protocols.joined(separator: " / ") + " · профиль")
+      : Self.protocolName(value["protocol"] as? String ?? "")
+    detail = fullProfile ? "Маршрутизация из подписки" : [value["network"] as? String, value["security"] as? String].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " · ")
     subscriptionID = value["subscriptionId"] as? String ?? ""
   }
 }
@@ -167,7 +182,28 @@ final class SvoiModel: ObservableObject {
     group = current
     servers = (current["servers"] as? [[String: Any]] ?? []).map(SvoiServer.init)
     sources = (current["subscriptions"] as? [[String: Any]] ?? []).map(SvoiSource.init)
+    restoreSubscriptionOrder()
     if selected == nil { selectedID = servers.first?.id ?? "" }
+  }
+
+  private func restoreSubscriptionOrder() {
+    let key = "subscriptionOrder:\(profileID)"
+    let saved = UserDefaults.standard.stringArray(forKey: key) ?? []
+    let ids = sources.map(\.id)
+    let order = saved.filter { ids.contains($0) } + ids.filter { !saved.contains($0) }
+    let ranks = Dictionary(uniqueKeysWithValues: order.enumerated().map { ($0.element, $0.offset) })
+    sources.sort { (ranks[$0.id] ?? Int.max) < (ranks[$1.id] ?? Int.max) }
+    UserDefaults.standard.set(order, forKey: key)
+  }
+
+  func moveSubscription(_ id: String, before target: String, after: Bool = false) {
+    guard id != target, let sourceIndex = sources.firstIndex(where: { $0.id == id }), sources.contains(where: { $0.id == target }) else { return }
+    var next = sources
+    let source = next.remove(at: sourceIndex)
+    guard let targetIndex = next.firstIndex(where: { $0.id == target }) else { return }
+    next.insert(source, at: targetIndex + (after ? 1 : 0))
+    sources = next
+    UserDefaults.standard.set(next.map(\.id), forKey: "subscriptionOrder:\(profileID)")
   }
 
   func perform(_ work: () async throws -> Void) async {
@@ -316,7 +352,7 @@ final class SvoiModel: ObservableObject {
       guard profile == profileID, probeIDs[server.id] == requestID else { return }
       latencies[server.id] = "\(result["latency"] as? Int ?? 0) мс"
     } catch {
-      if profile == profileID && probeIDs[server.id] == requestID { latencies[server.id] = "Нет ответа" }
+      if profile == profileID && probeIDs[server.id] == requestID { latencies[server.id] = "n/a" }
     }
     #endif
   }

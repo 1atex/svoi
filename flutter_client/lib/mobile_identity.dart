@@ -187,16 +187,14 @@ class MobileProbeButton extends StatelessWidget {
                 )
               : Text(
                   result.error != null
-                      ? result.setupError
-                            ? 'Ошибка ядра'
-                            : 'Нет ответа'
+                      ? 'n/a'
                       : result.latency != null
                       ? '${result.latency} мс'
                       : 'Пинг',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: result.error != null
-                        ? Theme.of(context).colorScheme.error
+                        ? appColors(context).muted
                         : appColors(context).accent,
                   ),
                 ),

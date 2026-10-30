@@ -16,7 +16,7 @@ void main() {
     'security': 'tls',
   });
   test('Hysteria2 displays QUIC and its version', () {
-    expect(node.protocol, 'HYSTERIA2');
+    expect(node.protocol, 'Hysteria2');
     expect(node.details, contains('QUIC / UDP'));
     expect(node.isHysteria, true);
   });

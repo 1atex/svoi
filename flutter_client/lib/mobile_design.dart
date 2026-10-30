@@ -210,41 +210,18 @@ class MobileConnectionCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    view.phase.isNotEmpty
-                        ? view.title
-                        : view.verified
-                        ? 'Вы на связи'
-                        : view.running
-                        ? 'VPN работает'
-                        : 'VPN\nвыключен',
+                    view.title,
                     style: const TextStyle(
-                      fontSize: 27,
-                      fontWeight: FontWeight.w700,
-                      height: 1.13,
-                      letterSpacing: -.6,
+                      fontSize: 23,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 8),
                   Text(
-                    view.phase.isNotEmpty
-                        ? view.detail
-                        : view.verified
-                        ? 'Интернет проверен'
-                        : view.running
-                        ? 'Интернет ещё не подтверждён'
-                        : 'Подключитесь одним нажатием',
+                    view.detail,
                     style: TextStyle(
                       fontSize: 13,
                       color: appColors(context).muted,
-                      height: 1.4,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    action,
-                    style: TextStyle(
-                      color: appColors(context).accent,
-                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ],
@@ -312,6 +289,7 @@ class MobileConnectionCard extends StatelessWidget {
                         ),
                       ),
                     );
+              if (!view.needsStatus) return Center(child: power);
               return stacked
                   ? Column(
                       crossAxisAlignment: CrossAxisAlignment.start,

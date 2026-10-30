@@ -57,6 +57,8 @@ class ConnectionView {
           ? 'Ядро недоступно'
           : 'VPN выключен',
   };
+  bool get needsStatus =>
+      phase.isNotEmpty || error.isNotEmpty || state['available'] != true;
   String get detail => switch (phase) {
     'starting' => 'Запускаем соединение с выбранными настройками.',
     'checking' => 'Ожидаем ответ контрольного HTTPS-адреса.',

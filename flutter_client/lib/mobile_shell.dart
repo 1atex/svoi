@@ -269,47 +269,63 @@ class _MobileShellState extends State<MobileShell> {
         ),
         const SizedBox(height: 8),
         for (final source in c.subscriptions.value)
-          Card(
-            child: ListTile(
-              leading: Container(
-                width: 38,
-                height: 38,
-                decoration: BoxDecoration(
-                  color: appColors(context).accent.withValues(alpha: .08),
-                  borderRadius: BorderRadius.circular(12),
+          SubscriptionDropRegion(
+            c: c,
+            sourceId: source['id'].toString(),
+            child: Card(
+              child: ListTile(
+                leading: SubscriptionDragHandle(c: c, source: source),
+                title: Text(
+                  subscriptionDisplayName(source),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
-                child: SvoiIcon(
-                  Icons.link_rounded,
-                  color: appColors(context).accent,
-                  size: 22,
+                subtitle: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('${source['count'] ?? 0} серверов'),
+                    if (subscriptionTraffic(subscriptionMetadata(source))
+                        .isNotEmpty)
+                      Text(subscriptionTraffic(subscriptionMetadata(source))),
+                    if (subscriptionExpiry(subscriptionMetadata(source))
+                        .isNotEmpty)
+                      Text(subscriptionExpiry(subscriptionMetadata(source))),
+                    if (subscriptionMetadata(source)['announcement'] != null)
+                      Text(
+                        subscriptionMetadata(source)['announcement'].toString(),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(color: appColors(context).accent),
+                      ),
+                  ],
                 ),
-              ),
-              title: Text(
-                subscriptionDisplayName(source),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              subtitle: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('${source['count'] ?? 0} серверов'),
-                  if (subscriptionTraffic(subscriptionMetadata(source))
-                      .isNotEmpty)
-                    Text(subscriptionTraffic(subscriptionMetadata(source))),
-                  if (subscriptionExpiry(subscriptionMetadata(source))
-                      .isNotEmpty)
-                    Text(subscriptionExpiry(subscriptionMetadata(source))),
-                  if (subscriptionMetadata(source)['announcement'] != null)
-                    Text(
-                      subscriptionMetadata(source)['announcement'].toString(),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(color: appColors(context).accent),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      key: ValueKey('subscription-probe-${source['id']}'),
+                      tooltip: 'Проверить задержку подписки',
+                      icon: const SvoiIcon(Icons.network_check, size: 20),
+                      onPressed:
+                          c.probing.value ||
+                              c.busy.value ||
+                              c.connection.value['available'] != true
+                          ? null
+                          : () => c.probe(
+                              c.servers.value
+                                  .where(
+                                    (s) =>
+                                        s.json['subscriptionId'] ==
+                                        source['id'],
+                                  )
+                                  .toList(),
+                            ),
                     ),
-                ],
+                    const SvoiIcon(Icons.chevron_right_rounded, size: 20),
+                  ],
+                ),
+                onTap: () => editSource(context, c, source),
               ),
-              trailing: const SvoiIcon(Icons.chevron_right_rounded, size: 20),
-              onTap: () => editSource(context, c, source),
             ),
           ),
         if (c.subscriptions.value.isEmpty)
@@ -326,6 +342,18 @@ class _MobileShellState extends State<MobileShell> {
       c.servers.value.where((s) => s.search.contains(search.toLowerCase())),
       latency: sortLatency,
     );
+    if (!sortLatency) {
+      final sourceIds = c.subscriptions.value.map((s) => s['id']).toList();
+      final initial = {for (var i = 0; i < list.length; i++) list[i].id: i};
+      list.sort((a, b) {
+        final ai = sourceIds.indexOf(a.json['subscriptionId']);
+        final bi = sourceIds.indexOf(b.json['subscriptionId']);
+        final order = (ai < 0 ? sourceIds.length : ai).compareTo(
+          bi < 0 ? sourceIds.length : bi,
+        );
+        return order != 0 ? order : initial[a.id]!.compareTo(initial[b.id]!);
+      });
+    }
     return Column(
       children: [
         Padding(
@@ -482,6 +510,22 @@ class _MobileShellState extends State<MobileShell> {
     );
   }
 
+  void openProfile() {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => Scaffold(
+          appBar: AppBar(title: const Text('Общий профиль')),
+          body: SafeArea(
+            child: ListenableBuilder(
+              listenable: Listenable.merge([c.sessions, c.group, c.busy]),
+              builder: (_, _) => profile(),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget profile() => ListView(
     padding: const EdgeInsets.all(20),
     children: [
@@ -561,109 +605,66 @@ class _MobileShellState extends State<MobileShell> {
       ),
     ],
   );
-  Widget settings() => ListView(
-    padding: const EdgeInsets.all(20),
+  Widget settings() => SettingsBody(
+    actions: {'Общий профиль': openProfile},
     children: [
-      ListTile(
-        contentPadding: EdgeInsets.zero,
-        leading: const SvoiIcon(Icons.speed),
-        title: const Text('Интернетометр'),
-        subtitle: const Text('Без VPN и через выбранные серверы'),
-        trailing: const SvoiIcon(Icons.chevron_right),
-        onTap: () => Navigator.push(
-          context,
-          MaterialPageRoute<void>(
-            builder: (_) => Scaffold(
-              appBar: AppBar(title: const Text('Скорость интернета')),
-              body: SafeArea(child: SpeedTools(c: c)),
+      Section(
+        'Общий профиль',
+        children: [
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: const SvoiIcon(Icons.people_outline),
+            title: const Text('Профили и перенос'),
+            subtitle: const Text('Подписки, HWID и данные устройства'),
+            trailing: const SvoiIcon(Icons.chevron_right),
+            onTap: openProfile,
+          ),
+        ],
+      ),
+      const AppearancePanel(),
+      Section(
+        'Подписки',
+        children: [
+          ValueListenableBuilder(
+            valueListenable: c.preferences,
+            builder: (context, prefs, _) => SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Обновлять подписки при запуске'),
+              value: prefs['autoRefresh'] == true,
+              onChanged: (v) => c.settings({'autoRefresh': v}),
             ),
           ),
-        ),
+        ],
       ),
-
-      ListTile(
-        contentPadding: EdgeInsets.zero,
-        leading: const SvoiIcon(Icons.palette_outlined),
-        title: const Text('Оформление'),
-        subtitle: const Text('8 тем, включая Хэллоуин'),
-        trailing: const SvoiIcon(Icons.chevron_right),
-        onTap: () => Navigator.push(
-          context,
-          MaterialPageRoute<void>(
-            builder: (_) => Scaffold(
-              appBar: AppBar(title: const Text('Оформление')),
-              body: SafeArea(
-                child: ListView(
-                  padding: const EdgeInsets.all(12),
-                  children: const [AppearancePanel()],
-                ),
-              ),
+      Section(
+        'Подключение',
+        children: [
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: const SvoiIcon(Icons.apps),
+            title: const Text('Приложения через VPN'),
+            subtitle: const Text('Все, выбранные или исключения'),
+            trailing: const SvoiIcon(Icons.chevron_right),
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute<void>(builder: (_) => AndroidAppsPage(c: c)),
             ),
           ),
-        ),
+        ],
       ),
-      ListTile(
-        contentPadding: EdgeInsets.zero,
-        leading: const SvoiIcon(Icons.fingerprint),
-        title: const Text('HWID и данные устройства'),
-        subtitle: const Text('Параметры активного профиля'),
-        trailing: const SvoiIcon(Icons.chevron_right),
-        onTap: () => Navigator.push(
-          context,
-          MaterialPageRoute<void>(builder: (_) => MobileIdentityPage(c: c)),
-        ),
-      ),
-      SwitchListTile(
-        contentPadding: EdgeInsets.zero,
-        title: const Text('Обновлять подписки при запуске'),
-        value: c.preferences.value['autoRefresh'] == true,
-        onChanged: (v) => c.settings({'autoRefresh': v}),
-      ),
-      ListTile(
-        contentPadding: EdgeInsets.zero,
-        leading: const SvoiIcon(Icons.apps),
-        title: const Text('Приложения через VPN'),
-        subtitle: const Text('Все, выбранные или исключения'),
-        onTap: () => Navigator.push(
-          context,
-          MaterialPageRoute<void>(builder: (_) => AndroidAppsPage(c: c)),
-        ),
-      ),
-      ListTile(
-        contentPadding: EdgeInsets.zero,
-        leading: const SvoiIcon(Icons.network_check),
-        title: const Text('Проверка задержки'),
-        subtitle: const Text('Адрес, тайм-аут и число проверок'),
-        trailing: const SvoiIcon(Icons.chevron_right),
-        onTap: () => Navigator.push(
-          context,
-          MaterialPageRoute<void>(
-            builder: (_) => Scaffold(
-              appBar: AppBar(title: const Text('Проверка задержки')),
-              body: SafeArea(
-                child: ListView(
-                  padding: const EdgeInsets.all(16),
-                  children: [ProbeSettingsPanel(c: c)],
-                ),
-              ),
-            ),
+      ProbeSettingsPanel(c: c),
+      Section(
+        'Обновления SVOI',
+        children: [
+          if (updates != null)
+            MobileUpdatesPanel(model: updates!)
+          else
+            const Text('SVOI для Android'),
+          const SizedBox(height: 12),
+          const Text(
+            'Обновление устанавливается через системное окно Android. Подписки и настройки сохраняются.',
           ),
-        ),
-      ),
-      const Divider(),
-      if (updates != null)
-        MobileUpdatesPanel(model: updates!)
-      else
-        const Text('SVOI · Android Preview 8'),
-      const SizedBox(height: 12),
-      Text(
-        'Новая версия устанавливается через системное окно Android. Профили и подписки сохраняются.',
-        style: TextStyle(color: appColors(context).muted),
-      ),
-      const SizedBox(height: 12),
-      Text(
-        'При смене сети переподключите VPN, если соединение не восстановилось. Работа на физических устройствах ещё требует проверки.',
-        style: TextStyle(color: appColors(context).muted),
+        ],
       ),
     ],
   );

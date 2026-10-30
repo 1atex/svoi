@@ -1,6 +1,6 @@
 {
-  "version": "0.1.0-preview.6",
-  "build": 6,
+  "version": "0.1.0-preview.7",
+  "build": 7,
   "minimumIOS": "16.0",
   "goVersion": "1.27.3",
   "gomobileVersion": "v0.0.0-20261011034528-197770444867",

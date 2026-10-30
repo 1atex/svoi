@@ -62,7 +62,7 @@ struct ConnectionScreen: View {
   private var connection: some View {
     VStack(spacing: 12) {
       HStack(alignment: .center, spacing: 20) {
-        if !sizeCategory.isAccessibilityCategory {
+        if busy && !sizeCategory.isAccessibilityCategory {
           VStack(alignment: .leading, spacing: 8) {
             SvoiSectionTitle(title: "Ваша сеть")
             Text(title).font(.title3.weight(.semibold)).foregroundStyle(SvoiPalette.text)
@@ -73,7 +73,7 @@ struct ConnectionScreen: View {
         }
         power
       }.frame(maxWidth: .infinity)
-      if sizeCategory.isAccessibilityCategory {
+      if busy && sizeCategory.isAccessibilityCategory {
         Text(title).font(.title2.bold()).foregroundStyle(SvoiPalette.text)
           .multilineTextAlignment(.center).accessibilityIdentifier("vpn-status")
       }
@@ -98,7 +98,7 @@ struct ConnectionScreen: View {
               VStack(alignment: .leading, spacing: 4) {
                 Text(displayServerName(model.selected?.name ?? "Текущее соединение"))
                   .font(.headline).foregroundStyle(SvoiPalette.text).lineLimit(2)
-                Text(switching ? "Нажмите «Переключить»" : "\(model.selected?.kind ?? "VPN") · Выбранный сервер")
+                Text("\(model.selected?.kind ?? "VPN") · \(switching ? "Нажмите «Переключить»" : "Выбранный сервер")")
                   .font(.caption).foregroundStyle(switching ? accent : SvoiPalette.muted)
               }.frame(maxWidth: .infinity, alignment: .leading)
               SvoiGlyph("chevron.down", size: 14).foregroundStyle(SvoiPalette.muted)

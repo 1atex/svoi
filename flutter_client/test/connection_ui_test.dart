@@ -147,8 +147,9 @@ void main() {
       await tester.pumpAndSettle();
       expect(backend.state['serverId'], c.selected.value);
       expect(backend.state['mode'], 'tun');
-      expect(find.text('Подключено'), findsWidgets);
-      expect(find.text('Интернет проверен'), findsOneWidget);
+      expect(find.text('Подключено'), findsNothing);
+      expect(find.byTooltip('Отключить VPN'), findsOneWidget);
+      expect(ConnectionView(c).verified, isTrue);
 
       await c.select('1');
       await tester.pumpAndSettle();

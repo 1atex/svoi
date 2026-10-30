@@ -23,50 +23,58 @@ struct SettingsScreen: View {
         }.accessibilityIdentifier("settings-profile")
       } footer: { Text("Сохранённые профили, перенос подписок и параметры устройства.") }
         .listRowBackground(colors.surface)
-      Section {
-        Picker("Тема приложения", selection: $colorScheme) {
-          Text("Графит").tag("dark")
-          Text("AMOLED").tag("amoled")
-        }.pickerStyle(.segmented).accessibilityIdentifier("theme-mode")
-        Text(colorScheme == "amoled" ? "Чистый чёрный фон, тёмные карточки и мягкий контраст текста." : "Тёмный графитовый фон SVOI.")
-          .font(.footnote).foregroundStyle(SvoiPalette.muted)
-      } header: { Text("Тема") }.listRowBackground(colors.surface)
-      Section {
-        Picker("Иконки интерфейса", selection: $iconStyle) {
-          Text("Контурные").tag("outline")
-          Text("Двухцветные").tag("duotone")
-        }.pickerStyle(.segmented).accessibilityIdentifier("icon-style")
-        HStack(spacing: 24) {
-          ForEach(["shield.lefthalf.filled", "point.3.connected.trianglepath.dotted", "speedometer", "slider.horizontal.3"], id: \.self) { symbol in
-            SvoiGlyph(symbol, size: 26).foregroundStyle(accent)
-          }
-        }.padding(.vertical, 8).frame(maxWidth: .infinity).accessibilityHidden(true)
-        Text("Стиль меняется на всех экранах. Цвет берётся из выбранной темы.")
-          .font(.footnote).foregroundStyle(SvoiPalette.muted)
-      } header: { Text("Иконки") }.listRowBackground(colors.surface)
-      Section {
-        VStack(alignment: .leading, spacing: 16) {
-          Text("Ваш SVOI").font(.title3.bold())
-          Text("Выберите акцент, который нравится вам.").font(.footnote).foregroundStyle(SvoiPalette.muted)
-          LazyVGrid(columns: [GridItem(.adaptive(minimum: sizeCategory.isAccessibilityCategory ? 180 : 85))], spacing: 12) {
-            ForEach(themes, id: \.0) { key, title in
-              Button { appearance = key } label: {
-                VStack(spacing: 12) {
-                  RoundedRectangle(cornerRadius: 12).fill(SvoiPalette.accent(key)).frame(height: 40)
-                    .overlay(SvoiGlyph( "power").foregroundStyle(colors.canvas))
-                  HStack(spacing: 4) {
-                    Text(title).font(.footnote.weight(.medium))
-                    if appearance == key { SvoiGlyph("checkmark.circle.fill", size: 12) }
-                  }.foregroundStyle(appearance == key ? accent : SvoiPalette.muted)
-                }.padding(10).background(colors.inset, in: RoundedRectangle(cornerRadius: 16))
-                  .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(appearance == key ? accent : .clear))
-              }.buttonStyle(SvoiPressStyle()).accessibilityLabel("Тема \(title)")
-                .accessibilityAddTraits(appearance == key ? .isSelected : [])
-            }
-          }
-        }.padding(.vertical, 6)
-      } header: { Text("Оформление") }
-      .listRowBackground(colors.surface)
+      Section("Приложение") {
+        NavigationLink {
+          Form {
+            Section {
+              Picker("Тема приложения", selection: $colorScheme) {
+                Text("Графит").tag("dark")
+                Text("AMOLED").tag("amoled")
+              }.pickerStyle(.segmented).accessibilityIdentifier("theme-mode")
+              Text(colorScheme == "amoled" ? "Чистый чёрный фон, тёмные карточки и мягкий контраст текста." : "Тёмный графитовый фон SVOI.")
+                .font(.footnote).foregroundStyle(SvoiPalette.muted)
+            } header: { Text("Тема") }.listRowBackground(colors.surface)
+            Section {
+              Picker("Иконки интерфейса", selection: $iconStyle) {
+                Text("Контурные").tag("outline")
+                Text("Двухцветные").tag("duotone")
+              }.pickerStyle(.segmented).accessibilityIdentifier("icon-style")
+              HStack(spacing: 24) {
+                ForEach(["shield.lefthalf.filled", "point.3.connected.trianglepath.dotted", "speedometer", "slider.horizontal.3"], id: \.self) { symbol in
+                  SvoiGlyph(symbol, size: 26).foregroundStyle(accent)
+                }
+              }.padding(.vertical, 8).frame(maxWidth: .infinity).accessibilityHidden(true)
+              Text("Стиль меняется на всех экранах. Цвет берётся из выбранной темы.")
+                .font(.footnote).foregroundStyle(SvoiPalette.muted)
+            } header: { Text("Иконки") }.listRowBackground(colors.surface)
+            Section {
+              VStack(alignment: .leading, spacing: 16) {
+                Text("Ваш SVOI").font(.title3.bold())
+                Text("Выберите акцент, который нравится вам.").font(.footnote).foregroundStyle(SvoiPalette.muted)
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: sizeCategory.isAccessibilityCategory ? 180 : 85))], spacing: 12) {
+                  ForEach(themes, id: \.0) { key, title in
+                    Button { appearance = key } label: {
+                      VStack(spacing: 12) {
+                        RoundedRectangle(cornerRadius: 12).fill(SvoiPalette.accent(key)).frame(height: 40)
+                          .overlay(SvoiGlyph( "power").foregroundStyle(colors.canvas))
+                        HStack(spacing: 4) {
+                          Text(title).font(.footnote.weight(.medium))
+                          if appearance == key { SvoiGlyph("checkmark.circle.fill", size: 12) }
+                        }.foregroundStyle(appearance == key ? accent : SvoiPalette.muted)
+                      }.padding(10).background(colors.inset, in: RoundedRectangle(cornerRadius: 16))
+                        .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(appearance == key ? accent : .clear))
+                    }.buttonStyle(SvoiPressStyle()).accessibilityLabel("Тема \(title)")
+                      .accessibilityAddTraits(appearance == key ? .isSelected : [])
+                  }
+                }
+              }.padding(.vertical, 6)
+            } header: { Text("Оформление") }
+            .listRowBackground(colors.surface)
+
+          }.scrollContentBackground(.hidden).background(colors.canvas).navigationTitle("Оформление")
+        } label: { SvoiLabel("Оформление", systemImage: "paintpalette").frame(minHeight: 36) }
+          .accessibilityIdentifier("settings-appearance")
+      }.listRowBackground(colors.surface)
 
       Section {
         Toggle(isOn: Binding(get: { model.autoRefresh }, set: { enabled in Task { await model.setAutoRefresh(enabled) } })) {

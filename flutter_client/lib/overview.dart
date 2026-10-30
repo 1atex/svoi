@@ -106,10 +106,7 @@ class Overview extends StatelessWidget {
   Widget _side(BuildContext context) => Column(
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
-      if (c.servers.value.isNotEmpty) ...[
-        QuickServers(c: c),
-        const SizedBox(height: 18),
-      ],
+      if (c.servers.value.isNotEmpty) ...[const SizedBox(height: 18)],
       Panel(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
