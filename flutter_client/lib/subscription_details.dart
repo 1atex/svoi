@@ -109,11 +109,13 @@ class SubscriptionHeader extends StatelessWidget {
     this.onRefresh,
     this.onProbe,
     this.onDetails,
+    this.reorderHandle,
   });
   final String name;
   final Map<String, dynamic>? source;
   final int count;
   final bool collapsed;
+  final Widget? reorderHandle;
   final VoidCallback onToggle;
   final VoidCallback? onRefresh, onProbe, onDetails;
 
@@ -180,6 +182,7 @@ class SubscriptionHeader extends StatelessWidget {
     final actions = Row(
       mainAxisSize: MainAxisSize.min,
       children: [
+        ?reorderHandle,
         Tooltip(
           message: 'Серверов в списке: $count',
           child: Padding(

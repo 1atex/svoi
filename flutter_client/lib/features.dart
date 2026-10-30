@@ -902,7 +902,7 @@ class PreferencesPage extends StatelessWidget {
   const PreferencesPage({super.key, required this.c});
   final SvoiController c;
   @override
-  Widget build(BuildContext context) => FeatureBody(
+  Widget build(BuildContext context) => SettingsBody(
     children: [
       ProbeSettingsPanel(c: c),
       Section(

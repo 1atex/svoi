@@ -189,16 +189,14 @@ class MobileProbeButton extends StatelessWidget {
               ? const SvoiIcon(LucideIcons.activity, size: 22)
               : Text(
                   result.error != null
-                      ? result.setupError
-                            ? 'Ошибка ядра'
-                            : 'Нет ответа'
+                      ? 'n/a'
                       : result.latency != null
                       ? '${result.latency} мс'
                       : 'Пинг',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: result.error != null
-                        ? Theme.of(context).colorScheme.error
+                        ? appColors(context).muted
                         : appColors(context).accent,
                   ),
                 ),

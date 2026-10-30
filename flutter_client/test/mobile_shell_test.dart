@@ -6,6 +6,7 @@ import 'package:svoi_flutter/demo.dart';
 import 'package:svoi_flutter/main.dart';
 
 class MobileFeaturesBackend extends DemoBackend {
+  final probedIds = <String>[];
   Map<String, dynamic>? savedIdentity;
   @override
   bool get mobile => true;
@@ -31,6 +32,7 @@ class MobileFeaturesBackend extends DemoBackend {
     if (path == 'connection/ip') return {'ip': '203.0.113.7', 'via': 'network'};
     if (path == 'connection') return {'state': 'stopped', 'available': true};
     if (path.endsWith('/probe')) {
+      probedIds.add(path.split('/')[1]);
       if (path.contains('/0/')) throw ApiException('Нет ответа за 4 секунды');
       return {'latency': 42};
     }
@@ -49,6 +51,37 @@ class MobileFeaturesBackend extends DemoBackend {
 }
 
 void main() {
+  testWidgets('subscription ping probes only its own servers', (tester) async {
+    tester.view.physicalSize = const Size(420, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final api = MobileFeaturesBackend();
+    (api.group['servers'][0] as Map)['subscriptionId'] = 'first';
+    api.group['subscriptions'] = [
+      {'id': 'first', 'name': 'First subscription', 'count': 1},
+      {'id': 'demo', 'name': 'Second subscription', 'count': 2},
+    ];
+    final c = SvoiController(api);
+    await c.initialize();
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: svoiTheme(),
+        home: MobileShell(c: c),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final probe = find.byKey(const ValueKey('subscription-probe-first'));
+    await tester.ensureVisible(probe);
+    await tester.tap(probe);
+    await tester.pumpAndSettle();
+    expect(api.probedIds, ['0']);
+    expect(c.probes['1']!.value.checkedAt, isNull);
+    expect(c.probes['2']!.value.checkedAt, isNull);
+    await tester.pumpWidget(const SizedBox.shrink());
+    await c.close();
+  });
+
   testWidgets(
     'mobile themes fit narrow screens and preserve the VPN controller',
     (tester) async {
@@ -144,7 +177,8 @@ void main() {
         'error': 'Контрольный запрос не прошёл',
       };
       await tester.pumpAndSettle();
-      expect(find.text('Отключить VPN'), findsOneWidget);
+      expect(find.text('Отключить VPN'), findsNothing);
+      expect(find.byTooltip('Отключить VPN'), findsOneWidget);
       expect(find.text('Контрольный запрос не прошёл'), findsOneWidget);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox.shrink());
@@ -171,7 +205,7 @@ void main() {
       await tester.tap(find.text('Проверить пинг'));
       await tester.pumpAndSettle();
       expect(find.text('42 мс'), findsNWidgets(2));
-      expect(find.text('Нет ответа'), findsOneWidget);
+      expect(find.text('n/a'), findsOneWidget);
       expect(find.textContaining('3 из 3'), findsOneWidget);
       await tester.tap(find.byType(ListTile).first);
       await tester.pumpAndSettle();
@@ -219,6 +253,10 @@ void main() {
         ),
       );
       await tester.tap(find.text('Настройки').last);
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.byKey(const ValueKey('settings-section-Общий профиль')),
+      );
       await tester.pumpAndSettle();
       await tester.tap(find.text('HWID и данные устройства'));
       await tester.pumpAndSettle();
@@ -330,6 +368,10 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(ListTile), findsWidgets);
     await tester.tap(find.text('Настройки').last);
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const ValueKey('settings-section-Подключение')),
+    );
     await tester.pumpAndSettle();
     expect(find.text('Приложения через VPN'), findsOneWidget);
     expect(find.text('Запускать SVOI при входе в Windows'), findsNothing);
