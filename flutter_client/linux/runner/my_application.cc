@@ -70,6 +70,15 @@ static GtkWidget* make_menu(MyApplication* self, FlValue* items) {
   gtk_widget_show_all(menu);
   return menu;
 }
+static gboolean finish_engine_shutdown(gpointer data) {
+  auto self = MY_APPLICATION(data);
+  g_application_release(G_APPLICATION(self));
+  g_object_unref(self);
+  return G_SOURCE_REMOVE;
+}
+static void engine_finalized(gpointer data, GObject*) {
+  g_main_context_invoke(nullptr, finish_engine_shutdown, data);
+}
 static gboolean close_window(gpointer data) {
   auto self = MY_APPLICATION(data);
   // Stop custom callbacks while the Flutter view and messenger are still alive.
@@ -80,7 +89,15 @@ static gboolean close_window(gpointer data) {
   if (self->indicator) app_indicator_set_status(self->indicator, APP_INDICATOR_STATUS_PASSIVE);
   g_clear_object(&self->indicator);
   if (self->menu) { gtk_widget_destroy(self->menu); g_clear_object(&self->menu); }
-  if (self->window) gtk_window_close(self->window);
+  if (self->window) {
+    FlView* view = FL_VIEW(gtk_bin_get_child(GTK_BIN(self->window)));
+    // Keep the main loop alive until asynchronous view removal joins the engine.
+    // Reissuing gtk_window_close would instead request GApplication.quit from Flutter.
+    g_application_hold(G_APPLICATION(self));
+    g_object_weak_ref(G_OBJECT(fl_view_get_engine(view)), engine_finalized,
+                      g_object_ref(self));
+    gtk_widget_destroy(GTK_WIDGET(self->window));
+  }
   return G_SOURCE_REMOVE;
 }
 static void handle(FlMethodChannel*, FlMethodCall* call, gpointer user_data) {
@@ -179,8 +196,6 @@ static void activate(GApplication* application) {
   g_signal_connect(self->window, "destroy", G_CALLBACK(on_window_destroy), self);
   g_signal_connect(self->window, "window-state-event", G_CALLBACK(on_state), self);
   g_autoptr(FlDartProject) project = fl_dart_project_new();
-  // Impeller's background shader work races Mesa/LLVM teardown on Linux.
-  fl_dart_project_set_enable_impeller(project, FALSE);
   fl_dart_project_set_dart_entrypoint_arguments(project, self->arguments);
   FlView* view = fl_view_new(project);
   gtk_widget_show(GTK_WIDGET(view));
