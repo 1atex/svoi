@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/1atex/svoi/releases/latest"><img src="https://img.shields.io/github/v/release/1atex/svoi?style=flat-square&label=release&color=e7b96a&labelColor=19191e" alt="Последний релиз"></a>
+  <a href="https://github.com/1atex/svoi/releases/tag/v0.7.0-rc.4"><img src="https://img.shields.io/badge/release-0.7.0--rc.4-e7b96a?style=flat-square&labelColor=19191e" alt="Последний релиз"></a>
   <img src="https://img.shields.io/badge/Windows-x64-e7b96a?style=flat-square&labelColor=19191e" alt="Windows x64">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-e7b96a?style=flat-square&labelColor=19191e" alt="Лицензия MIT"></a>
   <img src="https://img.shields.io/badge/Flutter-Dart-e7b96a?style=flat-square&labelColor=19191e" alt="Flutter">
@@ -16,13 +16,13 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/1atex/svoi/releases/download/v0.6.0-beta.6/SVOI-0.6.0-beta.6-windows-x64-setup.exe"><b>↓ Скачать для Windows</b></a>
+  <a href="https://github.com/1atex/svoi/releases/download/v0.7.0-rc.4/SVOI-0.7.0-rc.4-windows-x64-setup.exe"><b>↓ Скачать для Windows</b></a>
   &nbsp; · &nbsp;
-  <a href="https://github.com/1atex/svoi/releases/download/android-v0.1.0-preview.12/SVOI-Android-0.1.0-preview.12-arm64.apk"><b>↓ Android APK · Preview</b></a>
+  <a href="https://github.com/1atex/svoi/releases/download/android-v0.1.0-preview.14/SVOI-Android-0.1.0-preview.14-arm64.apk"><b>↓ Android APK · Preview</b></a>
   &nbsp; · &nbsp;
   <a href="https://github.com/1atex/svoi/releases/tag/linux-v0.6.0-preview.3"><b>↓ Linux · Preview</b></a>
   &nbsp; · &nbsp;
-  <a href="https://github.com/1atex/svoi/releases/latest">Последний релиз Windows</a>
+  <a href="https://github.com/1atex/svoi/releases/tag/v0.7.0-rc.4">Последний релиз Windows</a>
   &nbsp; · &nbsp;
   <a href="https://svoi.space/">Сайт SVOI</a>
   &nbsp; · &nbsp;
@@ -83,13 +83,15 @@ Hysteria2: ссылки `hy2://` и `hysteria2://`, TLS, Salamander и пере�
 
 </details>
 
+В Windows внутри раздела **zapret → Telegram-прокси** доступен [tg-ws-proxy от Flowseal](https://github.com/Flowseal/tg-ws-proxy): запуск и остановка, подключение Telegram Desktop, локальная ссылка и журнал. Компонент входит в сборку и обновляется вместе с SVOI.
+
 ## Первый запуск
 
-1. **Установите SVOI.** [Установщик Windows x64](https://github.com/1atex/svoi/releases/download/v0.6.0-beta.6/SVOI-0.6.0-beta.6-windows-x64-setup.exe) уже содержит Xray, Wintun и необходимые библиотеки. WebView2 не нужен.
+1. **Установите SVOI.** [Установщик Windows x64](https://github.com/1atex/svoi/releases/download/v0.7.0-rc.4/SVOI-0.7.0-rc.4-windows-x64-setup.exe) уже содержит Xray, Wintun и необходимые библиотеки. WebView2 не нужен.
 2. **Добавьте свою подписку.** Вставьте ссылку или импортируйте конфигурацию из файла / текста.
 3. **Выберите сервер и подключитесь.** На новой установке выбран TUN («Все приложения»); для него нужны права администратора. Сохранённый выбор режима при обновлении не меняется.
 
-Предпочитаете без установки? [Скачайте portable ZIP](https://github.com/1atex/svoi/releases/download/v0.6.0-beta.6/SVOI-0.6.0-beta.6-windows-x64.zip), распакуйте **весь архив** и запустите `svoi.exe`.
+Предпочитаете без установки? [Скачайте portable ZIP](https://github.com/1atex/svoi/releases/download/v0.7.0-rc.4/SVOI-0.7.0-rc.4-windows-x64.zip), распакуйте **весь архив** и запустите `svoi.exe`.
 
 Установщик предлагает запуск после установки. Ярлык на рабочем столе и запуск от имени администратора включены по умолчанию; флажки можно снять. При запуске с повышенными правами Windows покажет запрос UAC.
 
@@ -116,9 +118,13 @@ Hysteria2: ссылки `hy2://` и `hysteria2://`, TLS, Salamander и пере�
 
 ## Статус проекта
 
-**Windows: 0.6.0-beta.6 · x64. Android: 0.1.0-preview.12 · ARM64 и x86_64. Linux: 0.6.0-preview.3 · x64.** iOS пока не выпускается. SVOI использует ваши подписки; VPN-серверы в комплект не входят.
+**Windows: 0.7.0-rc.4 · x64. Android: 0.1.0-preview.14 · ARM64 и x86_64. Linux: 0.6.0-preview.3 · x64.** macOS: 0.6.0-preview.6 · Apple Silicon. iOS: 0.1.0-preview.7 · IPA для самостоятельной подписи. SVOI использует ваши подписки; VPN-серверы в комплект не входят.
 
-Android — отдельная экспериментальная сборка: [APK для ARM64-телефонов](https://github.com/1atex/svoi/releases/download/android-v0.1.0-preview.12/SVOI-Android-0.1.0-preview.12-arm64.apk), [APK для эмулятора x86_64](https://github.com/1atex/svoi/releases/download/android-v0.1.0-preview.12/SVOI-Android-0.1.0-preview.12-x64.apk), [инструкция и исходники Android](https://github.com/1atex/svoi/blob/android-preview/docs/ANDROID.md). Обновления проверяются и скачиваются из приложения; установку подтверждает пользователь. Preview 12 добавляет отдельную вкладку инструментов, сравнение DNS, проверку сайта, тему AMOLED и выбор стиля иконок. Общий профиль находится в настройках. Постоянная подпись сохранена; версия устанавливается поверх Preview 9 с сохранением данных. При переходе с Preview 5 сохраните коды профилей и переустановите приложение: начиная с Preview 6 используется постоянная подпись.
+Android — отдельная экспериментальная сборка: [APK для ARM64-телефонов](https://github.com/1atex/svoi/releases/download/android-v0.1.0-preview.14/SVOI-Android-0.1.0-preview.14-arm64.apk), [APK для эмулятора x86_64](https://github.com/1atex/svoi/releases/download/android-v0.1.0-preview.14/SVOI-Android-0.1.0-preview.14-x64.apk), [инструкция и исходники Android](https://github.com/1atex/svoi/blob/android-preview/docs/ANDROID.md). Обновления проверяются и скачиваются из приложения; установку подтверждает пользователь. Preview 14 добавляет секционные настройки, порядок подписок и проверку задержки отдельной подписки. Экран подключения стал проще; тип протокола виден рядом с сервером. Общий профиль находится в настройках. Постоянная подпись сохранена; версия устанавливается поверх Preview 13 с сохранением данных. При переходе с Preview 5 сохраните коды профилей и переустановите приложение: начиная с Preview 6 используется постоянная подпись.
+
+macOS Preview: [DMG для Apple Silicon](https://github.com/1atex/svoi/releases/tag/macos-v0.6.0-preview.6). Доступны системный и локальный прокси; TUN пока отсутствует. Сборка не нотарифицирована Apple.
+
+iOS Preview: [IPA и исходники сборки](https://github.com/1atex/svoi/releases/tag/ios-v0.1.0-preview.7). Для установки нужна подпись приложения и расширения Packet Tunnel с совместимыми provisioning profiles и правами Network Extension.
 
 Linux Preview: [`.deb` и переносимый архив](https://github.com/1atex/svoi/releases/tag/linux-v0.6.0-preview.3), [инструкция](docs/LINUX.md). Поддерживаются TUN, локальный прокси, подписки, темы и перенос профилей. Системный DNS остаётся под управлением Linux; выбор приложений, Windows zapret и автоустановка обновлений в Linux пока отсутствуют. Сборки проверяются на Ubuntu 22.04, в изолированной сети и под Xvfb/Openbox.
 
