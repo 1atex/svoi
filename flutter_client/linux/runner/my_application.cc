@@ -179,6 +179,8 @@ static void activate(GApplication* application) {
   g_signal_connect(self->window, "destroy", G_CALLBACK(on_window_destroy), self);
   g_signal_connect(self->window, "window-state-event", G_CALLBACK(on_state), self);
   g_autoptr(FlDartProject) project = fl_dart_project_new();
+  // Impeller's background shader work races Mesa/LLVM teardown on Linux.
+  fl_dart_project_set_enable_impeller(project, FALSE);
   fl_dart_project_set_dart_entrypoint_arguments(project, self->arguments);
   FlView* view = fl_view_new(project);
   gtk_widget_show(GTK_WIDGET(view));

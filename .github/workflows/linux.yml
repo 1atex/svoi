@@ -76,12 +76,12 @@ jobs:
           flutter test test/linux_platform_test.dart test/controller_test.dart test/data_directory_test.dart test/appearance_test.dart test/community_test.dart test/onboarding_test.dart test/release_notice_test.dart test/portable_tools_test.dart test/ui_icons_test.dart
       - name: Verify traffic, reconnects and window lifecycle
         env:
-          SVOI_LINUX_DEBUG_CLOSE: '1'
+          SVOI_LINUX_DEBUG_CLOSE: '0'
         run: |
           BUNDLE="$PWD/.tools/linux-package/$LINUX_VERSION/svoi"
           python3 scripts/linux-backend-smoke.py "$BUNDLE"
           sudo bash scripts/linux-tun-smoke.sh "$(id -un)"
-          for attempt in $(seq 1 10); do
+          for attempt in $(seq 1 20); do
             dbus-run-session -- xvfb-run -a -s '-screen 0 1280x900x24' python3 scripts/linux-ui-smoke.py "$BUNDLE" .tools/linux-ui-results/"$attempt"
           done
           for file in releases/linux-v"$LINUX_VERSION"/*.sha256; do (cd "$(dirname "$file")" && sha256sum -c "$(basename "$file")"); done
