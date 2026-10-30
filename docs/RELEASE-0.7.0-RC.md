@@ -1,5 +1,17 @@
 # SVOI 0.7.0 Beta Release Candidate — publication record
 
+## Current published builds — 30 October 2026
+
+- [Windows RC4](https://github.com/1atex/svoi/releases/tag/v0.7.0-rc.4): tg-ws-proxy is bundled in the zapret tools. The Windows release job passed; the public Ed25519 update manifest matches the installer hash, size and version. Flutter: 145 passing tests, 4 platform skips; native Go suite and packaged proxy lifecycle checks passed. Telegram account traffic was not tested.
+- [Android preview.14](https://github.com/1atex/svoi/releases/tag/android-v0.1.0-preview.14): signed ARM64/x64 APKs and update manifest published, signing identity retained, emulator checks passed.
+- [macOS preview.6](https://github.com/1atex/svoi/releases/tag/macos-v0.6.0-preview.6): Apple Silicon DMG, package install and launch checks passed. Ad-hoc signed, not notarized; no TUN.
+- [iOS preview.7](https://github.com/1atex/svoi/releases/tag/ios-v0.1.0-preview.7): unsigned IPA and matching sources; compact and Pro simulator checks passed. Installation still requires signing both the app and Packet Tunnel extension with compatible provisioning.
+- [Linux RC6](https://github.com/1atex/svoi/releases/tag/linux-v0.7.0-rc.6): DEB and portable archive from commit `2c6715d9e324dc8b4e6c2018cc9c1348b0d114b1`. The [build](https://github.com/1atex/svoi/actions/runs/41070054873) passed code checks, 38 UI tests, local/TUN reconnects, 20 GUI close cycles and Debian installation. Only GitHub publication failed with HTTP 500; the [artifact publication](https://github.com/1atex/svoi/actions/runs/41071817283) then verified the source, completed checks, package checksums and uploaded asset digests before publishing. Renderer widgets are retained until engine shutdown completes; an additional 20 local close cycles under GDB passed.
+
+The site snapshot and README now link these builds. Windows and Android public update metadata were verified after publication.
+
+## Archived RC1 publication record
+
 The owner approved publication on 30 October 2026 after the optional-core ping fix. Four platform releases were published from drafts only after all listed assets and hashes were verified. Linux RC remains unpublished because its native GUI exit can still crash; the public Linux preview.3 is retained.
 
 ## Published packages
