@@ -1,6 +1,7 @@
 extension SvoiIconAssets {
   static let names: [String: String] = [
     "power": "power",
+    "paintpalette": "palette",
     "globe": "globe",
     "globe.europe.africa": "globe",
     "square.grid.2x2": "toolbox",

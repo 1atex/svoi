@@ -94,6 +94,7 @@
     "tune_rounded": "sliders-horizontal"
   },
   "ios": {
+    "paintpalette": "palette",
     "power": "power",
     "globe": "globe",
     "globe.europe.africa": "globe",
