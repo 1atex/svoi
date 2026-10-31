@@ -1,6 +1,15 @@
 import 'backend.dart';
 
 class DemoBackend extends Backend {
+  DemoBackend({this.interactive = false}) {
+    if (interactive) group['subscriptions'][0]['remote'] = true;
+  }
+  final bool interactive;
+  Map<String, dynamic> demoConnection = {
+    'available': true,
+    'state': 'stopped',
+    'version': 'Демо · симуляция VPN',
+  };
   final demoSettings = <String, dynamic>{
     'autoRefresh': false,
     'routing': {'mode': 'all', 'processes': <String>[]},
@@ -39,6 +48,10 @@ class DemoBackend extends Backend {
     Object? body,
     RequestCancellation? cancellation,
   }) async {
+    if (interactive && path.startsWith('subscription/refresh')) {
+      await Future<void>.delayed(const Duration(milliseconds: 450));
+      return {};
+    }
     if (path == 'groups') return {'token': 'demo', 'group': group};
     if (path == 'me') return group;
     if (path == 'tg-proxy') {
@@ -55,6 +68,31 @@ class DemoBackend extends Backend {
         demoSettings.addAll(Map<String, dynamic>.from(body));
       }
       return Map<String, dynamic>.from(demoSettings);
+    }
+    if (interactive && path.startsWith('connection')) {
+      if (path == 'connection/start') {
+        await Future<void>.delayed(const Duration(milliseconds: 700));
+        demoConnection = {
+          'available': true,
+          'state': 'running',
+          'version': 'Демо · симуляция VPN',
+          'startedAt': DateTime.now().toUtc().toIso8601String(),
+          ...Map<String, dynamic>.from(body as Map),
+        };
+      } else if (path == 'connection/stop') {
+        demoConnection = {
+          'available': true,
+          'state': 'stopped',
+          'version': 'Демо · симуляция VPN',
+        };
+      } else if (path == 'connection/check') {
+        demoConnection = {
+          ...demoConnection,
+          'checked': true,
+          'checkedAt': DateTime.now().toUtc().toIso8601String(),
+        };
+      }
+      return Map<String, dynamic>.from(demoConnection);
     }
     if (path.startsWith('connection')) {
       return {

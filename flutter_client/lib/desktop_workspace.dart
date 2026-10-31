@@ -102,8 +102,8 @@ class DesktopWorkspace extends StatelessWidget {
       return LayoutBuilder(
         builder: (context, bounds) {
           final compact =
-              bounds.maxWidth < 900 ||
-              bounds.maxHeight < 620 ||
+              bounds.maxWidth < 860 ||
+              bounds.maxHeight < 520 ||
               MediaQuery.textScalerOf(context).scale(14) > 19;
           final library = DesktopLibrary(c: c);
           final dock = DesktopConnection(c: c, compact: compact);
@@ -121,7 +121,7 @@ class DesktopWorkspace extends StatelessWidget {
             children: [
               Expanded(child: library),
               const VerticalDivider(width: 1),
-              SizedBox(width: 360, child: dock),
+              SizedBox(width: 312, child: dock),
             ],
           );
         },
@@ -209,92 +209,33 @@ class _DesktopLibraryState extends State<DesktopLibrary> {
           }
         }
         return Padding(
-          padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
+          padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              if (MediaQuery.sizeOf(context).width >= 900) ...[
-                Row(
-                  children: [
-                    const Expanded(
-                      child: Text(
-                        'Серверы',
-                        style: TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
+              Row(
+                children: [
+                  Expanded(
+                    child: ConnectionSearch(
+                      controller: search,
+                      onChanged: (value) =>
+                          setState(() => query = value.trim().toLowerCase()),
+                      onClear: () {
+                        search.clear();
+                        setState(() => query = '');
+                      },
                     ),
-                    AppButton(
-                      label: 'Добавить подписку',
-                      icon: LucideIcons.plus,
-                      onPressed: c.busy.value
-                          ? null
-                          : () => importDialog(context, c),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                TextField(
-                  key: const ValueKey('desktop-server-search'),
-                  controller: search,
-                  onChanged: (value) =>
-                      setState(() => query = value.trim().toLowerCase()),
-                  decoration: InputDecoration(
-                    hintText: 'Поиск по имени, стране или протоколу',
-                    isDense: true,
-                    prefixIcon: const SvoiIcon(LucideIcons.search, size: 18),
-                    suffixIcon: query.isEmpty
-                        ? null
-                        : IconButton(
-                            tooltip: 'Очистить поиск',
-                            icon: const SvoiIcon(LucideIcons.x, size: 16),
-                            onPressed: () {
-                              search.clear();
-                              setState(() => query = '');
-                            },
-                          ),
                   ),
-                ),
-              ] else
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        key: const ValueKey('desktop-server-search'),
-                        controller: search,
-                        onChanged: (value) =>
-                            setState(() => query = value.trim().toLowerCase()),
-                        decoration: InputDecoration(
-                          hintText: 'Поиск по имени, стране или протоколу',
-                          isDense: true,
-                          prefixIcon: const SvoiIcon(
-                            LucideIcons.search,
-                            size: 18,
-                          ),
-                          suffixIcon: query.isEmpty
-                              ? null
-                              : IconButton(
-                                  tooltip: 'Очистить поиск',
-                                  icon: const SvoiIcon(LucideIcons.x, size: 16),
-                                  onPressed: () {
-                                    search.clear();
-                                    setState(() => query = '');
-                                  },
-                                ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    AppButton(
-                      label: 'Добавить подписку',
-                      icon: LucideIcons.plus,
-                      onPressed: c.busy.value
-                          ? null
-                          : () => importDialog(context, c),
-                    ),
-                  ],
-                ),
+                  const SizedBox(width: 12),
+                  AppButton(
+                    label: 'Добавить подписку',
+                    icon: LucideIcons.plus,
+                    onPressed: c.busy.value
+                        ? null
+                        : () => importDialog(context, c),
+                  ),
+                ],
+              ),
               const SizedBox(height: 6),
               Wrap(
                 spacing: 8,
@@ -505,6 +446,7 @@ class DesktopServerRow extends StatelessWidget {
       return Padding(
         padding: const EdgeInsets.only(bottom: 5),
         child: Material(
+          animationDuration: connectionMotion(context),
           color: selected
               ? appColors(context).selected
               : appColors(context).surface,
@@ -521,15 +463,20 @@ class DesktopServerRow extends StatelessWidget {
             borderRadius: BorderRadius.circular(12),
             onTap: c.busy.value || !server.availableForCore
                 ? null
-                : () => c.select(server.id),
+                : () => c.selectServer(server.id),
             child: Semantics(
               selected: selected,
               enabled: server.availableForCore,
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(12, 8, 4, 8),
+                padding: const EdgeInsets.fromLTRB(8, 4, 0, 4),
                 child: Row(
                   children: [
-                    CountryMark(country: server.country),
+                    AnimatedScale(
+                      scale: selected ? 1 : .92,
+                      duration: connectionMotion(context),
+                      curve: Curves.easeOutCubic,
+                      child: CountryMark(country: server.country),
+                    ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(
@@ -639,6 +586,7 @@ class DesktopConnection extends StatelessWidget {
   Widget build(BuildContext context) => ListenableBuilder(
     listenable: Listenable.merge([
       c.connection,
+      c.foreground,
       c.selected,
       c.servers,
       c.mode,
@@ -654,7 +602,7 @@ class DesktopConnection extends StatelessWidget {
       final server = c.servers.value
           .where((s) => s.id == c.selected.value)
           .firstOrNull;
-      final pending = c.pendingConnectionChoice;
+      final pending = c.pendingConnectionChoice && !view.switching;
       final locked = c.busy.value || view.switching;
       final ready =
           c.connection.value['available'] == true &&
@@ -668,15 +616,6 @@ class DesktopConnection extends StatelessWidget {
       final active = c.servers.value
           .where((s) => s.id == c.connection.value['serverId'])
           .firstOrNull;
-      final detail = view.phase.isNotEmpty
-          ? view.detail
-          : view.error.isNotEmpty
-          ? view.detail
-          : view.verified
-          ? 'Интернет проверен'
-          : view.running
-          ? 'Соединение запущено'
-          : 'Выберите сервер и подключитесь';
       final selection = Row(
         children: [
           CountryMark(
@@ -699,7 +638,7 @@ class DesktopConnection extends StatelessWidget {
                 Text(
                   server == null
                       ? 'Выбранный сервер'
-                      : '${server.protocol} · ${pending ? 'Выбран для переключения' : 'Выбранный сервер'}',
+                      : '${server.protocol}${pending ? ' · Для переключения' : ''}',
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
@@ -840,97 +779,19 @@ class DesktopConnection extends StatelessWidget {
         );
       }
 
-      return Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              children: [
-                const Expanded(child: Eyebrow('ВАШЕ ПОДКЛЮЧЕНИЕ')),
-                ScenarioLauncher(c: c),
-              ],
-            ),
-            const SizedBox(height: 16),
-            selection,
-            const SizedBox(height: 8),
-            Center(
-              child: ConnectionOrbit(
-                running: view.running,
-                verified: view.verified,
-                busy: view.switching,
-                onPressed: toggle,
-                hint: action,
-              ),
-            ),
-            if (view.needsStatus) ...[
-              Text(
-                view.title,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 23,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                detail,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 12,
-                  color: appColors(context).muted,
-                  height: 1.5,
-                ),
-              ),
-            ],
-            if (pending)
-              Padding(
-                padding: const EdgeInsets.only(top: 10),
-                child: Text(
-                  'Сейчас: ${active?.country.title ?? c.connection.value['serverName'] ?? 'другой сервер'} · ${modeLabel(c.connection.value['mode'], null)}',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: appColors(context).accent,
-                  ),
-                ),
-              ),
-            if (pending) ...[const SizedBox(height: 16), controls],
-            const SizedBox(height: 20),
-            const Divider(),
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.only(top: 24),
-                child: Column(
-                  children: [
-                    PublicIPLine(c: c),
-                    if (server != null) ServerPingButton(c: c, server: server),
-                    const SizedBox(height: 12),
-                    ModePicker(c: c),
-                    const SizedBox(height: 12),
-                    if (view.running)
-                      TextButton.icon(
-                        onPressed: locked || c.checking.value ? null : c.check,
-                        icon: const SvoiIcon(LucideIcons.refreshCw, size: 15),
-                        label: Text(
-                          c.checking.value
-                              ? 'Проверяем интернет…'
-                              : view.error.isNotEmpty
-                              ? 'Повторить проверку'
-                              : 'Проверить интернет',
-                        ),
-                      ),
-                    TextButton.icon(
-                      onPressed: () => showDiagnostics(context, c),
-                      icon: const SvoiIcon(LucideIcons.info, size: 15),
-                      label: const Text('Подробнее о соединении'),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
+      return ConnectionPreviewPane(
+        c: c,
+        view: view,
+        selection: selection,
+        toggle: toggle,
+        action: action,
+        pending: pending,
+        controls: controls,
+        activeName:
+            active?.country.title ??
+            c.connection.value['serverName']?.toString() ??
+            'другой сервер',
+        server: server,
       );
     },
   );

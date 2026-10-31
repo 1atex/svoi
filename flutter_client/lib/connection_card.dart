@@ -361,7 +361,7 @@ class QuickServers extends StatelessWidget {
                   size: 17,
                   color: appColors(context).accent,
                 ),
-                onTap: () => c.select(s.id),
+                onTap: () => c.selectServer(s.id),
               ),
             const SizedBox(height: 8),
             AppButton(

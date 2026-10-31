@@ -99,7 +99,7 @@ void main() {
       expect(
         find.descendant(
           of: find.byType(AlertDialog),
-          matching: find.textContaining('код SVOI1'),
+          matching: find.text('Код SVOI'),
         ),
         findsOneWidget,
       );

@@ -231,6 +231,9 @@ class TelegramProxyPanel extends StatelessWidget {
           );
         },
       ),
+      const SizedBox(height: 16),
+      const Divider(),
+      StartupPanel(c: c, telegramOnly: true),
     ],
   );
 }

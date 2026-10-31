@@ -59,7 +59,8 @@ void main() {
           await tester.tap(find.text('Импорт'));
           await tester.pumpAndSettle();
           final before = reads;
-          await tester.tap(find.text('Вставить'));
+          await tester.ensureVisible(find.text('Вставить из буфера'));
+          await tester.tap(find.text('Вставить из буфера'));
           await tester.pumpAndSettle();
           expect(reads, before + 1);
           expect(

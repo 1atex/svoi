@@ -120,6 +120,12 @@ class ProbeState {
   );
 }
 
+class AppNotice {
+  AppNotice(this.text, {this.warning = false});
+  final String text;
+  final bool warning;
+}
+
 class SvoiController {
   SvoiController(this.api, {this.sessionFile}) {
     connection.addListener(_syncPublicIP);
@@ -384,6 +390,11 @@ class SvoiController {
   }
 
   final message = ValueNotifier<String>('');
+  final notice = ValueNotifier<AppNotice?>(null);
+  void notify(String text, {bool warning = false}) {
+    if (!_closed && visible) notice.value = AppNotice(text, warning: warning);
+  }
+
   final probeProgress = ValueNotifier<String>('');
   final probing = ValueNotifier<bool>(false);
   final probes = <String, ValueNotifier<ProbeState>>{};
@@ -524,6 +535,26 @@ class SvoiController {
     selected.value = id;
     _coreSelections['${group.value['id']}/$activeCore'] = id;
     await saveSession();
+  }
+
+  Future<void> selectServer(String id) async {
+    if (_closed ||
+        busy.value ||
+        ['starting', 'stopping'].contains(connection.value['state']) ||
+        !servers.value.any((s) => s.id == id && s.availableForCore)) {
+      return;
+    }
+    final running = connection.value['state'] == 'running';
+    if (running && connection.value['serverId'] == id) {
+      await _connectionAction('', () => select(id));
+      return;
+    }
+    var started = false;
+    await _connectionAction(running ? 'switching' : '', () async {
+      await select(id);
+      if (running) started = await _startSelected();
+    });
+    if (started && !_closed) unawaited(check());
   }
 
   Future<void> moveSubscription(
@@ -871,6 +902,7 @@ class SvoiController {
         }
         await reload();
         await saveSession();
+        notify('Подписка или профиль добавлены');
       });
 
   Future<void> extractProfileNodes(ServerEntry server) => action(() async {
@@ -1009,6 +1041,12 @@ class SvoiController {
         refreshProgress.value = failed == 0
             ? 'Подписки обновлены · $done из ${sources.length}'
             : 'Не обновлено: $failed · причину смотрите рядом с подпиской';
+        notify(
+          failed == 0
+              ? 'Подписки обновлены · $done'
+              : 'Не обновлено подписок: $failed. Подробнее — в списке.',
+          warning: failed != 0,
+        );
       }
     }
   }
@@ -1043,6 +1081,12 @@ class SvoiController {
           );
       if (!_closed && generation == _refreshGeneration && !request.cancelled) {
         await reload();
+        if (!_refreshingAll &&
+            !_closed &&
+            generation == _refreshGeneration &&
+            !request.cancelled) {
+          notify('Подписка обновлена');
+        }
       }
     } catch (e) {
       if (!_closed &&
@@ -1067,6 +1111,12 @@ class SvoiController {
           ...refreshErrors.value,
           id: subscriptionFailure(e).text,
         };
+        if (!_refreshingAll) {
+          notify(
+            'Не удалось обновить подписку. Подробнее — в списке.',
+            warning: true,
+          );
+        }
       } else if (!_closed && generation == _refreshGeneration) {
         refreshErrors.value = {
           ...refreshErrors.value,
@@ -1075,6 +1125,12 @@ class SvoiController {
       }
     } finally {
       if (generation == _refreshGeneration) {
+        if (request.cancelled && !timedOut && !_closed) {
+          refreshErrors.value = {
+            ...refreshErrors.value,
+            id: 'Обновление остановлено. Сохранённые серверы доступны.',
+          };
+        }
         _refreshRequests.remove(id);
         refreshingSources.value = {...refreshingSources.value}..remove(id);
       }

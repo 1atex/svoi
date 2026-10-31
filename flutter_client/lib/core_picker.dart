@@ -7,8 +7,9 @@ String coreLabel(String? core) => switch (core) {
 };
 
 class CorePicker extends StatelessWidget {
-  const CorePicker({super.key, required this.c});
+  const CorePicker({super.key, required this.c, this.concise = false});
   final SvoiController c;
+  final bool concise;
   @override
   Widget build(BuildContext context) => ListenableBuilder(
     listenable: Listenable.merge([c.connection, c.busy]),
@@ -71,19 +72,21 @@ class CorePicker extends StatelessWidget {
                     });
                   },
           ),
-          const SizedBox(height: 8),
-          Text(
-            locked
-                ? 'Чтобы сменить ядро, сначала отключите VPN.'
-                : current == 'xray'
-                ? 'Xray: полный профиль, TUN и прокси.'
-                : 'Используется профиль провайдера для ${coreLabel(current)}. ${Platform.isWindows ? 'Доступны TUN и прокси.' : 'TUN на этой платформе пока доступен с Xray.'}',
-            style: TextStyle(
-              fontSize: 12,
-              color: appColors(context).muted,
-              height: 1.5,
+          if (!concise || locked) ...[
+            const SizedBox(height: 8),
+            Text(
+              locked
+                  ? 'Чтобы сменить ядро, сначала отключите VPN.'
+                  : current == 'xray'
+                  ? 'Xray: полный профиль, TUN и прокси.'
+                  : 'Используется профиль провайдера для ${coreLabel(current)}. ${Platform.isWindows ? 'Доступны TUN и прокси.' : 'TUN на этой платформе пока доступен с Xray.'}',
+              style: TextStyle(
+                fontSize: 12,
+                color: appColors(context).muted,
+                height: 1.5,
+              ),
             ),
-          ),
+          ],
         ],
       );
     },

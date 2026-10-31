@@ -2,12 +2,11 @@ part of 'main.dart';
 
 const clientVersion = String.fromEnvironment(
   'SVOI_VERSION',
-  defaultValue: '0.7.0-rc.4',
+  defaultValue: '0.7.1-rc.1',
 );
 
-String get clientDisplayVersion => clientVersion == '0.7.0-rc.4'
-    ? '0.7.0 Beta Release Candidate 4'
-    : clientVersion;
+String get clientDisplayVersion =>
+    clientVersion == '0.7.1-rc.1' ? '0.7.1 Release Candidate 1' : clientVersion;
 
 class ConfigPane extends StatelessWidget {
   const ConfigPane({
@@ -152,7 +151,7 @@ class FeatureBody extends StatelessWidget {
   final List<Widget> children;
   @override
   Widget build(BuildContext context) => ListView(
-    padding: const EdgeInsets.all(28),
+    padding: EdgeInsets.all(MediaQuery.sizeOf(context).width < 1000 ? 16 : 28),
     children: [
       for (final child in children)
         Padding(padding: const EdgeInsets.only(bottom: 20), child: child),
@@ -161,19 +160,27 @@ class FeatureBody extends StatelessWidget {
 }
 
 class Section extends StatelessWidget {
-  const Section(this.title, {super.key, required this.children, this.subtitle});
+  const Section(
+    this.title, {
+    super.key,
+    required this.children,
+    this.subtitle,
+    this.showHeading = true,
+  });
   final String title;
   final String? subtitle;
+  final bool showHeading;
   final List<Widget> children;
   @override
   Widget build(BuildContext context) => Panel(
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(
-          title,
-          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
-        ),
+        if (showHeading)
+          Text(
+            title,
+            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
+          ),
         if (subtitle != null)
           Padding(
             padding: const EdgeInsets.only(top: 8),
@@ -182,7 +189,7 @@ class Section extends StatelessWidget {
               style: TextStyle(color: appColors(context).muted, height: 1.5),
             ),
           ),
-        const SizedBox(height: 18),
+        if (showHeading || subtitle != null) const SizedBox(height: 18),
         ...children,
       ],
     ),
@@ -1166,7 +1173,6 @@ class PreferencesPage extends StatelessWidget {
             ),
             Section(
               'SVOI',
-              subtitle: 'На связи со своими.',
               children: [
                 Text(
                   'SVOI · Xray Core',

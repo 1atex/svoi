@@ -19,6 +19,7 @@ class ConnectionBackend extends DemoBackend {
       state = {
         'available': true,
         'state': 'running',
+        'startedAt': DateTime.now().toUtc().toIso8601String(),
         ...Map<String, dynamic>.from(body as Map),
       };
     }
@@ -131,6 +132,11 @@ void main() {
           theme: svoiTheme(),
           home: SvoiShell(controller: c),
         ),
+      );
+      await tester.tap(find.text('Параметры подключения'));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(
+        find.byType(DropdownButtonFormField<String>).last,
       );
       await tester.tap(find.byType(DropdownButtonFormField<String>).last);
       await tester.pumpAndSettle();

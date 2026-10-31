@@ -48,17 +48,38 @@ void main() {
       c.probes[entry.key]!.value = ProbeState(latency: entry.value);
     }
     final key = GlobalKey();
-    Future<void> capture(String name, Size size, {double scale = 1}) async {
+    Future<void> snapshot(String name) async {
+      await tester.runAsync(() async {
+        final image =
+            await (key.currentContext!.findRenderObject()!
+                    as RenderRepaintBoundary)
+                .toImage();
+        final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
+        await File('../.ui-preview/desktop-workspace/$name.png')
+            .writeAsBytes(bytes!.buffer.asUint8List());
+        image.dispose();
+      });
+    }
+
+    Future<void> capture(
+      String name,
+      Size size, {
+      double scale = 1,
+      bool reducedMotion = false,
+      SvoiColors palette = SvoiColors.dark,
+    }) async {
       tester.view.physicalSize = size;
       await tester.pumpWidget(
         RepaintBoundary(
           key: key,
           child: MaterialApp(
             debugShowCheckedModeBanner: false,
-            theme: svoiTheme(),
+            theme: svoiTheme(palette: palette),
             builder: (context, child) => MediaQuery(
-              data: MediaQuery.of(context)
-                  .copyWith(textScaler: TextScaler.linear(scale)),
+              data: MediaQuery.of(context).copyWith(
+                textScaler: TextScaler.linear(scale),
+                disableAnimations: reducedMotion,
+              ),
               child: child!,
             ),
             home: SvoiShell(controller: c),
@@ -73,24 +94,34 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
-      await tester.runAsync(() async {
-        final image =
-            await (key.currentContext!.findRenderObject()!
-                    as RenderRepaintBoundary)
-                .toImage();
-        final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
-        await File('../.ui-preview/desktop-workspace/$name.png')
-            .writeAsBytes(bytes!.buffer.asUint8List());
-        image.dispose();
-      });
+      await snapshot(name);
     }
 
     await capture('wide', const Size(1200, 800));
+    await capture('compact-desktop', const Size(980, 700));
+    await tester.tap(find.text('Добавить подписку').first);
+    await tester.pumpAndSettle();
+    await snapshot('subscription-import');
+    await tester.tap(find.text('Из файла'));
+    await tester.pumpAndSettle();
+    await snapshot('subscription-file');
+    await tester.tap(find.text('Отмена'));
+    await tester.pumpAndSettle();
+
+    c.notify('Подписки обновлены · 2');
+    await capture('toast', const Size(980, 700));
+    await capture(
+      'wide-light',
+      const Size(900, 640),
+      palette: SvoiColors.light,
+    );
+    await capture('reduced-motion', const Size(1200, 800), reducedMotion: true);
+    expect(tester.binding.hasScheduledFrame, false);
     await capture('compact', const Size(800, 600));
     await capture('large-text', const Size(800, 600), scale: 1.5);
     await c.toggleConnection();
-    await c.select('1');
-    await capture('switch', const Size(1200, 800));
+    await c.selectServer('1');
+    await capture('switch', const Size(900, 640));
     await capture('switch-compact', const Size(800, 600));
     await c.stop();
     c.servers.value = [];

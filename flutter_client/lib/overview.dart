@@ -255,8 +255,6 @@ class _ImportWelcomeState extends State<ImportWelcome> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Eyebrow('НАЧНЁМ С ВАШЕЙ ПОДПИСКИ'),
-            const SizedBox(height: 16),
             Text(
               widget.c.subscriptions.value.isEmpty
                   ? 'Добавьте первое подключение'

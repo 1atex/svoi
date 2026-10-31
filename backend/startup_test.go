@@ -116,3 +116,60 @@ func TestSavedZapretStartupSurfacesFailure(t *testing.T) {
 		t.Fatal("startup error was not exposed to UI")
 	}
 }
+
+func TestTelegramStartupPersistenceAndRollback(t *testing.T) {
+	oldExe, oldQuery, oldChange := desktopExecutable, queryStartup, changeStartup
+	t.Cleanup(func() { desktopExecutable, queryStartup, changeStartup = oldExe, oldQuery, oldChange })
+	desktopExecutable = "svoi.exe"
+	enabled := false
+	queryStartup = func(string) (bool, error) { return enabled, nil }
+	changeStartup = func(_ string, value bool) error { enabled = value; return nil }
+	a := newTestApp(t)
+	post := func(body string) error {
+		return a.startupAPI(httptest.NewRecorder(), httptest.NewRequest("POST", "/api/startup", strings.NewReader(body)))
+	}
+	if err := post(`{"enabled":true,"telegramProxy":true}`); err == nil || enabled {
+		t.Fatal("missing helper enabled startup")
+	}
+	binary := filepath.Join(t.TempDir(), "helper.exe")
+	if err := os.WriteFile(binary, []byte("fixture"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	a.telegramProxy = newTGProxy(binary, filepath.Join(t.TempDir(), "config.json"))
+	if err := post(`{"enabled":true,"telegramProxy":true}`); err != nil {
+		t.Fatal(err)
+	}
+	restored, err := openApp(a.path)
+	if err != nil || !enabled || !restored.localSettings().StartupTelegramProxy {
+		t.Fatal("startup setting lost", err)
+	}
+	if err := post(`{"enabled":true,"zapret":false}`); err != nil || !a.localSettings().StartupTelegramProxy {
+		t.Fatal("legacy request cleared proxy preference", err)
+	}
+	if err := post(`{"enabled":false}`); err != nil || enabled || a.localSettings().StartupTelegramProxy {
+		t.Fatal("app disable left helper autostart enabled", err)
+	}
+	blocked := filepath.Join(t.TempDir(), "file")
+	if err := os.WriteFile(blocked, []byte("fixture"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	a.path = filepath.Join(blocked, "groups.json")
+	if err := post(`{"enabled":true,"telegramProxy":true}`); err == nil || enabled || a.localSettings().StartupTelegramProxy {
+		t.Fatal("save failure did not roll back task")
+	}
+}
+
+func TestSavedTelegramStartupFailureVisible(t *testing.T) {
+	a := newTestApp(t)
+	if err := a.startSavedTelegramProxy(); err != nil {
+		t.Fatal(err)
+	}
+	a.settings.StartupTelegramProxy = true
+	a.telegramProxy = newTGProxy("missing", filepath.Join(t.TempDir(), "config.json"))
+	if err := a.startSavedTelegramProxy(); err == nil {
+		t.Fatal("missing helper started")
+	}
+	if !strings.Contains(a.telegramProxy.status()["error"].(string), "Автозапуск Telegram-прокси") {
+		t.Fatal("startup failure hidden")
+	}
+}

@@ -15,17 +15,18 @@ type AppRouting struct {
 	Processes []string `json:"processes"`
 }
 type LocalSettings struct {
-	DirectDomains    []string      `json:"directDomains"`
-	Probe            ProbeSettings `json:"probe"`
-	AutoRefresh      bool          `json:"autoRefresh"`
-	AutoUpdate       bool          `json:"autoUpdate"`
-	AutoDownload     bool          `json:"autoDownload"`
-	Routing          AppRouting    `json:"routing"`
-	ZapretFolder     string        `json:"zapretFolder"`
-	ZapretAutoUpdate bool          `json:"zapretAutoUpdate"`
-	StartupZapret    bool          `json:"startupZapret"`
-	ZapretStrategy   string        `json:"zapretStrategy"`
-	AutoPauseZapret  bool          `json:"autoPauseZapret"`
+	DirectDomains        []string      `json:"directDomains"`
+	Probe                ProbeSettings `json:"probe"`
+	AutoRefresh          bool          `json:"autoRefresh"`
+	AutoUpdate           bool          `json:"autoUpdate"`
+	AutoDownload         bool          `json:"autoDownload"`
+	Routing              AppRouting    `json:"routing"`
+	ZapretFolder         string        `json:"zapretFolder"`
+	ZapretAutoUpdate     bool          `json:"zapretAutoUpdate"`
+	StartupZapret        bool          `json:"startupZapret"`
+	StartupTelegramProxy bool          `json:"startupTelegramProxy"`
+	ZapretStrategy       string        `json:"zapretStrategy"`
+	AutoPauseZapret      bool          `json:"autoPauseZapret"`
 }
 
 const defaultProbeURL = "https://www.gstatic.com/generate_204"
@@ -197,6 +198,7 @@ func (a *App) desktopAPI(w http.ResponseWriter, r *http.Request) error {
 		a.settingsMu.Lock()
 		defer a.settingsMu.Unlock()
 		s.StartupZapret = a.settings.StartupZapret
+		s.StartupTelegramProxy = a.settings.StartupTelegramProxy
 		s.ZapretStrategy = a.settings.ZapretStrategy
 		if err := a.saveSettingsLocked(s); err != nil {
 			return err

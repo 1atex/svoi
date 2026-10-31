@@ -218,7 +218,7 @@ class TrayBridge {
     } else if (command.startsWith('server:')) {
       final id = command.substring(7);
       if (c.servers.value.any((s) => s.id == id && s.availableForCore)) {
-        await c.action(() => c.select(id));
+        await c.selectServer(id);
       }
     } else if (command.startsWith('mode:')) {
       final mode = command.substring(5);

@@ -206,8 +206,9 @@ class BrandMark extends StatelessWidget {
 }
 
 class ModePicker extends StatelessWidget {
-  const ModePicker({super.key, required this.c});
+  const ModePicker({super.key, required this.c, this.concise = false});
   final SvoiController c;
+  final bool concise;
   @override
   Widget build(BuildContext context) {
     final routing = Map<String, dynamic>.from(
@@ -219,7 +220,7 @@ class ModePicker extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        CorePicker(c: c),
+        CorePicker(c: c, concise: concise),
         const SizedBox(height: 16),
         DropdownButtonFormField<String>(
           key: ValueKey('mode-${c.mode.value}-${routing['mode']}'),

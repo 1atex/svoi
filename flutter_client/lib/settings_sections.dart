@@ -38,7 +38,7 @@ class SettingsBody extends StatelessWidget {
           margin: const EdgeInsets.only(bottom: 8),
           child: ListTile(
             key: ValueKey('settings-section-${title(child)}'),
-            minVerticalPadding: 16,
+            minVerticalPadding: 10,
             leading: SvoiIcon(icon(title(child)), size: 22),
             title: Text(title(child)),
             trailing: const SvoiIcon(Icons.chevron_right, size: 20),
@@ -75,7 +75,21 @@ class SettingsDetailPage extends StatelessWidget {
         ),
         title: Text(title),
       ),
-      body: SafeArea(child: FeatureBody(children: [child])),
+      body: SafeArea(
+        child: FeatureBody(
+          children: [
+            if (child is Section && (child as Section).title == title)
+              Section(
+                title,
+                showHeading: false,
+                subtitle: (child as Section).subtitle,
+                children: (child as Section).children,
+              )
+            else
+              child,
+          ],
+        ),
+      ),
     );
     if (!Platform.isWindows) return page;
     return Scaffold(

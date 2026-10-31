@@ -147,10 +147,15 @@ class SubscriptionHeader extends StatelessWidget {
         child: Row(
           children: [
             ?reorderHandle,
-            SvoiIcon(
-              collapsed ? LucideIcons.chevronRight : LucideIcons.chevronDown,
-              size: 15,
-              color: appColors(context).muted,
+            AnimatedRotation(
+              turns: collapsed ? -.25 : 0,
+              duration: connectionMotion(context),
+              curve: Curves.easeOutCubic,
+              child: SvoiIcon(
+                LucideIcons.chevronDown,
+                size: 15,
+                color: appColors(context).muted,
+              ),
             ),
             const SizedBox(width: 8),
             Expanded(
@@ -203,15 +208,13 @@ class SubscriptionHeader extends StatelessWidget {
           ),
         ),
         if (source?['remote'] == true)
-          IconButton(
-            tooltip: refreshing
-                ? 'Остановить обновление $name'
-                : 'Обновить $name',
-            onPressed: refreshing ? onCancelRefresh : onRefresh,
-            icon: SvoiIcon(
-              refreshing ? LucideIcons.square : LucideIcons.refreshCw,
-              size: 16,
-            ),
+          SubscriptionRefreshButton(
+            key: ValueKey(source?['id']),
+            name: name,
+            busy: refreshing,
+            failed: refreshError != null,
+            onRefresh: onRefresh,
+            onCancel: onCancelRefresh,
           ),
         if (source != null)
           IconButton(

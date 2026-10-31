@@ -27,7 +27,7 @@ import (
 )
 
 var appVersion = "0.4.0-prebeta.3"
-var nativeVersion = "0.7.0-rc.4"
+var nativeVersion = "0.7.1-rc.1"
 
 //go:embed web/*
 var assets embed.FS
@@ -809,10 +809,21 @@ func run() error {
 		defer a.engine.Stop()
 		if runtime.GOOS == "windows" {
 			a.telegramProxy = newTGProxy(filepath.Join(filepath.Dir(exe), "core", "tg-ws-proxy", "tg-ws-proxy.exe"), filepath.Join(filepath.Dir(*data), "tg-proxy", "config.json"))
-			defer a.telegramProxy.Stop()
+			var telegramStartup sync.WaitGroup
+			defer func() {
+				telegramStartup.Wait()
+				a.telegramProxy.Stop()
+			}()
 			a.zapret = newZapret(a)
 			defer a.zapret.Stop()
 			if *native && *startup {
+				telegramStartup.Add(1)
+				go func() {
+					defer telegramStartup.Done()
+					if err := a.startSavedTelegramProxy(); err != nil {
+						log.Print(err)
+					}
+				}()
 				if err := a.startSavedZapret(); err != nil {
 					log.Print(err)
 				}

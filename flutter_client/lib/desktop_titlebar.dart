@@ -84,7 +84,7 @@ class _DesktopTitlebarState extends State<DesktopTitlebar> {
       ];
       const tabStyle = TextStyle(
         fontFamily: 'Segoe UI',
-        fontSize: 14,
+        fontSize: 13,
         fontWeight: FontWeight.w600,
       );
       var tabsWidth = 0.0;
@@ -94,22 +94,22 @@ class _DesktopTitlebarState extends State<DesktopTitlebar> {
           textDirection: Directionality.of(context),
           textScaler: MediaQuery.textScalerOf(context),
         )..layout();
-        tabsWidth += painter.width + 67;
+        tabsWidth += painter.width + 63;
         painter.dispose();
       }
       final labels =
-          tabsWidth <= bounds.maxWidth - 403 &&
+          tabsWidth <= bounds.maxWidth - 330 &&
           MediaQuery.textScalerOf(context).scale(14) <= 19;
       return Material(
         color: appColors(context).titlebar,
         child: SizedBox(
-          height: 64,
+          height: 56,
           child: Row(
             children: [
               SizedBox(
                 key: _brand,
-                width: narrow ? 0 : 64,
-                height: 64,
+                width: narrow ? 0 : 52,
+                height: 56,
                 child: Center(
                   child: Tooltip(
                     message: 'SVOI',
@@ -175,7 +175,7 @@ class _DesktopTitlebarState extends State<DesktopTitlebar> {
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            SvoiIcon(icon, size: 20),
+                            SvoiIcon(icon, size: 18),
                             if (labels) ...[
                               const SizedBox(width: 9),
                               Text(label),
@@ -185,7 +185,7 @@ class _DesktopTitlebarState extends State<DesktopTitlebar> {
                       ),
                     ),
                   ),
-              Expanded(child: SizedBox(key: _gap, height: 64)),
+              Expanded(child: SizedBox(key: _gap, height: 56)),
               if (widget.onProfiles != null) const CommunityButton(),
               if (widget.onProfiles != null && narrow)
                 PopupMenuButton<String>(
@@ -201,18 +201,18 @@ class _DesktopTitlebarState extends State<DesktopTitlebar> {
                     ),
                     PopupMenuItem(value: 'tray', child: Text('Свернуть')),
                   ],
-                  icon: const SvoiIcon(LucideIcons.ellipsis, size: 20),
+                  icon: const SvoiIcon(LucideIcons.ellipsis, size: 18),
                 ),
               if (widget.onProfiles != null && !narrow) ...[
                 IconButton(
                   tooltip: 'Профили и перенос',
                   onPressed: widget.onProfiles,
-                  icon: const SvoiIcon(LucideIcons.users, size: 20),
+                  icon: const SvoiIcon(LucideIcons.users, size: 18),
                 ),
                 IconButton(
                   tooltip: Platform.isLinux ? 'Свернуть' : 'Свернуть в трей',
                   onPressed: () => _sendWindowCommand('tray'),
-                  icon: const SvoiIcon(LucideIcons.chevronDown, size: 20),
+                  icon: const SvoiIcon(LucideIcons.chevronDown, size: 18),
                 ),
                 const SizedBox(width: 8),
               ],
@@ -282,7 +282,7 @@ class _CaptionButton extends StatelessWidget {
     message: label,
     child: SizedBox(
       width: narrow ? 36 : 46,
-      height: 64,
+      height: 56,
       child: TextButton(
         onPressed: onPressed,
         style: ButtonStyle(

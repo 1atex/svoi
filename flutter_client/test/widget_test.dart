@@ -51,14 +51,16 @@ void main() {
         home: SvoiShell(controller: controller, demo: true),
       ),
     );
-    await tester.tap(find.text('Серверы').first);
     await tester.pumpAndSettle();
     expect(find.text('1000 серверов'), findsOneWidget);
     final mounted = find.byType(DesktopServerRow).evaluate().length;
     expect(mounted, lessThan(20));
     expect(mounted, greaterThan(0));
     expect(find.byType(CountryMark), findsWidgets);
-    await tester.enterText(find.byType(TextField), '1000');
+    await tester.enterText(
+      find.byKey(const ValueKey('desktop-server-search')),
+      '1000',
+    );
     await tester.pump(const Duration(milliseconds: 150));
     await tester.pumpAndSettle();
     expect(find.byType(DesktopServerRow), findsOneWidget);

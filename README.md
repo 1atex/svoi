@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/1atex/svoi/releases/tag/v0.7.0-rc.4"><img src="https://img.shields.io/badge/release-0.7.0--rc.4-e7b96a?style=flat-square&labelColor=19191e" alt="Последний релиз"></a>
+  <a href="https://github.com/1atex/svoi/releases/tag/v0.7.1-rc.1"><img src="https://img.shields.io/badge/release-0.7.1--rc.1-e7b96a?style=flat-square&labelColor=19191e" alt="Последний релиз"></a>
   <img src="https://img.shields.io/badge/Windows-x64-e7b96a?style=flat-square&labelColor=19191e" alt="Windows x64">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-e7b96a?style=flat-square&labelColor=19191e" alt="Лицензия MIT"></a>
   <img src="https://img.shields.io/badge/Flutter-Dart-e7b96a?style=flat-square&labelColor=19191e" alt="Flutter">
@@ -16,13 +16,13 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/1atex/svoi/releases/download/v0.7.0-rc.4/SVOI-0.7.0-rc.4-windows-x64-setup.exe"><b>↓ Скачать для Windows</b></a>
+  <a href="https://github.com/1atex/svoi/releases/download/v0.7.1-rc.1/SVOI-0.7.1-rc.1-windows-x64-setup.exe"><b>↓ Скачать для Windows</b></a>
   &nbsp; · &nbsp;
   <a href="https://github.com/1atex/svoi/releases/download/android-v0.1.0-preview.14/SVOI-Android-0.1.0-preview.14-arm64.apk"><b>↓ Android APK · Preview</b></a>
   &nbsp; · &nbsp;
   <a href="https://github.com/1atex/svoi/releases/tag/linux-v0.7.0-rc.6"><b>↓ Linux · RC</b></a>
   &nbsp; · &nbsp;
-  <a href="https://github.com/1atex/svoi/releases/tag/v0.7.0-rc.4">Последний релиз Windows</a>
+  <a href="https://github.com/1atex/svoi/releases/tag/v0.7.1-rc.1">Последний релиз Windows</a>
   &nbsp; · &nbsp;
   <a href="https://svoi.space/">Сайт SVOI</a>
   &nbsp; · &nbsp;
@@ -87,11 +87,11 @@ Hysteria2: ссылки `hy2://` и `hysteria2://`, TLS, Salamander и пере�
 
 ## Первый запуск
 
-1. **Установите SVOI.** [Установщик Windows x64](https://github.com/1atex/svoi/releases/download/v0.7.0-rc.4/SVOI-0.7.0-rc.4-windows-x64-setup.exe) уже содержит Xray, Wintun и необходимые библиотеки. WebView2 не нужен.
+1. **Установите SVOI.** [Установщик Windows x64](https://github.com/1atex/svoi/releases/download/v0.7.1-rc.1/SVOI-0.7.1-rc.1-windows-x64-setup.exe) уже содержит Xray, Wintun и необходимые библиотеки. WebView2 не нужен.
 2. **Добавьте свою подписку.** Вставьте ссылку или импортируйте конфигурацию из файла / текста.
 3. **Выберите сервер и подключитесь.** На новой установке выбран TUN («Все приложения»); для него нужны права администратора. Сохранённый выбор режима при обновлении не меняется.
 
-Предпочитаете без установки? [Скачайте portable ZIP](https://github.com/1atex/svoi/releases/download/v0.7.0-rc.4/SVOI-0.7.0-rc.4-windows-x64.zip), распакуйте **весь архив** и запустите `svoi.exe`.
+Предпочитаете без установки? [Скачайте portable ZIP](https://github.com/1atex/svoi/releases/download/v0.7.1-rc.1/SVOI-0.7.1-rc.1-windows-x64.zip), распакуйте **весь архив** и запустите `svoi.exe`.
 
 Установщик предлагает запуск после установки. Ярлык на рабочем столе и запуск от имени администратора включены по умолчанию; флажки можно снять. При запуске с повышенными правами Windows покажет запрос UAC.
 
@@ -118,7 +118,7 @@ Hysteria2: ссылки `hy2://` и `hysteria2://`, TLS, Salamander и пере�
 
 ## Статус проекта
 
-**Windows: 0.7.0-rc.4 · x64. Android: 0.1.0-preview.14 · ARM64 и x86_64. Linux: 0.7.0-rc.6 · x64.** macOS: 0.6.0-preview.6 · Apple Silicon. iOS: 0.1.0-preview.7 · IPA для самостоятельной подписи. SVOI использует ваши подписки; VPN-серверы в комплект не входят.
+**Windows: 0.7.1-rc.1 · x64. Android: 0.1.0-preview.14 · ARM64 и x86_64. Linux: 0.7.0-rc.6 · x64.** macOS: 0.6.0-preview.6 · Apple Silicon. iOS: 0.1.0-preview.7 · IPA для самостоятельной подписи. SVOI использует ваши подписки; VPN-серверы в комплект не входят.
 
 Android — отдельная экспериментальная сборка: [APK для ARM64-телефонов](https://github.com/1atex/svoi/releases/download/android-v0.1.0-preview.14/SVOI-Android-0.1.0-preview.14-arm64.apk), [APK для эмулятора x86_64](https://github.com/1atex/svoi/releases/download/android-v0.1.0-preview.14/SVOI-Android-0.1.0-preview.14-x64.apk), [инструкция и исходники Android](https://github.com/1atex/svoi/blob/android-preview/docs/ANDROID.md). Обновления проверяются и скачиваются из приложения; установку подтверждает пользователь. Preview 14 добавляет секционные настройки, порядок подписок и проверку задержки отдельной подписки. Экран подключения стал проще; тип протокола виден рядом с сервером. Общий профиль находится в настройках. Постоянная подпись сохранена; версия устанавливается поверх Preview 13 с сохранением данных. При переходе с Preview 5 сохраните коды профилей и переустановите приложение: начиная с Preview 6 используется постоянная подпись.
 

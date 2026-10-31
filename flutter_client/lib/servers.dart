@@ -311,7 +311,7 @@ class ServerRow extends StatelessWidget {
               groupValue: c.selected.value,
               onChanged: (id) async {
                 if (id != null) {
-                  await c.select(id);
+                  await c.selectServer(id);
                   if (context.mounted) onSelected?.call();
                 }
               },
@@ -333,7 +333,7 @@ class ServerRow extends StatelessWidget {
                     : onSelected == null
                     ? () => showConfig(context, c, server)
                     : () async {
-                        await c.select(server.id);
+                        await c.selectServer(server.id);
                         if (context.mounted) onSelected?.call();
                       },
                 child: Padding(

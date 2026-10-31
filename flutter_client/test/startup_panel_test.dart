@@ -37,6 +37,42 @@ class StartupBackend extends DemoBackend {
 }
 
 void main() {
+  testWidgets('telegram startup enables tray app and preserves zapret', (
+    tester,
+  ) async {
+    final backend = StartupBackend();
+    final controller = SvoiController(backend);
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: svoiTheme(),
+        home: Scaffold(body: StartupPanel(c: controller, telegramOnly: true)),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('telegram-startup')));
+    await tester.pumpAndSettle();
+    expect(backend.startup['enabled'], true);
+    expect(backend.startup['telegramProxy'], true);
+    expect(backend.startup['zapret'], false);
+    backend.fail = true;
+    await tester.tap(find.byKey(const ValueKey('telegram-startup')));
+    await tester.pumpAndSettle();
+    expect(
+      tester
+          .widget<SwitchListTile>(
+            find.byKey(const ValueKey('telegram-startup')),
+          )
+          .value,
+      true,
+    );
+    backend.fail = false;
+    await tester.tap(find.byKey(const ValueKey('telegram-startup')));
+    await tester.pumpAndSettle();
+    expect(backend.startup['enabled'], true);
+    expect(backend.startup['telegramProxy'], false);
+    await tester.pumpWidget(const SizedBox.shrink());
+    await controller.close();
+  });
   testWidgets(
     'startup controls enable app with zapret and retain actual state on failure',
     (tester) async {

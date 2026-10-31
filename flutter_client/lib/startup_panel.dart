@@ -1,8 +1,9 @@
 part of 'main.dart';
 
 class StartupPanel extends StatefulWidget {
-  const StartupPanel({super.key, required this.c});
+  const StartupPanel({super.key, required this.c, this.telegramOnly = false});
   final SvoiController c;
+  final bool telegramOnly;
   @override
   State<StartupPanel> createState() => _StartupPanelState();
 }
@@ -31,7 +32,11 @@ class _StartupPanelState extends State<StartupPanel> {
     }
   }
 
-  Future<void> change({required bool enabled, required bool zapret}) async {
+  Future<void> change({
+    required bool enabled,
+    required bool zapret,
+    bool? telegram,
+  }) async {
     if (busy) return;
     setState(() {
       busy = true;
@@ -41,7 +46,12 @@ class _StartupPanelState extends State<StartupPanel> {
       final result = await widget.c.api.request(
         'startup',
         method: 'POST',
-        body: {'enabled': enabled, 'zapret': zapret},
+        body: {
+          'enabled': enabled,
+          'zapret': zapret,
+          'telegramProxy':
+              enabled && (telegram ?? state?['telegramProxy'] == true),
+        },
       );
       if (mounted) setState(() => state = result);
     } catch (e) {
@@ -55,34 +65,52 @@ class _StartupPanelState extends State<StartupPanel> {
   Widget build(BuildContext context) => Column(
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
+      if (!widget.telegramOnly) ...[
+        SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          title: const Text('Запускать SVOI при входе в Windows'),
+          subtitle: const Text(
+            'SVOI запустится в трее и сообщит о новой версии, если включена проверка обновлений. VPN подключается вручную.',
+          ),
+          value: state?['enabled'] == true,
+          onChanged: state == null || busy
+              ? null
+              : (value) => change(
+                  enabled: value,
+                  zapret: value && state?['zapret'] == true,
+                ),
+        ),
+        SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          title: const Text('Запускать zapret вместе с Windows'),
+          subtitle: Text(
+            state?['strategy']?.toString().isNotEmpty == true
+                ? 'Стратегия: ${state!['strategy']}. Включает автозапуск SVOI.'
+                : 'Сначала выберите стратегию во вкладке zapret.',
+          ),
+          value: state?['enabled'] == true && state?['zapret'] == true,
+          onChanged: state == null || busy
+              ? null
+              : (value) => change(
+                  enabled: value || state?['enabled'] == true,
+                  zapret: value,
+                ),
+        ),
+      ],
       SwitchListTile(
+        key: const ValueKey('telegram-startup'),
         contentPadding: EdgeInsets.zero,
-        title: const Text('Запускать SVOI при входе в Windows'),
+        title: const Text('Запускать Telegram-прокси вместе с Windows'),
         subtitle: const Text(
-          'SVOI запустится в трее и сообщит о новой версии, если включена проверка обновлений. VPN подключается вручную.',
+          'SVOI запустится в трее. Подключение к прокси нужно один раз подтвердить в Telegram.',
         ),
-        value: state?['enabled'] == true,
-        onChanged: state == null || busy
-            ? null
-            : (value) => change(
-                enabled: value,
-                zapret: value && state?['zapret'] == true,
-              ),
-      ),
-      SwitchListTile(
-        contentPadding: EdgeInsets.zero,
-        title: const Text('Запускать zapret вместе с Windows'),
-        subtitle: Text(
-          state?['strategy']?.toString().isNotEmpty == true
-              ? 'Стратегия: ${state!['strategy']}. Включает автозапуск SVOI.'
-              : 'Сначала выберите стратегию во вкладке zapret.',
-        ),
-        value: state?['enabled'] == true && state?['zapret'] == true,
+        value: state?['enabled'] == true && state?['telegramProxy'] == true,
         onChanged: state == null || busy
             ? null
             : (value) => change(
                 enabled: value || state?['enabled'] == true,
-                zapret: value,
+                zapret: state?['zapret'] == true,
+                telegram: value,
               ),
       ),
       if (busy) const LinearProgressIndicator(),

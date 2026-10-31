@@ -22,8 +22,9 @@ func (a *App) startupAPI(w http.ResponseWriter, r *http.Request) error {
 	}
 	if r.Method == "POST" {
 		var in struct {
-			Enabled bool `json:"enabled"`
-			Zapret  bool `json:"zapret"`
+			Enabled       bool  `json:"enabled"`
+			Zapret        bool  `json:"zapret"`
+			TelegramProxy *bool `json:"telegramProxy"`
 		}
 		decoder := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096))
 		decoder.DisallowUnknownFields()
@@ -31,6 +32,16 @@ func (a *App) startupAPI(w http.ResponseWriter, r *http.Request) error {
 			return fail(400, "Для запуска zapret включите автозапуск SVOI")
 		}
 		saved := a.localSettings()
+		telegram := saved.StartupTelegramProxy
+		if in.TelegramProxy != nil {
+			telegram = *in.TelegramProxy
+		}
+		telegram = telegram && in.Enabled
+		if telegram {
+			if a.telegramProxy == nil || a.telegramProxy.status()["installed"] != true {
+				return fail(400, "Telegram-прокси не установлен. Установите полную сборку SVOI")
+			}
+		}
 		if in.Zapret {
 			if a.zapret == nil || saved.ZapretStrategy == "" {
 				return fail(400, "Сначала выберите стратегию во вкладке zapret")
@@ -53,13 +64,14 @@ func (a *App) startupAPI(w http.ResponseWriter, r *http.Request) error {
 		defer a.settingsMu.Unlock()
 		next := a.settings
 		next.StartupZapret = in.Zapret
+		next.StartupTelegramProxy = telegram
 		if err := a.saveSettingsLocked(next); err != nil {
 			if rollback := changeStartup(desktopExecutable, previous); rollback != nil {
 				return startupAPIError("Не удалось сохранить настройки; проверьте автозапуск", rollback)
 			}
 			return fail(500, "Не удалось записать настройки SVOI на диск. Изменение автозапуска отменено")
 		}
-		writeJSON(w, 200, map[string]any{"enabled": in.Enabled, "zapret": in.Zapret, "strategy": next.ZapretStrategy, "elevated": isElevated()})
+		writeJSON(w, 200, map[string]any{"enabled": in.Enabled, "zapret": in.Zapret, "telegramProxy": telegram, "strategy": next.ZapretStrategy, "elevated": isElevated()})
 		return nil
 	}
 	if r.Method != "GET" {
@@ -70,7 +82,7 @@ func (a *App) startupAPI(w http.ResponseWriter, r *http.Request) error {
 		return startupAPIError("Не удалось проверить автозапуск", err)
 	}
 	s := a.localSettings()
-	writeJSON(w, 200, map[string]any{"enabled": enabled, "zapret": s.StartupZapret, "strategy": s.ZapretStrategy, "elevated": isElevated()})
+	writeJSON(w, 200, map[string]any{"enabled": enabled, "zapret": s.StartupZapret, "telegramProxy": s.StartupTelegramProxy, "strategy": s.ZapretStrategy, "elevated": isElevated()})
 	return nil
 }
 
@@ -83,6 +95,22 @@ func startupAPIError(action string, err error) error {
 		message = message[:800]
 	}
 	return fail(502, action+": "+string(message))
+}
+
+func (a *App) startSavedTelegramProxy() error {
+	if !a.localSettings().StartupTelegramProxy {
+		return nil
+	}
+	if a.telegramProxy == nil {
+		return fmt.Errorf("Telegram-прокси недоступен")
+	}
+	if err := a.telegramProxy.Start(); err != nil {
+		a.telegramProxy.mu.Lock()
+		a.telegramProxy.lastError = "Автозапуск Telegram-прокси: " + err.Error()
+		a.telegramProxy.mu.Unlock()
+		return err
+	}
+	return nil
 }
 
 func (a *App) saveSettingsLocked(s LocalSettings) error {
