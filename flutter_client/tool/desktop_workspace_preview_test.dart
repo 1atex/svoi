@@ -97,6 +97,15 @@ void main() {
       await snapshot(name);
     }
 
+    for (final theme in AppAppearance.values.where(
+      (theme) => theme != AppAppearance.system,
+    )) {
+      await capture(
+        'site-${theme.name}',
+        const Size(1200, 820),
+        palette: SvoiColors.forAppearance(theme),
+      );
+    }
     await capture('wide', const Size(1200, 800));
     await capture('compact-desktop', const Size(980, 700));
     await tester.tap(find.text('Добавить подписку').first);
