@@ -42,7 +42,9 @@ $timer=New-Object Windows.Forms.Timer; $timer.Interval=500
 $script:completedAt=$null
 $timer.add_Tick({
   try {
-    $state=[IO.File]::ReadAllText($env:SVOI_PROGRESS_FILE,[Text.Encoding]::UTF8) | ConvertFrom-Json
+    $stream=[IO.File]::Open($env:SVOI_PROGRESS_FILE,[IO.FileMode]::Open,[IO.FileAccess]::Read,([IO.FileShare]::ReadWrite -bor [IO.FileShare]::Delete))
+    try { $reader=New-Object IO.StreamReader($stream,[Text.Encoding]::UTF8); $text=$reader.ReadToEnd() } finally {if ($reader){$reader.Dispose()};$stream.Dispose()}
+    $state=$text | ConvertFrom-Json
     if ($state.state -eq 'completed') {
       $status.Text='Готово. Запускаем обновлённый SVOI…'
       $bar.Style='Continuous'; $bar.Value=100
@@ -64,7 +66,12 @@ $timer.add_Tick({
         $bar.Visible=$false; $close.Visible=$true; $form.ControlBox=$true
       }
     }
-  } catch {}
+  } catch {
+    if (!(Get-Process -Id ([int]$env:SVOI_PROGRESS_PID) -ErrorAction SilentlyContinue)) {
+      $status.Text='Не удалось прочитать итог обновления. Откройте SVOI и проверьте журнал.'
+      $bar.Visible=$false; $close.Visible=$true; $form.ControlBox=$true
+    }
+  }
 })
 try {$timer.Start(); [void]$form.ShowDialog()} finally {$timer.Stop();$timer.Dispose();$form.Dispose()}
 `
