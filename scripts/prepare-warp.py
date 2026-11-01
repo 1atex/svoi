@@ -20,7 +20,8 @@ if not target.exists() or hashlib.sha256(target.read_bytes()).hexdigest() != ass
         context = ssl.create_default_context(cafile=certifi.where())
     except ImportError:
         context = ssl.create_default_context()
-    with urllib.request.urlopen(asset['url'], timeout=120, context=context) as r:
+    request = urllib.request.Request(asset['url'], headers={'User-Agent': 'SVOI-component-build/0.7.1 (+https://github.com/1atex/svoi)'})
+    with urllib.request.urlopen(request, timeout=120, context=context) as r:
         payload = r.read(256 * 1024 * 1024 + 1)
     if len(payload) > 256 * 1024 * 1024 or hashlib.sha256(payload).hexdigest() != asset['sha256']:
         raise ValueError('Cloudflare installer checksum mismatch')
