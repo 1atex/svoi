@@ -573,6 +573,9 @@ func (a *App) engineAPI(w http.ResponseWriter, r *http.Request) error {
 		if json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096)).Decode(&in) != nil {
 			return fail(400, "Некорректный запрос подключения")
 		}
+		if a.warpBlocksConnection(r.Context()) {
+			return fail(409, "Сначала отключите WARP на вкладке WARP, затем включите VPN.")
+		}
 		for _, server := range servers {
 			if server.ID == in.ServerID {
 				settings := a.localSettings()

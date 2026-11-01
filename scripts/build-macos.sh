@@ -14,6 +14,7 @@ if [[ ! -f "$BUILD/core.zip" ]] || ! echo "$XRAY_SHA  $BUILD/core.zip" | shasum 
 fi
 echo "$XRAY_SHA  $BUILD/core.zip" | shasum -a 256 -c -
 unzip -oq "$BUILD/core.zip" -d "$BUILD/core"
+python3 scripts/prepare-warp.py --target macos-arm64 --output "$BUILD/components"
 python3 scripts/prepare-macos-xray.py
 (cd .tools/macos-xray-source && CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -mod=readonly -buildvcs=false -trimpath -ldflags '-s -w -X github.com/xtls/xray-core/core.build=1b1647c-svoi-macos.1' -o "$BUILD/core/xray" ./main)
 CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -tags native_core -trimpath -ldflags "-s -w -X main.nativeVersion=$VERSION" -o "$BUILD/svoi-backend" ./backend
@@ -27,6 +28,7 @@ APP="$ROOT/flutter_client/build/macos/Build/Products/Release/SVOI.app"
 BACKEND="$APP/Contents/MacOS/backend"
 mkdir -p "$BACKEND/core" "$APP/Contents/Resources/licenses"
 cp "$BUILD/svoi-backend" "$BUILD/svoi-proxy" "$BACKEND/"
+cp -R "$BUILD/components" "$BACKEND/"
 cp "$BUILD/core/xray" "$BACKEND/core/"
 for file in geoip.dat geosite.dat; do
   [[ ! -f "$BUILD/core/$file" ]] || cp "$BUILD/core/$file" "$BACKEND/core/"

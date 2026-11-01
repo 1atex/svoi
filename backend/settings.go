@@ -141,7 +141,7 @@ func (a *App) desktopAPI(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	if r.Method != "GET" && !owner && r.URL.Path != "/api/dns/benchmark" && r.URL.Path != "/api/tools/site" && !strings.HasPrefix(r.URL.Path, "/api/tools/speed/") {
+	if r.Method != "GET" && !owner && r.URL.Path != "/api/dns/benchmark" && r.URL.Path != "/api/tools/site" && !strings.HasPrefix(r.URL.Path, "/api/tools/speed/") && !strings.HasPrefix(r.URL.Path, "/api/warp") {
 		return fail(403, "Доступно владельцу профиля")
 	}
 	if strings.HasPrefix(r.URL.Path, "/api/tools/") {
@@ -166,6 +166,9 @@ func (a *App) desktopAPI(w http.ResponseWriter, r *http.Request) error {
 			return fail(503, "zapret доступен в приложении Windows")
 		}
 		return a.zapret.API(w, r, a.localSettings().ZapretFolder)
+	}
+	if strings.HasPrefix(r.URL.Path, "/api/warp") {
+		return a.warpAPI(w, r)
 	}
 	if strings.HasPrefix(r.URL.Path, "/api/dns") {
 		return a.dnsAPI(w, r)

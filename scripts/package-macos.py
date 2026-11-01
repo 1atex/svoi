@@ -17,6 +17,7 @@ with tempfile.TemporaryDirectory(prefix='svoi-dmg-') as folder:
     staging = Path(folder)
     subprocess.run(['ditto', str(app), str(staging / 'SVOI.app')], check=True)
     (staging / 'Applications').symlink_to('/Applications')
+    (staging / 'Установить WARP.pkg').symlink_to('SVOI.app/Contents/MacOS/backend/components/Cloudflare-WARP.pkg')
     shutil.copy2(root / 'docs' / 'MACOS.md', staging / 'MACOS.md')
     subprocess.run(['hdiutil', 'create', '-volname', 'SVOI', '-srcfolder', str(staging), '-format', 'UDZO', str(dmg)], check=True)
 digest = hashlib.file_digest(dmg.open('rb'), 'sha256').hexdigest()

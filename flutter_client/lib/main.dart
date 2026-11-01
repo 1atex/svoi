@@ -21,6 +21,7 @@ import 'desktop_platform.dart';
 import 'release_notice.dart';
 import 'release_notice_banner.dart';
 part 'features.dart';
+part 'warp_page.dart';
 part 'subscription_order.dart';
 part 'settings_sections.dart';
 part 'design.dart';
@@ -468,6 +469,7 @@ class _SvoiShellState extends State<SvoiShell> {
                 Expanded(
                   child: switch (page) {
                     4 => ZapretPage(c: c),
+                    7 => WarpPage(c: c),
                     5 => PreferencesPage(c: c),
                     6 => NetworkToolsPage(c: c),
                     _ => DesktopWorkspace(c: c),

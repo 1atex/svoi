@@ -2,7 +2,7 @@ part of 'main.dart';
 
 const clientVersion = String.fromEnvironment(
   'SVOI_VERSION',
-  defaultValue: '0.6.0-beta.5',
+  defaultValue: '0.7.1-rc.2',
 );
 
 class ConfigPane extends StatelessWidget {
@@ -848,6 +848,10 @@ class _RemotePanelState extends State<RemotePanel> {
     if (acting) return;
     setState(() => acting = true);
     try {
+      if (widget.path == 'warp' && action == 'refresh') {
+        await refresh();
+        return;
+      }
       await widget.c.api.request(
         '${widget.path}/$action',
         method: 'POST',

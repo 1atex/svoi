@@ -46,6 +46,7 @@ class _DesktopTitlebarState extends State<DesktopTitlebar> {
       final tabs = [
         (0, 'Подключение', LucideIcons.power),
         if (Platform.isWindows) (4, 'zapret', LucideIcons.shield),
+        (7, 'WARP', LucideIcons.cloud),
         (6, 'Инструменты', LucideIcons.wrench),
         (5, 'Настройки', LucideIcons.settings2),
       ];
