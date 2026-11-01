@@ -17,6 +17,7 @@ if BUNDLE.exists():
 STAGE.parent.mkdir(parents=True)
 shutil.copytree(ROOT / 'flutter_client/build/linux/x64/release/bundle', STAGE)
 (STAGE / 'backend/core').mkdir(parents=True)
+shutil.copytree(ROOT / '.tools/linux-components', STAGE / 'backend/components')
 shutil.copy2(ROOT / '.tools/linux-backend/svoi-backend', STAGE / 'backend/svoi-backend')
 for name in ('xray', 'geoip.dat', 'geosite.dat', 'LICENSE', 'sing-box', 'mihomo', 'sing-box-LICENSE.txt', 'sing-box-SOURCE.txt', 'mihomo-LICENSE.txt', 'mihomo-SOURCE.txt'):
     shutil.copy2(ROOT / '.tools/linux-core' / name, STAGE / 'backend/core' / name)

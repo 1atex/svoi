@@ -38,6 +38,7 @@ Name: "russian"; MessagesFile: "compiler:Languages\Russian.isl"
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Tasks]
+Name: "warp"; Description: "Установить Cloudflare WARP (отдельный компонент Cloudflare)"
 Name: "desktopicon"; Description: "Создать ярлык на рабочем столе"
 Name: "runasadmin"; Description: "Всегда запускать от имени администратора (для TUN и zapret; Windows запросит подтверждение при запуске)"
 
@@ -60,6 +61,7 @@ Name: "{group}\SVOI"; Filename: "{app}\svoi.exe"; WorkingDir: "{app}"; IconFilen
 Name: "{autodesktop}\SVOI"; Filename: "{app}\svoi.exe"; WorkingDir: "{app}"; IconFilename: "{app}\svoi.ico"; Tasks: desktopicon
 
 [Run]
+Filename: "{sys}\msiexec.exe"; Parameters: "/i ""{app}\backend\components\Cloudflare-WARP.msi"" /passive /norestart"; Verb: "runas"; Flags: shellexec waituntilterminated skipifsilent; Tasks: warp; Check: WarpNeeded
 Filename: "{app}\svoi.exe"; Description: "Запустить SVOI"; Flags: nowait postinstall skipifsilent
 
 [Code]
@@ -116,4 +118,18 @@ begin
     Result := '1'
   else
     Result := '0';
+end;
+
+function WarpNeeded: Boolean;
+begin
+  Result := not FileExists(ExpandConstant('{pf64}\Cloudflare\Cloudflare WARP\warp-cli.exe'));
+end;
+
+procedure CurStepChanged(CurStep: TSetupStep);
+begin
+  if (CurStep = ssInstall) and WizardSilent and (ExpandConstant('{param:SVOIPROGRESS|0}') <> '1') then begin
+    WizardForm.Show;
+    WizardForm.BringToFront;
+    WizardForm.CancelButton.Enabled := False;
+  end;
 end;

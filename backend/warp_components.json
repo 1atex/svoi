@@ -1,0 +1,22 @@
+{
+  "version": "2026.8.2115.0",
+  "terms": "https://www.cloudflare.com/application/terms/",
+  "privacy": "https://www.cloudflare.com/application/privacypolicy/",
+  "assets": {
+    "linux-x64": {
+      "sha256": "474fd033980044744f033ca60ec8416a71e04944edcef77e53bc3893450db074",
+      "url": "https://pkg.cloudflareclient.com/pool/jammy/main/c/cloudflare-warp/cloudflare-warp_2026.8.2115.0_amd64.deb",
+      "name": "cloudflare-warp.deb"
+    },
+    "windows-x64": {
+      "sha256": "ab3138dbebdf132af076b5ebcb25b42345d29258acb76267c3bd1f8cfea57a53",
+      "url": "https://downloads.cloudflareclient.com/v1/download/windows/version/2026.8.2115.0",
+      "name": "Cloudflare-WARP.msi"
+    },
+    "macos-arm64": {
+      "sha256": "1b81c512e9ac1fa28c63f28ff031d2244c6a23fd8c8d500fae14f38938faea5d",
+      "url": "https://downloads.cloudflareclient.com/v1/download/macos/version/2026.8.2115.0",
+      "name": "Cloudflare-WARP.pkg"
+    }
+  }
+}

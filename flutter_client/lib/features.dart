@@ -2,11 +2,11 @@ part of 'main.dart';
 
 const clientVersion = String.fromEnvironment(
   'SVOI_VERSION',
-  defaultValue: '0.7.1-rc.1',
+  defaultValue: '0.7.1-rc.2',
 );
 
 String get clientDisplayVersion =>
-    clientVersion == '0.7.1-rc.1' ? '0.7.1 Release Candidate 1' : clientVersion;
+    clientVersion == '0.7.1-rc.2' ? '0.7.1 Release Candidate 2' : clientVersion;
 
 class ConfigPane extends StatelessWidget {
   const ConfigPane({
@@ -845,7 +845,12 @@ class _RemotePanelState extends State<RemotePanel> {
           Duration(
             seconds:
                 data['job']?['busy'] == true ||
-                    ['checking', 'downloading'].contains(data['state'])
+                    [
+                      'checking',
+                      'downloading',
+                      'connecting',
+                      'disconnecting',
+                    ].contains(data['state'])
                 ? 2
                 : 10,
           ),
@@ -859,6 +864,10 @@ class _RemotePanelState extends State<RemotePanel> {
     if (acting) return;
     setState(() => acting = true);
     try {
+      if (widget.path == 'warp' && action == 'refresh') {
+        await refresh();
+        return;
+      }
       await widget.c.api.request(
         '${widget.path}/$action',
         method: 'POST',

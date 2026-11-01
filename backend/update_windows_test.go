@@ -32,6 +32,9 @@ func TestUpdateWaitsForDesktopWindowMutex(t *testing.T) {
 }
 
 func TestInstallerStillVerifiesChecksumWhenParentAlreadyExited(t *testing.T) {
+	oldProgress := launchUpdateProgress
+	launchUpdateProgress = func(string) {}
+	t.Cleanup(func() { launchUpdateProgress = oldProgress })
 	cmd := exec.Command("cmd.exe", "/c", "exit", "0")
 	hideCommand(cmd)
 	if err := cmd.Run(); err != nil {
@@ -92,6 +95,43 @@ func TestWindowsSilentUpdateArgumentsPreserveInstallPath(t *testing.T) {
 		if !strings.Contains(args, required) {
 			t.Fatal("missing setup safety argument", required)
 		}
+	}
+}
+
+func TestWindowsUpdateProgressScriptParses(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	cmd := windowsPowerShell(ctx, `$tokens=$null;$errors=$null;$null=[Management.Automation.Language.Parser]::ParseInput($env:SVOI_PARSE_SCRIPT,[ref]$tokens,[ref]$errors);if($errors.Count){throw ($errors | Out-String)};'parsed'`)
+	cmd.Env = append(os.Environ(), "SVOI_PARSE_SCRIPT="+updateProgressScript)
+	if out, err := cmd.CombinedOutput(); err != nil || !strings.Contains(string(out), "parsed") {
+		t.Fatalf("progress script: %v %s", err, out)
+	}
+}
+
+func TestWindowsUpdateProgressDialogLifecycle(t *testing.T) {
+	if os.Getenv("SVOI_TEST_UPDATE_PROGRESS") == "" {
+		t.Skip("opt in to show a test update window")
+	}
+	installer := filepath.Join(t.TempDir(), "test-setup.exe")
+	result := UpdateInstallResult{State: "installing", Stage: "verifying", Time: time.Now()}
+	if err := writeUpdateInstallResult(installer, result); err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 12*time.Second)
+	defer cancel()
+	cmd := windowsPowerShell(ctx, updateProgressScript)
+	cmd.Env = append(os.Environ(), "SVOI_PROGRESS_FILE="+filepath.Join(filepath.Dir(installer), "last-install.json"), fmt.Sprintf("SVOI_PROGRESS_PID=%d", os.Getpid()))
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		time.Sleep(2 * time.Second)
+		result.State = "completed"
+		_ = writeUpdateInstallResult(installer, result)
+	}()
+	out, err := cmd.CombinedOutput()
+	<-done
+	if err != nil {
+		t.Fatalf("update window: %v %s", err, out)
 	}
 }
 

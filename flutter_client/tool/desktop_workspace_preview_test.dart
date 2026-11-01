@@ -108,6 +108,11 @@ void main() {
     }
     await capture('wide', const Size(1200, 800));
     await capture('compact-desktop', const Size(980, 700));
+    await tester.tap(find.byKey(const ValueKey('desktop-tab-7')));
+    await tester.pumpAndSettle();
+    await snapshot('warp-not-installed');
+    await tester.tap(find.byKey(const ValueKey('desktop-tab-0')));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Добавить подписку').first);
     await tester.pumpAndSettle();
     await snapshot('subscription-import');

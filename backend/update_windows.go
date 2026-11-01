@@ -60,6 +60,9 @@ func installUpdateAfterExit(installer, checksum string, parent int) (resultErr e
 	if err := writeUpdateInstallResult(installer, result); err != nil {
 		return fmt.Errorf("Не удалось сохранить журнал обновления: %w", err)
 	}
+	launchUpdateProgress(installer)
+	stage := func(value string) { result.Stage = value; _ = writeUpdateInstallResult(installer, result) }
+	stage("waiting")
 	defer func() {
 		result.Time = time.Now().UTC()
 		if resultErr != nil {
@@ -93,6 +96,7 @@ func installUpdateAfterExit(installer, checksum string, parent int) (resultErr e
 		}
 	}
 	parentExited = true
+	stage("verifying")
 	name, err := windows.UTF16PtrFromString(installer)
 	if err != nil {
 		return err
@@ -125,6 +129,7 @@ func installUpdateAfterExit(installer, checksum string, parent int) (resultErr e
 		return err
 	}
 	cmd := exec.Command(installer, silentUpdateArguments(filepath.Dir(trusted), result.Log)...)
+	stage("installing")
 	hideCommand(cmd)
 	if err := cmd.Run(); err != nil {
 		var exit *exec.ExitError
@@ -160,5 +165,5 @@ func waitUpdateDesktopClosed(mutexName string, timeout time.Duration) error {
 }
 
 func silentUpdateArguments(directory, log string) []string {
-	return []string{"/SP-", "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/NOCLOSEAPPLICATIONS", "/RESTARTEXITCODE=3010", "/DIR=" + directory, "/LOG=" + log}
+	return []string{"/SP-", "/VERYSILENT", "/SVOIPROGRESS=1", "/SUPPRESSMSGBOXES", "/NORESTART", "/NOCLOSEAPPLICATIONS", "/RESTARTEXITCODE=3010", "/DIR=" + directory, "/LOG=" + log}
 }

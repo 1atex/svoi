@@ -54,6 +54,7 @@ class DemoBackend extends Backend {
     }
     if (path == 'groups') return {'token': 'demo', 'group': group};
     if (path == 'me') return group;
+    if (path == 'warp') return {'installed': false, 'state': 'not-installed'};
     if (path == 'tg-proxy') {
       return {
         'installed': false,

@@ -1,5 +1,5 @@
 param(
-    [string]$Version = '0.7.1-rc.1',
+    [string]$Version = '0.7.1-rc.2',
     [string]$FlutterSdk = '',
     [string]$CrtDirectory = '',
     [switch]$SkipChecks
@@ -36,6 +36,8 @@ try {
             if ($LASTEXITCODE) { throw 'Telegram proxy integration tests failed' }
         } finally { Remove-Item Env:SVOI_TEST_TG_PROXY -ErrorAction SilentlyContinue }
     }
+    python scripts/prepare-warp.py --target windows-x64 --output dist/components
+    if ($LASTEXITCODE) { throw 'WARP component verification failed' }
     New-Item -ItemType Directory -Force dist | Out-Null
     & $go build -tags native_core -trimpath -ldflags "-H windowsgui -s -w -X main.nativeVersion=$Version" -o dist/svoi-backend.exe ./backend
     if ($LASTEXITCODE) { throw 'Go backend build failed' }
@@ -79,6 +81,7 @@ try {
     }
     if (Test-Path -LiteralPath "$stage/svoi_flutter.exe") { Remove-Item -LiteralPath "$stage/svoi_flutter.exe" }
     Copy-Item -LiteralPath dist/svoi-backend.exe -Destination "$stage/backend"
+    Copy-Item -LiteralPath dist/components -Destination "$stage/backend" -Recurse
     Copy-Item -LiteralPath dist/core/tg-ws-proxy -Destination "$stage/backend/core" -Recurse
     foreach ($name in @('xray.exe','wintun.dll','geoip.dat','geosite.dat','LICENSE','LICENSE-Wintun','SOURCE.txt','sing-box.exe','libcronet.dll','sing-box-LICENSE.txt','sing-box-SOURCE.txt','mihomo.exe','mihomo-LICENSE.txt','mihomo-SOURCE.txt')) {
         Copy-Item -LiteralPath "dist/core/$name" -Destination "$stage/backend/core"

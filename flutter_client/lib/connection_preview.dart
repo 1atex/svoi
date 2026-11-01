@@ -257,7 +257,11 @@ class ConnectionDial extends StatefulWidget {
     required this.hint,
     this.startedAt,
     this.foreground = true,
+    this.activeLabel,
+    this.showElapsed = true,
   });
+  final String? activeLabel;
+  final bool showElapsed;
   final DateTime? startedAt;
   final bool foreground;
   final bool running, verified, busy;
@@ -421,14 +425,18 @@ class _ConnectionDialState extends State<ConnectionDial> {
                             if (active && !widget.busy) ...[
                               const SizedBox(height: 8),
                               Text(
-                                widget.verified ? 'Подключён' : 'VPN включён',
+                                widget.activeLabel ??
+                                    (widget.verified
+                                        ? 'Подключён'
+                                        : 'VPN включён'),
                                 style: TextStyle(fontSize: 11, color: p.ink),
                               ),
-                              const SizedBox(height: 3),
-                              ConnectionElapsed(
-                                startedAt: widget.startedAt,
-                                foreground: widget.foreground,
-                              ),
+                              if (widget.showElapsed) const SizedBox(height: 3),
+                              if (widget.showElapsed)
+                                ConnectionElapsed(
+                                  startedAt: widget.startedAt,
+                                  foreground: widget.foreground,
+                                ),
                             ],
                           ],
                         ),

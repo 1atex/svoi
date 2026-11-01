@@ -38,6 +38,7 @@ part 'connection_card.dart';
 part 'servers.dart';
 part 'zapret_page.dart';
 part 'tg_proxy_panel.dart';
+part 'warp_page.dart';
 part 'tray.dart';
 part 'startup_panel.dart';
 part 'network_tools.dart';
@@ -504,6 +505,7 @@ class _SvoiShellState extends State<SvoiShell> {
                 Expanded(
                   child: switch (page) {
                     4 => ZapretPage(c: c),
+                    7 => WarpPage(c: c),
                     5 => PreferencesPage(c: c),
                     6 => NetworkToolsPage(c: c),
                     _ => DesktopWorkspace(c: c),

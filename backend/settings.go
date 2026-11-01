@@ -146,7 +146,7 @@ func (a *App) desktopAPI(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	if r.Method != "GET" && !owner && r.URL.Path != "/api/dns/benchmark" && r.URL.Path != "/api/tools/site" && !strings.HasPrefix(r.URL.Path, "/api/tools/speed/") {
+	if r.Method != "GET" && !owner && r.URL.Path != "/api/dns/benchmark" && r.URL.Path != "/api/tools/site" && !strings.HasPrefix(r.URL.Path, "/api/tools/speed/") && !strings.HasPrefix(r.URL.Path, "/api/warp") {
 		return fail(403, "Доступно владельцу профиля")
 	}
 	if strings.HasPrefix(r.URL.Path, "/api/tools/") {
@@ -170,7 +170,13 @@ func (a *App) desktopAPI(w http.ResponseWriter, r *http.Request) error {
 		if a.zapret == nil {
 			return fail(503, "zapret доступен в приложении Windows")
 		}
+		if r.Method == "POST" && (r.URL.Path == "/api/zapret/start" || r.URL.Path == "/api/zapret/resume" || r.URL.Path == "/api/zapret/job") && a.warpBlocksConnection(r.Context()) {
+			return fail(409, "Сначала отключите WARP на вкладке WARP, затем запустите zapret.")
+		}
 		return a.zapret.API(w, r, a.localSettings().ZapretFolder)
+	}
+	if strings.HasPrefix(r.URL.Path, "/api/warp") {
+		return a.warpAPI(w, r)
 	}
 	if strings.HasPrefix(r.URL.Path, "/api/tg-proxy") {
 		if a.telegramProxy == nil {

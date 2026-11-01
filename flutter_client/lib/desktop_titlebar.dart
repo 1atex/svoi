@@ -79,6 +79,8 @@ class _DesktopTitlebarState extends State<DesktopTitlebar> {
       final tabs = [
         (0, 'Подключение', LucideIcons.power),
         if (!Platform.isLinux) (4, 'zapret', LucideIcons.shield),
+        if (Platform.isWindows || Platform.isLinux || Platform.isMacOS)
+          (7, 'WARP', LucideIcons.cloud),
         (6, 'Инструменты', LucideIcons.wrench),
         (5, 'Настройки', LucideIcons.settings2),
       ];
@@ -94,11 +96,12 @@ class _DesktopTitlebarState extends State<DesktopTitlebar> {
           textDirection: Directionality.of(context),
           textScaler: MediaQuery.textScalerOf(context),
         )..layout();
-        tabsWidth += painter.width + 63;
+        tabsWidth += painter.width + 57;
         painter.dispose();
       }
       final labels =
-          tabsWidth <= bounds.maxWidth - 330 &&
+          (!Platform.isWindows || bounds.maxWidth >= 960) &&
+          tabsWidth <= bounds.maxWidth - 310 &&
           MediaQuery.textScalerOf(context).scale(14) <= 19;
       return Material(
         color: appColors(context).titlebar,
@@ -155,7 +158,7 @@ class _DesktopTitlebarState extends State<DesktopTitlebar> {
                           minimumSize: Size(narrow ? 40 : 48, 44),
                           padding: EdgeInsets.symmetric(
                             horizontal: labels
-                                ? 16
+                                ? 12
                                 : narrow
                                 ? 10
                                 : 14,
@@ -176,7 +179,7 @@ class _DesktopTitlebarState extends State<DesktopTitlebar> {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             SvoiIcon(icon, size: 18),
-                            if (labels) ...[
+                            if (labels || index == 7) ...[
                               const SizedBox(width: 9),
                               Text(label),
                             ],

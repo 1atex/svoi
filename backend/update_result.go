@@ -11,6 +11,7 @@ import (
 
 type UpdateInstallResult struct {
 	State     string    `json:"state"`
+	Stage     string    `json:"stage,omitempty"`
 	Time      time.Time `json:"time"`
 	Installer string    `json:"installer"`
 	Log       string    `json:"log"`
