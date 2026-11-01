@@ -33,6 +33,7 @@ part 'community.dart';
 part 'linux_preferences.dart';
 part 'appearance.dart';
 part 'power_control.dart';
+part 'connection_dial.dart';
 part 'connection_view.dart';
 part 'connection_card.dart';
 part 'servers.dart';

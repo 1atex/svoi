@@ -44,6 +44,32 @@ class WarpBackend extends DemoBackend {
 }
 
 void main() {
+  testWidgets('connected WARP stays idle until an explicit disconnect', (
+    tester,
+  ) async {
+    final api = WarpBackend()
+      ..status = {'installed': true, 'state': 'connected'};
+    final c = SvoiController(api);
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: svoiTheme(),
+        home: Scaffold(body: WarpPage(c: c)),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Подключён'), findsOneWidget);
+    expect(find.text('VPN включён'), findsNothing);
+    expect(find.text('—:—:—'), findsNothing);
+    expect(tester.binding.hasScheduledFrame, false);
+    await tester.tap(find.byKey(const ValueKey('connection-power')));
+    await tester.pumpAndSettle();
+    expect(api.actions, ['warp/disconnect']);
+    expect(find.text('Подключён'), findsNothing);
+    expect(find.text('Готов к подключению'), findsOneWidget);
+    await tester.pumpWidget(const SizedBox());
+    await c.close();
+  });
+
   testWidgets('missing install is actionable and polling sleeps in tray', (
     tester,
   ) async {

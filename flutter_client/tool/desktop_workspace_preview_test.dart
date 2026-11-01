@@ -6,9 +6,31 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:svoi_flutter/controller.dart';
+import 'package:svoi_flutter/backend.dart';
 import 'package:svoi_flutter/main.dart';
 
 import '../test/connection_ui_test.dart' show ConnectionBackend;
+
+class WorkspacePreviewBackend extends ConnectionBackend {
+  bool warpConnected = false;
+  @override
+  Future<Map<String, dynamic>> request(
+    String path, {
+    String method = 'GET',
+    Object? body,
+    RequestCancellation? cancellation,
+  }) async {
+    if (path == 'warp' && warpConnected) {
+      return {'installed': true, 'state': 'connected'};
+    }
+    return super.request(
+      path,
+      method: method,
+      body: body,
+      cancellation: cancellation,
+    );
+  }
+}
 
 void main() {
   testWidgets('capture unified Windows workspace', (tester) async {
@@ -34,7 +56,7 @@ void main() {
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
-    final backend = ConnectionBackend();
+    final backend = WorkspacePreviewBackend();
     final servers = (backend.group['servers'] as List).take(12).toList();
     backend.group['servers'] = servers;
     backend.group['subscriptions'][0]['name'] = 'Личная подписка';
@@ -111,6 +133,10 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('desktop-tab-7')));
     await tester.pumpAndSettle();
     await snapshot('warp-not-installed');
+    backend.warpConnected = true;
+    await tester.tap(find.text('Обновить состояние'));
+    await tester.pumpAndSettle();
+    await snapshot('warp-connected');
     await tester.tap(find.byKey(const ValueKey('desktop-tab-0')));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Добавить подписку').first);

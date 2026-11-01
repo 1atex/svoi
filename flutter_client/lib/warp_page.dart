@@ -110,7 +110,10 @@ class WarpPage extends StatelessWidget {
                         const SizedBox(height: 20),
                         if (installed)
                           Center(
-                            child: ConnectionOrbit(
+                            child: ConnectionDial(
+                              activeLabel: 'Подключён',
+                              showElapsed: false,
+                              foreground: c.visible,
                               running: state == 'connected',
                               verified: false,
                               busy:
