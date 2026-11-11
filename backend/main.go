@@ -76,6 +76,8 @@ type State struct {
 	Groups []Group `json:"groups"`
 }
 type App struct {
+	islandOnce            sync.Once
+	islandBridge          *islandBridge
 	speedMu               sync.Mutex
 	speed                 *speedRun
 	speedEndpoint         string
@@ -279,7 +281,7 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 	_ = json.NewEncoder(w).Encode(v)
 }
 func (a *App) dispatch(w http.ResponseWriter, r *http.Request) error {
-	if r.URL.Path == "/api/settings" || r.URL.Path == "/api/startup" || strings.HasPrefix(r.URL.Path, "/api/tools/") || strings.HasPrefix(r.URL.Path, "/api/updates") || strings.HasPrefix(r.URL.Path, "/api/zapret") || strings.HasPrefix(r.URL.Path, "/api/tg-proxy") || strings.HasPrefix(r.URL.Path, "/api/warp") || strings.HasPrefix(r.URL.Path, "/api/dns") {
+	if strings.HasPrefix(r.URL.Path, "/api/night-island") || r.URL.Path == "/api/settings" || r.URL.Path == "/api/startup" || strings.HasPrefix(r.URL.Path, "/api/tools/") || strings.HasPrefix(r.URL.Path, "/api/updates") || strings.HasPrefix(r.URL.Path, "/api/zapret") || strings.HasPrefix(r.URL.Path, "/api/tg-proxy") || strings.HasPrefix(r.URL.Path, "/api/warp") || strings.HasPrefix(r.URL.Path, "/api/dns") {
 		return a.desktopAPI(w, r)
 	}
 	if strings.HasPrefix(r.URL.Path, "/api/transfer/") {
@@ -840,6 +842,12 @@ func run() error {
 	log.Printf("SVOI %s — http://%s", appVersion, *listen)
 	server := &http.Server{Addr: *listen, Handler: a.handler(), ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 15 * time.Second, WriteTimeout: 45 * time.Second, IdleTimeout: 60 * time.Second, MaxHeaderBytes: 16384}
 	if *native {
+		stopBridge, bridgeErr := startIslandTransport(a)
+		if bridgeErr != nil {
+			log.Print("Night Island: ", bridgeErr)
+		} else {
+			defer stopBridge()
+		}
 		return serveNativeBackend(server, listener, os.Stdin, os.Stdout)
 	}
 	if desktopSupported && !*headless {

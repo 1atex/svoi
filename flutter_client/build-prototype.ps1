@@ -87,6 +87,7 @@ try {
         Copy-Item -LiteralPath "dist/core/$name" -Destination "$stage/backend/core"
     }
     Copy-Item -Path "$CrtDirectory/*.dll" -Destination $stage
+    Copy-Item -LiteralPath "$root/licenses" -Destination $stage -Recurse
     Copy-Item -LiteralPath LICENSE -Destination $stage
     Copy-Item -LiteralPath assets/svoi.ico -Destination $stage
     Copy-Item -LiteralPath "$FlutterSdk/LICENSE" -Destination "$stage/LICENSE-Flutter.txt"

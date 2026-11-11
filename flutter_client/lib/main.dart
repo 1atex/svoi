@@ -21,6 +21,7 @@ import 'release_notice.dart';
 import 'release_notice_banner.dart';
 part 'features.dart';
 part 'settings_sections.dart';
+part 'night_island.dart';
 part 'core_picker.dart';
 part 'update_banner.dart';
 part 'design.dart';

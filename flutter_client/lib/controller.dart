@@ -128,10 +128,50 @@ class AppNotice {
 
 class SvoiController {
   SvoiController(this.api, {this.sessionFile}) {
+    for (final source in [
+      selected,
+      mode,
+      favorites,
+      servers,
+      group,
+      connection,
+    ]) {
+      source.addListener(_scheduleIslandContext);
+    }
     connection.addListener(_syncPublicIP);
     connection.addListener(_syncCoreLibrary);
     connectionPhase.addListener(_syncPublicIP);
   }
+  Timer? _islandContextTimer;
+  String _islandContext = '';
+  int _islandContextRevision = 0;
+  void _scheduleIslandContext() {
+    if (_closed || !Platform.isWindows || api is! NativeBackend) return;
+    _islandContextTimer?.cancel();
+    _islandContextTimer = Timer(const Duration(milliseconds: 150), () async {
+      if (_closed || api.token.isEmpty) return;
+      final body = {
+        'selected': selected.value,
+        'mode': mode.value,
+        'favorites': favorites.value.toList(),
+        'servers': servers.value
+            .where((s) => s.availableForCore)
+            .map((s) => s.id)
+            .toList(),
+      };
+      final key = '${api.token}/${jsonEncode(body)}';
+      if (key == _islandContext) return;
+      try {
+        await api.request(
+          'night-island/context',
+          method: 'POST',
+          body: {...body, 'revision': ++_islandContextRevision},
+        );
+        _islandContext = key;
+      } catch (_) {}
+    });
+  }
+
   final Backend api;
   final publicIP = ValueNotifier<Map<String, dynamic>>({});
   String _ipKey = '', _previousIP = '';
@@ -690,7 +730,18 @@ class SvoiController {
           !busy.value &&
           revision == _connectionRevision &&
           jsonEncode(next) != jsonEncode(connection.value)) {
+        final changedServer =
+            next['state'] == 'running' &&
+            next['serverId'] != connection.value['serverId'];
         connection.value = next;
+        if (changedServer &&
+            servers.value.any(
+              (s) => s.id == next['serverId'] && s.availableForCore,
+            )) {
+          selected.value = next['serverId'].toString();
+          lastUsed.value = selected.value;
+          unawaited(_saveLibrary());
+        }
       }
     } catch (e) {
       if (!_closed) message.value = e.toString();
@@ -1303,6 +1354,17 @@ class SvoiController {
   Future<void> close() async {
     if (_closed) return;
     _closed = true;
+    _islandContextTimer?.cancel();
+    for (final source in [
+      selected,
+      mode,
+      favorites,
+      servers,
+      group,
+      connection,
+    ]) {
+      source.removeListener(_scheduleIslandContext);
+    }
     _cancelCheck();
     _cancelRefreshes();
     connection.removeListener(_syncPublicIP);

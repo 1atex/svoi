@@ -921,6 +921,8 @@ class PreferencesPage extends StatelessWidget {
       : SettingsBody(
           children: [
             const AppearancePanel(),
+            if (Platform.isWindows)
+              Section('Интеграции', children: [NightIslandPanel(c: c)]),
             Section(
               'Сценарии',
               children: [
